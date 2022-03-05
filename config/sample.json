@@ -1,0 +1,74 @@
+{
+    "encoder": {
+        "model_path": "onnx/encoder.onnx",
+        "frontend": {
+            "stft": {
+                "window": "hann",
+                "win_length": 512,
+                "n_fft": 512,
+                "hop_length": 256,
+                "center": true,
+                "onesided": true,
+                "normalized": false
+            },
+            "logmel": {
+                "fmin": 0,
+                "fmax": 8000,
+                "fs": 16000,
+                "n_fft": 512,
+                "n_mels": 80,
+                "htk": false
+            }
+        },
+        "do_normalize": true,
+        "gmvn": {
+            "norm_means": true,
+            "norm_vars": true,
+            "eps": 1e-10,
+            "stats_file": "onnx/stats.npz"
+        },
+        "do_preencoder": false,
+        "do_postencoder": false
+    },
+    "decoder": {
+        "model_path": "onnx/decoder.onnx",
+        "n_layers": 6,
+        "hidden_size": 2048,
+        "rnn_type": "lstm"
+    },
+    "ctc": {
+        "model_path": "onnx/ctc.onnx"
+    },
+    "use_lm": false,
+    "ngram": {
+        "use_ngram": false
+    },
+    "weights": {
+        "ctc_weight": 0.0,
+        "lm_weight": 1.0,
+        "penalty": 0.0
+    },
+    "beam_search": {
+        "beam_size": 20,
+        "pre_beam_ratio": 1.5,
+        "pre_beam_score_key": null
+    },
+    "use_transducer": true,
+    "transducer": {
+        "joint_network": {
+            "model_path": "onnx/joint_network.onnx"
+        },
+        "search_type": "default",
+        "score_norm": true,
+        "nbest": 1
+    },
+    "token": {
+        "sos": 4999,
+        "eos": 4999,
+        "blank": 0,
+        "list": [
+            "a",
+            "b"
+        ]
+    }
+}
