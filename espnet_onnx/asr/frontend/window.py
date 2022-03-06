@@ -3,7 +3,7 @@ import numpy as np
 def get_window(
     window_type: str,
     length: int,
-    periodic:bool = False
+    periodic:bool = True
 ):
     N = length + 1 if periodic else length
     if window_type == 'bartlett':

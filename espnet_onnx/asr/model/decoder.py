@@ -1,3 +1,9 @@
+from typing import List
+from typing import Any
+from typing import Tuple
+from typing import Optional
+from typing import Dict
+from typing import Union
 
 import numpy as np
 import onnxruntime
@@ -7,8 +13,8 @@ from espnet_onnx.asr.beam_search.hyps import TransducerHypothesis, ExtendedHypot
 from espnet_onnx.utils.function import subsequent_mask
 
 
-def get_decoder(config, token_config):
-    if config.use_transducer:
+def get_decoder(config, token_config, td_config):
+    if td_config.use_transducer_decoder:
         return TransducerDecoder(config, token_config)
     else:
         return OnnxDecoderModel(config)
@@ -21,6 +27,7 @@ class OnnxDecoderModel(BatchScorerInterface):
     ):
         self.decoder = onnxruntime.InferenceSession(config.model_path)
         self.n_layers = config.n_layers
+        self.odim = config.odim
         self.in_caches = [d.name for d in self.decoder.get_inputs()
                           if 'cache' in d.name]
         self.out_caches = [d.name for d in self.decoder.get_outputs()
@@ -47,7 +54,7 @@ class OnnxDecoderModel(BatchScorerInterface):
         n_batch = len(ys)
         if states[0] is None:
             batch_state = [
-                np.zeros((1, 1, 512)).astype(np.float32)
+                np.zeros((1, 1, self.odim), dtype=np.float32)
                 for _ in range(self.n_layers)
             ]
         else:
@@ -59,6 +66,7 @@ class OnnxDecoderModel(BatchScorerInterface):
 
         # batch decoding
         ys_mask = subsequent_mask(ys.shape[-1])[np.newaxis, :]
+        
         input_dict = {
             'tgt': ys.astype(np.int64),
             'tgt_mask': ys_mask,
@@ -66,6 +74,7 @@ class OnnxDecoderModel(BatchScorerInterface):
         }
         input_dict.update(
             {k: v for (k, v) in zip(self.in_caches, batch_state)})
+            
         logp, *states = self.decoder.run(
             ['y'] + self.out_caches,
             input_dict
@@ -233,9 +242,8 @@ class TransducerDecoder:
         dec_states = self.create_batch_states(dec_states, [d[1] for d in done])
 
         if use_lm:
-            lm_labels = np.array([h.yseq[-1] for h in hyps])
-            .reshape(final_batch, 1)
-            .astype(np.int64)
+            lm_labels = np.array([h.yseq[-1] for h in hyps]) \
+                .reshape(final_batch, 1).astype(np.int64)
 
             return dec_out, dec_states, lm_labels
 

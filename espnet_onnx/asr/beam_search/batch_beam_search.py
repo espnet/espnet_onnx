@@ -5,13 +5,15 @@ from typing import Any
 from typing import Dict
 from typing import List
 from typing import Tuple
+import logging
+import sys
 
 import numpy as np
 
 from espnet_onnx.utils.function import pad_sequence, topk
 from .beam_search import BeamSearch
 from .hyps import Hypothesis
-
+from .hyps import BatchHypothesis
 
 class BatchBeamSearch(BeamSearch):
     """Batch beam search implementation."""
@@ -22,7 +24,7 @@ class BatchBeamSearch(BeamSearch):
             return BatchHypothesis()
         return BatchHypothesis(
             yseq=pad_sequence(
-                [h.yseq for h in hyps], padding_value=self.eos
+                [h.yseq for h in hyps], batch_first=True, padding_value=self.eos
             ),
             length=np.array([len(h.yseq) for h in hyps], dtype=np.int64),
             score=np.array([h.score for h in hyps]),
@@ -293,14 +295,15 @@ class BatchBeamSearch(BeamSearch):
                     ),
                 )
             )
-            running_hyps.yseq.resize_as_(yseq_eos)
+            
+            running_hyps.yseq.resize(yseq_eos.shape)
             running_hyps.yseq[:] = yseq_eos
             running_hyps.length[:] = yseq_eos.shape[1]
 
         # add ended hypotheses to a final list, and removed them from current hypotheses
         # (this will be a probmlem, number of hyps < beam)
         is_eos = (
-            running_hyps.yseq[np.arange(n_batch), running_hyps.length - 1]
+            running_hyps.yseq[np.arange(n_batch), (running_hyps.length - 1).astype(np.int64)]
             == self.eos
         )
         for b in np.transpose(np.nonzero(is_eos)).reshape(-1):

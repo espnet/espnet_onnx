@@ -12,8 +12,8 @@ from typing import Union
 import numpy as np
 import six
 
-from espnet_onnx.scorer.interface import PartialScorerInterface
-from espnet_onnx.scorer.interface import ScorerInterface
+from espnet_onnx.asr.scorer.interface import PartialScorerInterface
+from espnet_onnx.asr.scorer.interface import ScorerInterface
 from espnet_onnx.utils.function import topk
 from .utils import end_detect
 from .hyps import Hypothesis
@@ -70,10 +70,10 @@ class BeamSearch():
         # set configurations
         self.sos = token_config.sos
         self.eos = token_config.eos
-        self.token_list = token_config.token_list
+        self.token_list = token_config.list
         self.pre_beam_size = int(bs_config.pre_beam_ratio * bs_config.beam_size)
         self.beam_size = bs_config.beam_size
-        self.n_vocab = token_config.vocab_size
+        self.n_vocab = len(self.token_list)
         if (
             bs_config.pre_beam_score_key is not None
             and bs_config.pre_beam_score_key != "full"
@@ -87,7 +87,7 @@ class BeamSearch():
             and len(self.part_scorers) > 0
         )
 
-    def init_hyp(x):
+    def init_hyp(self, x):
         """Get an initial hypothesis data.
         Args:
             x (np.ndarray): The encoder output feature
@@ -118,7 +118,7 @@ class BeamSearch():
             np.ndarray: New tensor contains: xs + [x] with xs.dtype and xs.device
         """
         x = np.array([x], dtype=xs.dtype)
-        return np.hstack([xs, x])
+        return np.concatenate([xs, x])
 
     def score_full(
         self, hyp: Hypothesis, x: np.ndarray
@@ -279,7 +279,6 @@ class BeamSearch():
                         states=self.merge_states(states, part_states, part_j),
                     )
                 )
-
             # sort and prune 2 x beam -> beam
             best_hyps = sorted(best_hyps, key=lambda x: x.score, reverse=True)[
                 : min(len(best_hyps), self.beam_size)
@@ -379,6 +378,7 @@ class BeamSearch():
         Returns:
             List[Hypothesis]: The new running hypotheses.
         """
+        n_batch = running_hyps.yseq.shape[0]
         logging.debug(f"the number of running hypotheses: {len(running_hyps)}")
         if self.token_list is not None:
             logging.debug(

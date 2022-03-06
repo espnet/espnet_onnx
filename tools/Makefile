@@ -12,9 +12,12 @@ cpu:
 	python3 -m venv venv
 		. venv/bin/activate; pip install -U pip; pip install -r requirements.txt
 
-gpu:
+cpu_export:
 	python3 -m venv venv
-		. venv/bin/activate; pip install -U pip; pip install -r requirements_gpu.txt
+		. venv/bin/activate; pip install -U pip; pip install -r requirements.txt
+
+gpu:
+	. venv/bin/activate; pip install torch torchvision
 
 clean:
 	rm -fr venv dist build *.egg-info

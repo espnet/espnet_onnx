@@ -1,14 +1,14 @@
-
+from typing import Tuple
 
 import onnxruntime
 import numpy as np
 
-from espnet_onnx.asr import Frontend
-from espnet_onnx.asr import GlobalMVN
-from espnet_onnx.asr import BatchScorerInterface
-from .stft import
+from espnet_onnx.asr.frontend.frontend import Frontend
+from espnet_onnx.asr.frontend.global_mvn import GlobalMVN
+from espnet_onnx.asr.scorer.interface import BatchScorerInterface
 
-from espnet_onnx.utils import subsequent_mask, make_pad_mask
+from espnet_onnx.utils.function import subsequent_mask
+from espnet_onnx.utils.function import make_pad_mask
 
 
 class Encoder:
@@ -45,7 +45,7 @@ class Encoder:
         if self.config.do_normalize:
             feats, feat_length = self.normalize(feats, feat_length)
 
-        mask = ~make_pad_mask(feat_length)[:, None, :]
+        mask = (make_pad_mask(feat_length)[:, None, :] == False).astype(np.float64)
 
         if self.config.do_preencoder:
             feats, feats_lengths = self.preencoder(feats, feats_lengths)

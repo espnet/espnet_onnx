@@ -26,7 +26,7 @@ class LogMel():
         fmin = 0 if config.fmin is None else config.fmin
         fmax = fs / 2 if config.fmax is None else config.fmax
         _mel_options = dict(
-            sr=config.fs,
+            sr=config.sr,
             n_fft=config.n_fft,
             n_mels=config.n_mels,
             fmin=fmin,

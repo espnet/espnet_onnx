@@ -65,7 +65,7 @@ class Stft():
                 pad = self.config.n_fft // 2
                 ilens = ilens + 2 * pad
             olens = (ilens - self.config.n_fft) // self.config.hop_length + 1
-            output = mask_fill(output, make_pad_mask(olens, output, 1), 0.0)
+            output = mask_fill(output, make_pad_mask(olens, output, dim=1), 0.0)
         else:
             olens = None
         return output, olens

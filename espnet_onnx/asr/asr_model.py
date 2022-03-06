@@ -1,15 +1,28 @@
-
 from typing import Union
+from typing import List
+from typing import Tuple
+from typing import Optional
 from pathlib import Path
 from typeguard import check_argument_types
 
+import os
+import logging
 import numpy as np
 import librosa
 
 from espnet_onnx.asr.model.encoder import Encoder
 from espnet_onnx.asr.model.decoder import get_decoder
 from espnet_onnx.asr.model.lm import LM
-from espnet_onnx.asr.scorers import CTCPrefixScorer
+from espnet_onnx.asr.scorer.ctc_prefix_scorer import CTCPrefixScorer
+from espnet_onnx.asr.scorer.length_bonus import LengthBonus
+from espnet_onnx.asr.scorer.interface import BatchScorerInterface
+from espnet_onnx.asr.beam_search.hyps import Hypothesis
+from espnet_onnx.asr.beam_search.beam_search import BeamSearch
+from espnet_onnx.asr.beam_search.batch_beam_search import BatchBeamSearch
+from espnet_onnx.asr.postprocess.build_tokenizer import build_tokenizer
+from espnet_onnx.asr.postprocess.token_id_converter import TokenIDConverter
+
+from espnet_onnx.utils.config import get_config
 
 
 class Speech2Text:
@@ -17,15 +30,14 @@ class Speech2Text:
     
     """
     def __init__(self,
-        model_dir: Union[Path, str] = None,
-        quantized: bool = False
+        model_dir: Union[Path, str] = None
         ):
         assert check_argument_types()
         
         # 1. Build asr model
         config = get_config(os.path.join(model_dir, 'config.json'))
         self.encoder = Encoder(config.encoder)
-        decoder = get_decoder(config.decoder, config.token)
+        decoder = get_decoder(config.decoder, config.token, config.transducer)
         ctc = CTCPrefixScorer(config.ctc.model_path, config.token.eos)
         
         scorers = {}
@@ -36,7 +48,7 @@ class Speech2Text:
         )
         
         # 2. Build lm model
-        if config.use_lm:
+        if config.lm.use_lm:
             scorers.update(
                 lm=LM(config.lm, config.token)
             )
@@ -60,12 +72,12 @@ class Speech2Text:
         
         # 4. Build beam search object
         weights = dict(
-            decoder=1.0 - config.weights.ctc_weight,
-            ctc=config.weights.ctc_weight,
-            lm=config.weights.lm_weight,
-            length_bonus=config.weights.penalty,
+            decoder=config.weights.decoder,
+            ctc=config.weights.ctc,
+            lm=config.weights.lm,
+            length_bonus=config.weights.length_bonus,
         )
-        if config.use_transducer:
+        if config.transducer.use_transducer_decoder:
             self.beam_search = BSTransducer(
                 config.beam_search,
                 config.transducer,
@@ -81,10 +93,24 @@ class Speech2Text:
                 scorers=scorers,
                 weights=weights,
             )
+            
+        non_batch = [
+            k
+            for k, v in self.beam_search.full_scorers.items()
+            if not isinstance(v, BatchScorerInterface)
+        ]
+        if len(non_batch) == 0:
+            self.beam_search.__class__ = BatchBeamSearch
+            logging.info("BatchBeamSearch implementation is selected.")
+        else:
+            logging.warning(
+                f"As non-batch scorers {non_batch} are found, "
+                f"fall back to non-batch implementation."
+            )
         
         # 5. Build text converter
-        self.tokenizer = Tokenizer(config.token, config.bpemodel)
-        self.converter = TokenIdConverter(token_list=config.token.list)
+        self.tokenizer = build_tokenizer('bpe', config.bpemodel)
+        self.converter = TokenIDConverter(token_list=config.token.list)
         
         self.config = config
     
@@ -93,7 +119,7 @@ class Speech2Text:
             Optional[str],
             List[str],
             List[int],
-            Union[Hypothesis, ExtTransHypothesis, TransHypothesis],
+            Union[Hypothesis],
         ]
     ]:
         """Inference
@@ -119,7 +145,7 @@ class Speech2Text:
             enc = enc[0]
         assert len(enc) == 1, len(enc)
         
-        nbest_hyps = self.beam_search(enc[0])[: self.nbest]
+        nbest_hyps = self.beam_search(enc[0])[:1]
         
         results = []
         for hyp in nbest_hyps:

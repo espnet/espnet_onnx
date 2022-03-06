@@ -10,6 +10,7 @@ import onnxruntime
 from scipy.special import logsumexp
 
 from .interface import BatchScorerInterface
+from .interface import BatchPartialScorerInterface
 
 
 class CTCPrefixScore:
@@ -354,7 +355,7 @@ class CTCPrefixScoreTH(object):
                 axis=0,
             )
             for si in range(n_bh):
-                log_psi[si, int(scoring_ids[si])] = log_psi_[si][0]
+                log_psi[si, scoring_ids[si].astype(np.int64)] = log_psi_[si][0]
         else:
             log_psi = logsumexp(
                 np.concatenate((log_phi_x[start:end], np.expand_dims(r[start - 1, 0], 0)), axis=0),

@@ -44,7 +44,7 @@ class GlobalMVN():
             sum_square_v = stats["sum_square"]
             mean = sum_v / count
             var = sum_square_v / count - mean * mean
-        std = np.sqrt(np.maximum(var, eps))
+        std = np.sqrt(np.maximum(var, config.eps))
         self.mean = mean
         self.std = std
 

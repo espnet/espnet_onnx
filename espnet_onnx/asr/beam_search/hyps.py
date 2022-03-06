@@ -1,4 +1,11 @@
-from typing import Union, Dic
+from typing import Union
+from typing import Dict
+from typing import NamedTuple
+from typing import Any
+from typing import List
+from typing import Tuple
+from typing import Optional
+
 import numpy as np
 
 
@@ -39,9 +46,9 @@ class TransducerHypothesis(NamedTuple):
     score: float
     yseq: List[int]
     dec_state: Union[
-        Tuple[torch.Tensor, Optional[torch.Tensor]],
-        List[Optional[torch.Tensor]],
-        torch.Tensor,
+        Tuple[np.ndarray, Optional[np.ndarray]],
+        List[Optional[np.ndarray]],
+        np.ndarray,
     ]
     lm_state: Union[Dict[str, Any], List[Any]] = None
 
@@ -49,8 +56,8 @@ class TransducerHypothesis(NamedTuple):
 class ExtendedHypothesis(TransducerHypothesis):
     """Extended hypothesis definition for NSC beam search and mAES."""
 
-    dec_out: List[torch.Tensor] = None
-    lm_scores: torch.Tensor = None
+    dec_out: List[np.ndarray] = None
+    lm_scores: np.ndarray = None
 
 
 
