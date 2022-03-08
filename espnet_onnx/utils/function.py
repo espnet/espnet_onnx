@@ -25,12 +25,12 @@ def mask_fill(arr, mask, mask_value):
     Returns:
         np.ndarray: Masked array
     """
-    assert arr.shape == mask.shape, f'array shape ${arr.shape} must match the mask shape ${mask.shape}.'
+    # assert arr.shape == mask.shape, f'array shape ${arr.shape} must match the mask shape ${mask.shape}.'
     arr[mask.astype(np.bool) == True] = mask_value
     return arr
 
 
-def make_pad_mask(lengths, xs=None, dim=-1):
+def make_pad_mask(lengths, xs=None, dim=-1, xs_shape=None):
     """Make mask tensor containing indices of padded part.
     Args:
         lengths (np.ndarray or List): Batch of lengths (B,).
@@ -108,10 +108,6 @@ def make_pad_mask(lengths, xs=None, dim=-1):
                  [0, 0, 1, 1, 1, 1]]])
     """
     if xs is not None:
-        assert len(xs.shape) in [
-            2, 3], f'Shape of xs${xs.shape} must be 2 or 3 dimensions.'
-        assert xs.shape[0] % len(
-            lengths) == 0, f'Size of 0 dim ${len(xs)} should be a multiple of len(lengths) ${len(lengths)}'
         base = np.zeros(xs.shape)
     else:
         base = np.zeros((len(lengths), max(lengths)))
@@ -171,6 +167,9 @@ def pad_sequence(yseqs, batch_first=False, padding_value=0):
         >>> pad_sequence([a, b, c], batch_first=True).size()
         (3, 25, 300)
     """
+    if len(yseqs) == 1:
+        return np.array(yseqs)
+    
     max_idx = np.argmax([y.shape[0] for y in yseqs])
     max_shape = yseqs[max_idx].shape
     base = np.ones((len(yseqs), *max_shape)) * padding_value
@@ -182,7 +181,7 @@ def pad_sequence(yseqs, batch_first=False, padding_value=0):
         return base.transpose(1, 0, *np.arange(2, len(base.shape)))
 
 
-def is_prefix(x: List[int], pref: List[int]) -> bool:
+def is_prefix(x, pref) -> bool:
     """Check if pref is a prefix of x.
     Args:
         x: Label ID sequence.
@@ -200,7 +199,7 @@ def is_prefix(x: List[int], pref: List[int]) -> bool:
     return True
 
 
-def recombine_hyps(hyps: List[Hypothesis]) -> List[Hypothesis]:
+def recombine_hyps(hyps):
     """Recombine hypotheses with same label ID sequence.
     Args:
         hyps: Hypotheses.
@@ -224,12 +223,12 @@ def recombine_hyps(hyps: List[Hypothesis]) -> List[Hypothesis]:
 
 
 def select_k_expansions(
-    hyps: List[ExtendedHypothesis],
-    logps: np.ndarray,
-    beam_size: int,
-    gamma: float,
-    beta: float,
-) -> List[ExtendedHypothesis]:
+    hyps,
+    logps,
+    beam_size,
+    gamma,
+    beta,
+):
     """Return K hypotheses candidates for expansion from a list of hypothesis.
     K candidates are selected according to the extended hypotheses probabilities
     and a prune-by-value method. Where K is equal to beam_size + beta.
@@ -261,8 +260,8 @@ def select_k_expansions(
 
 
 def subtract(
-    x: List[ExtendedHypothesis], subset: List[ExtendedHypothesis]
-) -> List[ExtendedHypothesis]:
+    x, subset
+):
     """Remove elements of subset if corresponding label ID sequence already exist in x.
     Args:
         x: Set of hypotheses.
@@ -278,3 +277,4 @@ def subtract(
         final.append(x_)
 
     return final
+

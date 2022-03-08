@@ -4,6 +4,8 @@ from espnet2.asr.frontend.default import DefaultFrontend
 from espnet2.asr.decoder.transformer_decoder import TransformerDecoder
 from espnet2.asr.transducer.transducer_decoder import TransducerDecoder
 from espnet2.asr.transducer.beam_search_transducer import BeamSearchTransducer
+from espnet2.lm.seq_rnn_lm import SequentialRNNLM
+from espnet2.lm.transformer_lm import TransformerLM
 
 
 def get_frontend_config(model):
@@ -93,10 +95,18 @@ def get_transducer_config(model, path):
         }
 
 
-def get_lm_config(model):
-    return {
-        "use_lm": True
-    }
+def get_lm_config(model, path):
+    if isinstance(model, SequentialRNNLM):
+        return {
+            "use_lm": True,
+            "model_path": os.path.join(path, "rnn_lm.onnx"),
+            "lm_type": "SequentialRNNLM",
+            "rnn_type": model.rnn_type,
+            "nhid": model.nhid,
+            "nlayers": model.nlayers
+        }
+    else:
+        raise Error('TransformerLm is not supported.')
 
 
 def get_ngram_config(model):

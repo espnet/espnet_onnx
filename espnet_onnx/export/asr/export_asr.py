@@ -10,6 +10,8 @@ import numpy as np
 import torch
 from espnet2.asr.espnet_model import ESPnetASRModel
 from espnet2.bin.asr_inference import Speech2Text
+from espnet2.lm.seq_rnn_lm import SequentialRNNLM
+from espnet2.lm.transformer_lm import TransformerLM
 
 import onnx
 from onnxruntime.quantization import quantize_dynamic
@@ -17,6 +19,7 @@ from onnxruntime.quantization import quantize_dynamic
 from .asr_models import Encoder
 from .asr_models import Decoder
 from .asr_models import CTC
+from .asr_models import SequentialRNNLM as onnxSeqRNNLM
 from .get_config import get_encoder_config
 from .get_config import get_decoder_config
 from .get_config import get_transducer_config
@@ -130,6 +133,60 @@ def export_ctc(model, x, path):
         dynamic_axes=dynamic_axes
     )
 
+def export_seq_rnn(model, path):
+    x_enc = torch.LongTensor([0, 4999]).unsqueeze(0)
+    hidden = torch.randn(model.nlayers, 1, model.nhid)
+    file_name = os.path.join(path, 'rnn_lm.onnx')
+    lm_input_names = ['x', 'in_hidden1']
+    lm_output_names = ['y', 'out_hidden1']
+    lm_inputs = (x_enc, hidden)
+    dynamic_axes = {
+        'x': {
+            0: 'x_batch',
+            1: 'x_length'
+        },
+        'y': {
+            0: 'y_batch'
+        },
+        'in_hidden1': {
+            1: 'hidden1_batch'
+        },
+        'out_hidden1': {
+            1: 'out_hidden1_batch'
+        }
+    }
+    if model.rnn_type == 'LSTM':
+        lm_input_names += ['in_hidden2']
+        lm_output_names += ['out_hidden2']
+        lm_inputs = (x_enc, hidden, hidden)
+        dynamic_axes.update({
+            'in_hidden2': {
+                1: 'hidden2_batch'
+            },
+            'out_hidden2': {
+                1: 'out_hidden2_batch'
+            }
+        })
+    # export encoder
+    torch.onnx.export(
+        onnxSeqRNNLM(model),
+        lm_inputs,
+        file_name,
+        verbose=True,
+        opset_version=11,
+        input_names=lm_input_names,
+        output_names=lm_output_names,
+        dynamic_axes=dynamic_axes
+    )
+
+def export_lm(model, path):
+    if isinstance(model, SequentialRNNLM):
+        export_seq_rnn(model, path)
+        
+    elif isinstance(model, TransformerLM):
+        raise Error('Currently TransformerLM is nor supported.')
+    
+    
 
 def create_config(model, path, decoder_odim):
     ret = {}
@@ -140,7 +197,7 @@ def create_config(model, path, decoder_odim):
     ret.update(ctc=dict(model_path=os.path.join(path, "ctc.onnx")))
 
     if "lm" in model.beam_search.nn_dict.keys():
-        ret.update(lm=get_lm_config(model.asr_model))
+        ret.update(lm=get_lm_config(model.beam_search.full_scorers['lm'], path))
     else:
         ret.update(lm=dict(use_lm=False))
 
@@ -185,6 +242,9 @@ def export_model(
 
     decoder_odim = export_decoder(model.asr_model.decoder, enc_out, onnx_path)
     export_ctc(model.asr_model.ctc.ctc_lo, enc_out, onnx_path)
+    
+    if 'lm' in model.beam_search.full_scorers.keys():
+        export_lm(model.beam_search.full_scorers['lm'], onnx_path)
 
     model_config = create_config(model, onnx_path, decoder_odim)
     config_name = os.path.join(onnx_path, 'config.json')

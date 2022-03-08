@@ -12,7 +12,7 @@ import librosa
 
 from espnet_onnx.asr.model.encoder import Encoder
 from espnet_onnx.asr.model.decoder import get_decoder
-from espnet_onnx.asr.model.lm import LM
+from espnet_onnx.asr.model.seqrnn_lm import SequentialRNNLM
 from espnet_onnx.asr.scorer.ctc_prefix_scorer import CTCPrefixScorer
 from espnet_onnx.asr.scorer.length_bonus import LengthBonus
 from espnet_onnx.asr.scorer.interface import BatchScorerInterface
@@ -49,9 +49,12 @@ class Speech2Text:
         
         # 2. Build lm model
         if config.lm.use_lm:
-            scorers.update(
-                lm=LM(config.lm, config.token)
-            )
+            if config.lm.lm_type == 'SequentialRNNLM':
+                scorers.update(
+                    lm=SequentialRNNLM(config.lm)
+                )
+            else:
+                raise ValueError('TransformerLM is not supported')
         
         # 3. Build ngram model
         if config.ngram.use_ngram:
