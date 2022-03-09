@@ -8,7 +8,6 @@ from typing import List
 from typing import NamedTuple
 from typing import Tuple
 from typing import Union
-import time
 
 import numpy as np
 import six
