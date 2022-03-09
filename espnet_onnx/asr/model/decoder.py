@@ -13,19 +13,23 @@ from espnet_onnx.asr.beam_search.hyps import TransducerHypothesis, ExtendedHypot
 from espnet_onnx.utils.function import subsequent_mask
 
 
-def get_decoder(config, token_config, td_config):
+def get_decoder(config, token_config, td_config, use_quantized):
     if td_config.use_transducer_decoder:
         return TransducerDecoder(config, token_config)
     else:
-        return OnnxDecoderModel(config)
+        return OnnxDecoderModel(config, use_quantized)
 
 
 class OnnxDecoderModel(BatchScorerInterface):
     def __init__(
         self,
-        config
+        config,
+        use_quantized
     ):
-        self.decoder = onnxruntime.InferenceSession(config.model_path)
+        if use_quantized:
+            self.decoder = onnxruntime.InferenceSession(config.quantized_model_path)
+        else:
+            self.decoder = onnxruntime.InferenceSession(config.model_path)
         self.n_layers = config.n_layers
         self.odim = config.odim
         self.in_caches = [d.name for d in self.decoder.get_inputs()

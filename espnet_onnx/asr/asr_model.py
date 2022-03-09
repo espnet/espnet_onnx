@@ -30,15 +30,20 @@ class Speech2Text:
     
     """
     def __init__(self,
-        model_dir: Union[Path, str] = None
+        model_dir: Union[Path, str] = None,
+        use_quantized: bool = False,
         ):
         assert check_argument_types()
-        
         # 1. Build asr model
         config = get_config(os.path.join(model_dir, 'config.json'))
-        self.encoder = Encoder(config.encoder)
-        decoder = get_decoder(config.decoder, config.token, config.transducer)
-        ctc = CTCPrefixScorer(config.ctc.model_path, config.token.eos)
+        if use_quantized and 'quantized_model_path' not in config.encoder.keys():
+            # check if quantized model config is defined.
+            raise Error('Configuration for quantized model is not defined.')
+            
+        # 2. 
+        self.encoder = Encoder(config.encoder, use_quantized)
+        decoder = get_decoder(config.decoder, config.token, config.transducer, use_quantized)
+        ctc = CTCPrefixScorer(config.ctc, config.token.eos, use_quantized)
         
         scorers = {}
         scorers.update(
@@ -51,7 +56,7 @@ class Speech2Text:
         if config.lm.use_lm:
             if config.lm.lm_type == 'SequentialRNNLM':
                 scorers.update(
-                    lm=SequentialRNNLM(config.lm)
+                    lm=SequentialRNNLM(config.lm, use_quantized)
                 )
             else:
                 raise ValueError('TransformerLM is not supported')

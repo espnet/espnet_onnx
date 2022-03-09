@@ -16,9 +16,13 @@ class SequentialRNNLM(BatchScorerInterface):
 
     def __init__(
         self,
-        config
+        config,
+        use_quantized
     ):
-        self.lm_session = onnxruntime.InferenceSession(config.model_path)
+        if use_quantized:
+            self.lm_session = onnxruntime.InferenceSession(config.quantized_model_path)
+        else:
+            self.lm_session = onnxruntime.InferenceSession(config.model_path)
         self.enc_output_names = ['y'] \
             + [d.name for d in self.lm_session.get_outputs() if 'hidden' in d.name]
         self.enc_in_cache_names = [
