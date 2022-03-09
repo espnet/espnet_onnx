@@ -169,7 +169,7 @@ def pad_sequence(yseqs, batch_first=False, padding_value=0):
     """
     if len(yseqs) == 1:
         return np.array(yseqs)
-    
+
     max_idx = np.argmax([y.shape[0] for y in yseqs])
     max_shape = yseqs[max_idx].shape
     base = np.ones((len(yseqs), *max_shape)) * padding_value
@@ -277,4 +277,3 @@ def subtract(
         final.append(x_)
 
     return final
-

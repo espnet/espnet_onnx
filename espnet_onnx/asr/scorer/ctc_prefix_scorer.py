@@ -36,7 +36,8 @@ class CTCPrefixScore:
         # initial CTC state is made of a frame x 2 tensor that corresponds to
         # r_t^n(<sos>) and r_t^b(<sos>), where 0 and 1 of axis=1 represent
         # superscripts n and b (non-blank and blank), respectively.
-        r = self.xp.full((self.input_length, 2), self.logzero, dtype=np.float32)
+        r = self.xp.full((self.input_length, 2),
+                         self.logzero, dtype=np.float32)
         r[0, 1] = self.x[0, self.blank]
         for i in six.moves.range(1, self.input_length):
             r[i, 1] = r[i - 1, 1] + self.x[i, self.blank]
@@ -67,7 +68,8 @@ class CTCPrefixScore:
         )  # log(r_t^n(g) + r_t^b(g))
         last = y[-1]
         if output_length > 0 and last in cs:
-            log_phi = self.xp.ndarray((self.input_length, len(cs)), dtype=np.float32)
+            log_phi = self.xp.ndarray(
+                (self.input_length, len(cs)), dtype=np.float32)
             for i in six.moves.range(len(cs)):
                 log_phi[:, i] = r_sum if cs[i] != last else r_prev[:, 1]
         else:
@@ -80,7 +82,8 @@ class CTCPrefixScore:
         for t in six.moves.range(start, self.input_length):
             r[t, 0] = self.xp.logaddexp(r[t - 1, 0], log_phi[t - 1]) + xs[t]
             r[t, 1] = (
-                self.xp.logaddexp(r[t - 1, 0], r[t - 1, 1]) + self.x[t, self.blank]
+                self.xp.logaddexp(r[t - 1, 0], r[t - 1, 1]
+                                  ) + self.x[t, self.blank]
             )
             log_psi = self.xp.logaddexp(log_psi, log_phi[t - 1] + xs[t])
 
@@ -97,8 +100,8 @@ class CTCPrefixScore:
         # return the log prefix probability and CTC states, where the label axis
         # of the CTC states is moved to the first axis to slice it easily
         return log_psi, self.xp.rollaxis(r, 2)
-    
-    
+
+
 class CTCPrefixScorer(BatchPartialScorerInterface):
     """Decoder interface wrapper for CTCPrefixScore."""
 
@@ -119,7 +122,7 @@ class CTCPrefixScorer(BatchPartialScorerInterface):
             x (np.ndarray): The encoded feature tensor
         Returns: initial state
         """
-        x = self.ctc.run(["ctc_out"], {"x": x[np.newaxis, :]})[0]
+        x = self.ctc.run(["ctc_out"], {"x": x[None, :]})[0]
         logp = np.squeeze(x, axis=0)
         # TODO(karita): use CTCPrefixScoreTH
         self.impl = CTCPrefixScore(logp, 0, self.eos, np)
@@ -172,7 +175,7 @@ class CTCPrefixScorer(BatchPartialScorerInterface):
             x (np.ndarray): The encoded feature tensor
         Returns: initial state
         """
-        logp = self.ctc.run(["ctc_out"], {"x": x[np.newaxis, :]})[0]
+        logp = self.ctc.run(["ctc_out"], {"x": x[None, :]})[0]
         xlen = np.array([logp.shape[1]])
         self.impl = CTCPrefixScoreTH(logp, xlen, 0, self.eos)
         return None
@@ -189,18 +192,16 @@ class CTCPrefixScorer(BatchPartialScorerInterface):
                 Tuple of a score tensor for y that has a shape `(len(next_tokens),)`
                 and next state for ys
         """
-        batch_state = (
-            (
-                np.stack([s[0] for s in state], axis=2),
-                np.stack([s[1] for s in state]),
+        if state[0] is not None:
+            batch_state = (
+                np.concatenate([s[0][..., None] for s in state], axis=2),
+                np.concatenate([s[1][None, :] for s in state]),
                 state[0][2],
                 state[0][3],
             )
-            if state[0] is not None
-            else None
-        )
+        else:
+            batch_state = None
         return self.impl(y, batch_state, ids)
-
 
 
 class CTCPrefixScoreTH(object):
@@ -230,7 +231,7 @@ class CTCPrefixScoreTH(object):
         self.input_length = x.shape[1]
         self.odim = x.shape[2]
         self.dtype = x.dtype
-        
+
         # Pad the rest of posteriors in the batch
         # TODO(takaaki-hori): need a better way without for-loops
         for i, l in enumerate(xlens):
@@ -239,8 +240,8 @@ class CTCPrefixScoreTH(object):
                 x[i, l:, blank] = 0
         # Reshape input x
         xn = x.transpose(1, 0, 2)  # (B, T, O) -> (T, B, O)
-        xb = np.expand_dims(xn[:, :, self.blank], 2).repeat(self.odim, axis=2)
-        self.x = np.stack([xn, xb])  # (2, T, B, O)
+        xb = xn[:, :, None, self.blank].repeat(self.odim, axis=2)
+        self.x = np.concatenate([xn[None,:], xb[None,:]]) # operation is faster than np.stack
         self.end_frames = xlens - 1
 
         # Setup CTC windowing
@@ -252,7 +253,7 @@ class CTCPrefixScoreTH(object):
         # Base indices for index conversion
         self.idx_bh = None
         self.idx_b = np.arange(self.batch)
-        self.idx_bo = np.expand_dims(self.idx_b * self.odim, 1)
+        self.idx_bo = (self.idx_b * self.odim)[:, None]
 
     def __call__(self, y, state, scoring_ids=None, att_w=None):
         """Compute CTC prefix scores for next labels
@@ -262,7 +263,7 @@ class CTCPrefixScoreTH(object):
         :param np.ndarray att_w: attention weights to decide CTC window
         :return new_state, ctc_local_scores (BW, O)
         """
-        output_length = len(y[0]) - 1  # ignore sos
+        output_length = len(y[0]) - 1  # ignore blank and sos
         last_ids = [yi[-1] for yi in y]  # last output label ids
         n_bh = len(last_ids)  # batch * hyps
         n_hyps = n_bh // self.batch  # assuming each utterance has the same # of hyps
@@ -274,7 +275,8 @@ class CTCPrefixScoreTH(object):
                 self.logzero,
                 dtype=self.dtype,
             )
-            r_prev[:, 1] = np.expand_dims(np.cumsum(self.x[0, :, :, self.blank], 0), 2)
+            r_prev[:, 1] = np.cumsum(self.x[0, :, :, self.blank], 0)[
+                :, :, None]
             r_prev = r_prev.reshape(-1, 2, n_bh)
             s_prev = 0.0
             f_min_prev = 0
@@ -301,7 +303,8 @@ class CTCPrefixScoreTH(object):
             scoring_ids = None
             scoring_idmap = None
             snum = self.odim
-            x_ = np.expand_dims(self.x, 3).repeat(n_hyps, axis=3).reshape(2, -1, n_bh, snum)
+            x_ = self.x[:, :, :, None].repeat(
+                n_hyps, axis=3).reshape(2, -1, n_bh, snum)
 
         # new CTC forward probs are prepared as a (T x 2 x BW x S) tensor
         # that corresponds to r_t^n(h) and r_t^b(h) in a batch.
@@ -314,7 +317,7 @@ class CTCPrefixScoreTH(object):
             r[0, 0] = x_[0, 0]
 
         r_sum = logsumexp(r_prev, axis=1)
-        log_phi = np.expand_dims(r_sum, 2).repeat(snum, 2)
+        log_phi = r_sum[:, :, None].repeat(snum, 2)
         if scoring_ids is not None:
             for idx in range(n_bh):
                 pos = scoring_idmap[idx, int(last_ids[idx])]
@@ -339,26 +342,29 @@ class CTCPrefixScoreTH(object):
         # compute forward probabilities log(r_t^n(h)) and log(r_t^b(h))
         for t in range(start, end):
             rp = r[t - 1]
-            rr = np.stack([rp[0], log_phi[t - 1], rp[0], rp[1]]).reshape(
+            rr = np.concatenate([rp[0:1], log_phi[t - 1:t], rp[0:1], rp[1:2]]).reshape(
                 2, 2, n_bh, snum
             )
             r[t] = logsumexp(rr, 1) + x_[:, t]
 
         # compute log prefix probabilities log(psi)
-        log_phi_x = np.concatenate((np.expand_dims(log_phi[0], 0), log_phi[:-1]), axis=0) + x_[0]
+        log_phi_x = np.concatenate(
+            (log_phi[0][None, :], log_phi[:-1]), axis=0) + x_[0]
         if scoring_ids is not None:
             log_psi = np.full(
                 (n_bh, self.odim), self.logzero, dtype=self.dtype
             )
             log_psi_ = logsumexp(
-                np.concatenate((log_phi_x[start:end], np.expand_dims(r[start - 1, 0], 0)), axis=0),
+                np.concatenate(
+                    (log_phi_x[start:end], r[start - 1, 0][None, :]), axis=0),
                 axis=0,
             )
             for si in range(n_bh):
                 log_psi[si, scoring_ids[si].astype(np.int64)] = log_psi_[si]
         else:
             log_psi = logsumexp(
-                np.concatenate((log_phi_x[start:end], np.expand_dims(r[start - 1, 0], 0)), axis=0),
+                np.concatenate(
+                    (log_phi_x[start:end], r[start - 1, 0][None, :]), axis=0),
                 axis=0,
             )
 
@@ -380,10 +386,12 @@ class CTCPrefixScoreTH(object):
         # convert ids to BHO space
         n_bh = len(s)
         n_hyps = n_bh // self.batch
-        vidx = (best_ids + (self.idx_b * (n_hyps * self.odim)).reshape(-1, 1)).reshape(-1)
+        vidx = (best_ids + (self.idx_b * (n_hyps * self.odim)
+                            ).reshape(-1, 1)).reshape(-1)
         # select hypothesis scores
         s_new = np.take(s.reshape(-1), vidx, axis=0)
-        s_new = s_new.reshape(-1, 1).repeat(self.odim, axis=1).reshape(n_bh, self.odim)
+        s_new = s_new.reshape(-1, 1).repeat(self.odim,
+                                            axis=1).reshape(n_bh, self.odim)
         # convert ids to BHS space (S: scoring_num)
         if scoring_idmap is not None:
             snum = self.scoring_num
@@ -410,15 +418,15 @@ class CTCPrefixScoreTH(object):
         if self.x.shape[1] < x.shape[1]:  # self.x (2,T,B,O); x (B,T,O)
             # Pad the rest of posteriors in the batch
             # TODO(takaaki-hori): need a better way without for-loops
-            xlens = [x.size(1)]
+            xlens = np.array([x.size(1)])
             for i, l in enumerate(xlens):
                 if l < self.input_length:
                     x[i, l:, :] = self.logzero
                     x[i, l:, self.blank] = 0
             tmp_x = self.x
             xn = x.transpose(1, 0, 2)  # (B, T, O) -> (T, B, O)
-            xb = np.expand_dims(xn[:, :, self.blank], 2).repeat(self.odim, axis=2)
-            self.x = np.stack([xn, xb])  # (2, T, B, O)
+            xb = xn[:, :, None, self.blank].repeat(self.odim, axis=2)
+            self.x = np.concatenate([xn[None, :], xb[None, :]])  # (2, T, B, O)
             self.x[:, : tmp_x.shape[1], :, :] = tmp_x
             self.input_length = x.shape[1]
             self.end_frames = xlens - 1
@@ -443,6 +451,7 @@ class CTCPrefixScoreTH(object):
             start = max(r_prev.shape[0], 1)
             r_prev_new[0:start] = r_prev
             for t in six.moves.range(start, self.input_length):
-                r_prev_new[t, 1] = r_prev_new[t - 1, 1] + self.x[0, t, :, self.blank]
+                r_prev_new[t, 1] = r_prev_new[t - 1, 1] + \
+                    self.x[0, t, :, self.blank]
 
             return (r_prev_new, s_prev, f_min_prev, f_max_prev)
