@@ -133,10 +133,11 @@ def export_ctc(model, x, path):
         dynamic_axes=dynamic_axes
     )
 
+
 def export_seq_rnn(model, path):
     x_enc = torch.LongTensor([0, 4999]).unsqueeze(0)
     hidden = torch.randn(model.nlayers, 1, model.nhid)
-    file_name = os.path.join(path, 'rnn_lm.onnx')
+    file_name = os.path.join(path, 'lm.onnx')
     lm_input_names = ['x', 'in_hidden1']
     lm_output_names = ['y', 'out_hidden1']
     lm_inputs = (x_enc, hidden)
@@ -179,14 +180,14 @@ def export_seq_rnn(model, path):
         dynamic_axes=dynamic_axes
     )
 
+
 def export_lm(model, path):
     if isinstance(model, SequentialRNNLM):
         export_seq_rnn(model, path)
         
     elif isinstance(model, TransformerLM):
         raise Error('Currently TransformerLM is nor supported.')
-    
-    
+
 
 def create_config(model, path, decoder_odim):
     ret = {}
@@ -215,20 +216,24 @@ def create_config(model, path, decoder_odim):
 
 
 def quantize(model_from, model_to):
+    ret = {}
     models = glob.glob(os.path.join(model_from, "*.onnx"))
     for m in models:
         basename = os.path.basename(m).split('.')[0]
+        export_file = os.path.join(model_to, basename + '_qt.onnx')
         quantize_dynamic(
             m,
-            os.path.join(model_to, basename + '_qt.onnx')
+            export_file
         )
+        ret[basename] = export_file
+    return ret
 
 
 def export_model(
     model: Speech2Text,
     onnx_path: Union[Path, str],
-    create_qt: bool = False,
-    qt_path: Union[Path, str] = None
+    quantize_model: bool = False,
+    quantize_path: Union[Path, str] = None
 ):
     assert check_argument_types()
 
@@ -246,25 +251,28 @@ def export_model(
     if 'lm' in model.beam_search.full_scorers.keys():
         export_lm(model.beam_search.full_scorers['lm'], onnx_path)
 
-    model_config = create_config(model, onnx_path, decoder_odim)
     config_name = os.path.join(onnx_path, 'config.json')
-    with open(config_name, 'w', encoding='utf-8') as f:
-        f.write(json.dumps(model_config))
-
-    if create_qt:
-        if qt_path is None:
+    model_config = create_config(model, onnx_path, decoder_odim)
+    
+    if quantize_model:
+        if quantize_path is None:
             raise Error('You have to specify export path when creating quantized model.')
              
-        if not os.path.exists(qt_path):
-            os.mkdir(qt_path)
-        quantize(onnx_path, qt_path)
+        if not os.path.exists(quantize_path):
+            os.mkdir(quantize_path)
+        qt_config = quantize(onnx_path, quantize_path)
+        for m in qt_config.keys():
+            model_config[m].update(quantized_model_path=qt_config[m])
+    
+    with open(config_name, 'w', encoding='utf-8') as f:
+        f.write(json.dumps(model_config))
 
 
 def export_from_pretrained(
     model_name: str,
     onnx_path: Union[Path, str],
-    create_qt: bool = False,
-    qt_path: Union[Path, str] = None
+    quantize_model: bool = False,
+    quantize_path: Union[Path, str] = None
 ):
     model = Speech2Text.from_pretrained(model_name)
-    export_model(model, onnx_path, create_qt, qt_path)
+    export_model(model, onnx_path, quantize_model, quantize_path)
