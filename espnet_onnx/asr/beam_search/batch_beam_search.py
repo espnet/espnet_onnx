@@ -7,6 +7,7 @@ from typing import List
 from typing import Tuple
 import logging
 import sys
+import time
 
 import numpy as np
 
@@ -130,7 +131,9 @@ class BatchBeamSearch(BeamSearch):
         scores = dict()
         states = dict()
         for k, d in self.full_scorers.items():
+            start = time.time()
             scores[k], states[k] = d.batch_score(hyp.yseq, hyp.states[k], x)
+            print('full_score["%s"] : %.5f' % ((k, time.time() - start)))
         return scores, states
 
     def score_partial(

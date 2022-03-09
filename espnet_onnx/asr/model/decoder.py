@@ -49,7 +49,7 @@ class OnnxDecoderModel(BatchScorerInterface):
         """
         # merge states
         if len(ys.shape) == 1:
-            ys = ys[np.newaxis, :]
+            ys = ys[None, :]
 
         n_batch = len(ys)
         if states[0] is None:
@@ -60,12 +60,12 @@ class OnnxDecoderModel(BatchScorerInterface):
         else:
             # transpose state of [batch, layer] into [layer, batch]
             batch_state = [
-                np.stack([states[b][i] for b in range(n_batch)])
+                np.concatenate([states[b][i][None, :] for b in range(n_batch)])
                 for i in range(self.n_layers)
             ]
 
         # batch decoding
-        ys_mask = subsequent_mask(ys.shape[-1])[np.newaxis, :]
+        ys_mask = subsequent_mask(ys.shape[-1])[None, :]
         
         input_dict = {
             'tgt': ys.astype(np.int64),
