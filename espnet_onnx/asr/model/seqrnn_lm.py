@@ -87,13 +87,13 @@ class SequentialRNNLM(BatchScorerInterface):
 
         elif self.rnn_type == 'LSTM':
             # states: Batch x 2 x (Nlayers, Dim) -> 2 x (Nlayers, Batch, Dim)
-            h = np.stack([h for h, c in states], axis=1)
-            c = np.stack([c for h, c in states], axis=1)
+            h = np.concatenate([h[:, None] for h, c in states], axis=1)
+            c = np.concatenate([c[:, None] for h, c in states], axis=1)
             states = h, c
 
         else:
             # states: Batch x (Nlayers, Dim) -> (Nlayers, Batch, Dim)
-            states = np.stack(states, axis=1)
+            states = np.concatenate([states[:, None] for s in states], axis=1)
 
         input_dic = {'x': ys[:, -1:].astype(np.int64)}
         input_dic.update({
