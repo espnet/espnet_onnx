@@ -256,7 +256,6 @@ class BatchBeamSearch(BeamSearch):
         self,
         i: int,
         maxlen: int,
-        maxlenratio: float,
         running_hyps: BatchHypothesis,
         ended_hyps: List[Hypothesis],
     ) -> BatchHypothesis:
@@ -264,7 +263,6 @@ class BatchBeamSearch(BeamSearch):
         Args:
             i (int): The length of hypothesis tokens.
             maxlen (int): The maximum length of tokens in beam search.
-            maxlenratio (int): The maximum length ratio in beam search.
             running_hyps (BatchHypothesis): The running hypotheses in beam search.
             ended_hyps (List[Hypothesis]): The ended hypotheses in beam search.
         Returns:

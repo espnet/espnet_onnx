@@ -27,6 +27,7 @@ from .get_config import get_lm_config
 from .get_config import get_ngram_config
 from .get_config import get_beam_config
 from .get_config import get_token_config
+from .get_config import get_tokenizer_config
 from espnet_onnx.utils.function import make_pad_mask
 from espnet_onnx.utils.function import subsequent_mask
 
@@ -209,9 +210,9 @@ def create_config(model, path, decoder_odim):
         ret.update(ngram=dict(use_ngram=False))
 
     ret.update(weights=model.beam_search.weights)
-    ret.update(beam_search=get_beam_config(model.beam_search))
+    ret.update(beam_search=get_beam_config(model.beam_search, model.minlenratio, model.maxlenratio))
     ret.update(token=get_token_config(model.asr_model))
-    ret.update(bpemodel=model.tokenizer.model)
+    ret.update(tokenizer=get_tokenizer_config(model.tokenizer))
     return ret
 
 

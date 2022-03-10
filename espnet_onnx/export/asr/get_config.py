@@ -12,7 +12,7 @@ def get_frontend_config(model):
     # currently only default config is supported.
     assert isinstance(
         model, DefaultFrontend), 'Currently only DefaultFrontend is supported.'
-    
+
     stft_config = dict(
         n_fft=model.stft.n_fft,
         win_length=model.stft.win_length,
@@ -111,11 +111,13 @@ def get_ngram_config(model):
     }
 
 
-def get_beam_config(model):
+def get_beam_config(model, minlenratio, maxlenratio):
     return {
         "beam_size": model.beam_size,
         "pre_beam_ratio": model.pre_beam_size / model.beam_size,
-        "pre_beam_score_key": model.pre_beam_score_key
+        "pre_beam_score_key": model.pre_beam_score_key,
+        "maxlenratio": maxlenratio,
+        "minlenratio": minlenratio
     }
 
 
@@ -132,13 +134,23 @@ def get_quantize_config(quantize_path, model_config):
     ret = {
         "encoder": model_config["encoder"]["model_path"],
         "decoder": model_config["decoder"]["model_path"],
-        "ctc"    : model_config["ctc"]["model_path"]
+        "ctc": model_config["ctc"]["model_path"]
     }
     if model_config["transducer"]["use_transducer_decoder"]:
-        ret.update(transducer=model_config["transducer"]["joint_network"]["model_path"])
-        
+        ret.update(
+            transducer=model_config["transducer"]["joint_network"]["model_path"])
+
     if model_config["lm"]["use_lm"]:
         ret.update(lm=model_config["lm"]["model_path"])
     
-    
-    
+    return ret
+
+
+def get_tokenizer_config(model):
+    if model is None:
+        return {}
+    else:
+        return {
+            "token_type": "bpe",
+            "bpemodel": model.model
+        }

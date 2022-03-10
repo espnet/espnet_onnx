@@ -27,31 +27,35 @@ from espnet_onnx.utils.config import get_config
 
 class Speech2Text:
     """Wrapper class for espnet2.asr.bin.asr_infer.Speech2Text
-    
+
     """
+
     def __init__(self,
-        model_dir: Union[Path, str] = None,
-        use_quantized: bool = False,
-        ):
+                 model_dir: Union[Path, str] = None,
+                 use_quantized: bool = False,
+                 ):
         assert check_argument_types()
+
         # 1. Build asr model
         config = get_config(os.path.join(model_dir, 'config.json'))
         if use_quantized and 'quantized_model_path' not in config.encoder.keys():
             # check if quantized model config is defined.
-            raise Error('Configuration for quantized model is not defined.')
-            
-        # 2. 
+            raise ValueError(
+                'Configuration for quantized model is not defined.')
+
+        # 2.
         self.encoder = Encoder(config.encoder, use_quantized)
-        decoder = get_decoder(config.decoder, config.token, config.transducer, use_quantized)
+        decoder = get_decoder(config.decoder, config.token,
+                              config.transducer, use_quantized)
         ctc = CTCPrefixScorer(config.ctc, config.token.eos, use_quantized)
-        
+
         scorers = {}
         scorers.update(
             decoder=decoder,
             ctc=ctc,
             length_bonus=LengthBonus(len(config.token.list))
         )
-        
+
         # 2. Build lm model
         if config.lm.use_lm:
             if config.lm.lm_type == 'SequentialRNNLM':
@@ -60,7 +64,7 @@ class Speech2Text:
                 )
             else:
                 raise ValueError('TransformerLM is not supported')
-        
+
         # 3. Build ngram model
         if config.ngram.use_ngram:
             if config.ngram.scorer_type == 'full':
@@ -77,7 +81,7 @@ class Speech2Text:
                         config.token.list
                     )
                 )
-        
+
         # 4. Build beam search object
         weights = dict(
             decoder=config.weights.decoder,
@@ -101,7 +105,7 @@ class Speech2Text:
                 scorers=scorers,
                 weights=weights,
             )
-            
+
         non_batch = [
             k
             for k, v in self.beam_search.full_scorers.items()
@@ -115,13 +119,19 @@ class Speech2Text:
                 f"As non-batch scorers {non_batch} are found, "
                 f"fall back to non-batch implementation."
             )
-        
+
         # 5. Build text converter
-        self.tokenizer = build_tokenizer('bpe', config.bpemodel)
+        if config.tokenizer.token_type is None:
+            self.tokenizer = None
+        else:
+            if config.tokenizer.token_type == 'bpe':
+                self.tokenizer = build_tokenizer(
+                    'bpe', config.tokenizer.bpemodel)
+            else:
+                self.tokenizer = None
         self.converter = TokenIDConverter(token_list=config.token.list)
-        
         self.config = config
-    
+
     def __call__(self, speech: np.ndarray) -> List[
         Tuple[
             Optional[str],
@@ -137,24 +147,24 @@ class Speech2Text:
             text, token, token_int, hyp
         """
         assert check_argument_types()
-        
+
         # check dtype
         if speech.dtype != np.float32:
             speech = speech.astype(np.float32)
-            
+
         # data: (Nsamples,) -> (1, Nsamples)
         speech = speech[np.newaxis, :]
         # lengths: (1,)
         lengths = np.array([speech.shape[1]]).astype(np.int64)
-        
+
         # b. Forward Encoder
         enc, _ = self.encoder(speech=speech, speech_length=lengths)
         if isinstance(enc, tuple):
             enc = enc[0]
         assert len(enc) == 1, len(enc)
-        
+
         nbest_hyps = self.beam_search(enc[0])[:1]
-        
+
         results = []
         for hyp in nbest_hyps:
             # remove sos/eos and get results
@@ -169,7 +179,8 @@ class Speech2Text:
 
             # Change integer-ids to tokens
             token = self.converter.ids2tokens(token_int)
-            token = token[1:] # since I add 'blank' before sos for onnx computing
+            # since I add 'blank' before sos for onnx computing
+            token = token[1:]
 
             if self.tokenizer is not None:
                 text = self.tokenizer.tokens2text(token)
@@ -178,16 +189,3 @@ class Speech2Text:
             results.append((text, token, token_int, hyp))
 
         return results
-        
-    def from_wav(self, audio_path: Union[Path, str]):
-        assert check_argument_types()
-        y, sr = librosa.load(audio_path, 16000)
-        y = librosa.util.normalize(y)
-        sound_idx = librosa.effects.split(y)
-        text = ""
-        for sidx in sound_idx:
-            text += " " + self(y[sidx[0]:sidx[1]])[0][0]
-        return text.capitalize()
-    
-    
-    

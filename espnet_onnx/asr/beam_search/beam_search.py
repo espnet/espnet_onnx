@@ -86,6 +86,14 @@ class BeamSearch():
             and self.pre_beam_size < self.n_vocab
             and len(self.part_scorers) > 0
         )
+        # maxlenratio (float): Input length ratio to obtain max output length.
+        #     If maxlenratio=0.0 (default), it uses a end-detect function
+        #     to automatically find maximum hypothesis lengths
+        #     If maxlenratio<0.0, its absolute value is interpreted
+        #     as a constant max output length.
+        # minlenratio (float): Input length ratio to obtain min output length.
+        self.minlenratio = bs_config.minlenratio
+        self.maxlenratio = bs_config.maxlenratio
 
     def init_hyp(self, x):
         """Get an initial hypothesis data.
@@ -286,28 +294,22 @@ class BeamSearch():
         return best_hyps
 
     def __call__(
-        self, x: np.ndarray, maxlenratio: float = 0.0, minlenratio: float = 0.0
+        self, x: np.ndarray
     ) -> List[Hypothesis]:
         """Perform beam search.
         Args:
             x (np.ndarray): Encoded speech feature (T, D)
-            maxlenratio (float): Input length ratio to obtain max output length.
-                If maxlenratio=0.0 (default), it uses a end-detect function
-                to automatically find maximum hypothesis lengths
-                If maxlenratio<0.0, its absolute value is interpreted
-                as a constant max output length.
-            minlenratio (float): Input length ratio to obtain min output length.
         Returns:
             list[Hypothesis]: N-best decoding results
         """
         # set length bounds
-        if maxlenratio == 0:
+        if self.maxlenratio == 0:
             maxlen = x.shape[0]
-        elif maxlenratio < 0:
-            maxlen = -1 * int(maxlenratio)
+        elif self.maxlenratio < 0:
+            maxlen = -1 * int(self.maxlenratio)
         else:
-            maxlen = max(1, int(maxlenratio * x.shape[0]))
-        minlen = int(minlenratio * x.shape[0])
+            maxlen = max(1, int(self.maxlenratio * x.shape[0]))
+        minlen = int(self.minlenratio * x.shape[0])
         logging.info("decoder input length: " + str(x.shape[0]))
         logging.info("max output length: " + str(maxlen))
         logging.info("min output length: " + str(minlen))
@@ -319,9 +321,9 @@ class BeamSearch():
             logging.debug("position " + str(i))
             best = self.search(running_hyps, x)
             # post process of one iteration
-            running_hyps = self.post_process(i, maxlen, maxlenratio, best, ended_hyps)
+            running_hyps = self.post_process(i, maxlen, best, ended_hyps)
             # end detection
-            if maxlenratio == 0.0 and end_detect([h.asdict() for h in ended_hyps], i):
+            if self.maxlenratio == 0.0 and end_detect([h.asdict() for h in ended_hyps], i):
                 logging.info(f"end detected at {i}")
                 break
             if len(running_hyps) == 0:
@@ -340,7 +342,7 @@ class BeamSearch():
             return (
                 []
                 if minlenratio < 0.1
-                else self(x, maxlenratio, max(0.0, minlenratio - 0.1))
+                else self(x, self.maxlenratio, max(0.0, minlenratio - 0.1))
             )
 
         # report the best result
@@ -364,7 +366,6 @@ class BeamSearch():
         self,
         i: int,
         maxlen: int,
-        maxlenratio: float,
         running_hyps: List[Hypothesis],
         ended_hyps: List[Hypothesis],
     ) -> List[Hypothesis]:
@@ -372,7 +373,6 @@ class BeamSearch():
         Args:
             i (int): The length of hypothesis tokens.
             maxlen (int): The maximum length of tokens in beam search.
-            maxlenratio (int): The maximum length ratio in beam search.
             running_hyps (List[Hypothesis]): The running hypotheses in beam search.
             ended_hyps (List[Hypothesis]): The ended hypotheses in beam search.
         Returns:
