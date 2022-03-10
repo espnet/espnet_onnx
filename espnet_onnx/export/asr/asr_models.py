@@ -2,6 +2,11 @@
 import torch
 import torch.nn as nn
 
+from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling
+from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling2
+from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling6
+from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling8
+
 
 class Encoder(nn.Module):
     def __init__(self, model):
@@ -9,9 +14,22 @@ class Encoder(nn.Module):
         self.model = model
 
     def forward(self, speech, mask):
-        xs_pad, mask = self.model.embed(speech, mask)
+        if (
+            isinstance(self.model.embed, Conv2dSubsampling)
+            or isinstance(self.model.embed, Conv2dSubsampling2)
+            or isinstance(self.model.embed, Conv2dSubsampling6)
+            or isinstance(self.model.embed, Conv2dSubsampling8)
+        ):
+            xs_pad, mask = self.model.embed(speech, mask)
+        else:
+            xs_pad, mask = self.model.embed(speech)
+            
         xs_pad, masks = self.model.encoders(xs_pad, mask)
-        xs_pad = self.model.after_norm(xs_pad)
+        if isinstance(xs_pad, tuple):
+            xs_pad = xs_pad[0]
+        if self.model.normalize_before:
+            xs_pad = self.model.after_norm(xs_pad)
+            
         olens = masks.squeeze(1).sum(1)
         return xs_pad, olens, None
 
@@ -75,34 +93,32 @@ class SequentialRNNLM(nn.Module):
             )
 
 
-# class TransformerLM(nn.Module):
-#     def __init__(self, model):
-#         super().__init__()
-#         self.emb = model.emb
-#         self.encoder = model.encoder
-#         self.decoder = model.decoder
+class TransformerLM(nn.Module):
+    def __init__(self, model):
+        super().__init__()
+        self.embed = model.embed
+        self.encoder = model.encoder
+        self.decoder = model.decoder
 
-#     def forward(self, y, mask, cache)
-#         xs = self.embed(y)
+    def forward(self, y, mask, cache):
+        xs = self.embed(y)
+        # forward_one_step of Encoder
+        if isinstance(self.encoder.embed, Conv2dSubsampling):
+            xs, mask = self.encoder.embed(xs, mask)
+        else:
+            xs = self.encoder.embed(xs)
+            
+        new_cache = []
+        for c, e in zip(cache, self.encoder.encoders):
+            xs, mask = e(xs, mask, cache=c)
+            new_cache.append(xs)
+            
+        if self.encoder.normalize_before:
+            xs = self.encoder.after_norm(xs)
+            
+        h = self.decoder(xs[:, -1])
+        return h, new_cache
 
-#         # forward_one_step of Encoder
-#         if isinstance(self.encoder.embed, Conv2dSubsampling):
-#             xs, mask = self.encoder.embed(xs, mask)
-#         else:
-#             xs = self.encoder.embed(xs)
-
-#         new_cache = []
-#         for c, e in zip(cache, self.encoder.encoders):
-#             xs, mask = e(xs, mask, cache=c)
-#             new_cache.append(xs)
-
-#         if self.encoder.normalize_before:
-#             xs = self.encoder.after_norm(xs)
-
-#         h = self.decoder(xs[:, -1])
-#         logp = h.log_softmax(dim=-1)
-
-#         return logp, new_cache
 
 # class JointNetwork(nn.Module):
 #     def __init__(self, model):
