@@ -330,7 +330,6 @@ class BeamSearch():
             else:
                 logging.debug(f"remained hypotheses: {len(running_hyps)}")
 
-        start = time.time()
         nbest_hyps = sorted(ended_hyps, key=lambda x: x.score, reverse=True)
         # check the number of hypotheses reaching to eos
         if len(nbest_hyps) == 0:

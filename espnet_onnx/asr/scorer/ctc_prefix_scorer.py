@@ -105,14 +105,17 @@ class CTCPrefixScore:
 class CTCPrefixScorer(BatchPartialScorerInterface):
     """Decoder interface wrapper for CTCPrefixScore."""
 
-    def __init__(self, ctc: Union[Path, str], eos: int):
+    def __init__(self, ctc, eos, use_quantized):
         """Initialize class.
         Args:
             ctc (torch.nn.Module): The CTC implementation.
                 For example, :class:`espnet.nets.pytorch_backend.ctc.CTC`
             eos (int): The end-of-sequence id.
         """
-        self.ctc = onnxruntime.InferenceSession(ctc)
+        if use_quantized:
+            self.ctc = onnxruntime.InferenceSession(ctc.quantized_model_path)
+        else:
+            self.ctc = onnxruntime.InferenceSession(ctc.model_path)
         self.eos = eos
         self.impl = None
 

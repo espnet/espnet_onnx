@@ -75,10 +75,6 @@ def get_decoder_config(model, path, decoder_odim):
         }
 
 
-# def get_search_type(func):
-#     if isinstance(func, )
-
-
 def get_transducer_config(model, path):
     if isinstance(model.decoder, TransformerDecoder):
         return {"use_transducer_decoder": False}
@@ -99,7 +95,7 @@ def get_lm_config(model, path):
     if isinstance(model, SequentialRNNLM):
         return {
             "use_lm": True,
-            "model_path": os.path.join(path, "rnn_lm.onnx"),
+            "model_path": os.path.join(path, "lm.onnx"),
             "lm_type": "SequentialRNNLM",
             "rnn_type": model.rnn_type,
             "nhid": model.nhid,
@@ -130,3 +126,19 @@ def get_token_config(model):
         "blank": model.blank_id,
         "list": model.token_list
     }
+
+
+def get_quantize_config(quantize_path, model_config):
+    ret = {
+        "encoder": model_config["encoder"]["model_path"],
+        "decoder": model_config["decoder"]["model_path"],
+        "ctc"    : model_config["ctc"]["model_path"]
+    }
+    if model_config["transducer"]["use_transducer_decoder"]:
+        ret.update(transducer=model_config["transducer"]["joint_network"]["model_path"])
+        
+    if model_config["lm"]["use_lm"]:
+        ret.update(lm=model_config["lm"]["model_path"])
+    
+    
+    

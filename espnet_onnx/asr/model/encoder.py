@@ -14,21 +14,26 @@ from espnet_onnx.utils.function import make_pad_mask
 class Encoder:
     def __init__(
         self,
-        encoder_config
+        encoder_config,
+        use_quantized
     ):
         self.config = encoder_config
-        self.encoder = onnxruntime.InferenceSession(
-            self.config.model_path)
+        if use_quantized:
+            self.encoder = onnxruntime.InferenceSession(
+                self.config.quantized_model_path)
+        else:
+            self.encoder = onnxruntime.InferenceSession(
+                self.config.model_path)
 
         self.frontend = Frontend(self.config.frontend)
         if self.config.do_normalize:
             self.normalize = GlobalMVN(self.config.gmvn)
 
-        if self.config.do_preencoder:
-            self.preencoder = Preencoder(self.config.preencoder)
+        # if self.config.do_preencoder:
+        #     self.preencoder = Preencoder(self.config.preencoder)
 
-        if self.config.do_postencoder:
-            self.postencoder = Postencoder(self.config.postencoder)
+        # if self.config.do_postencoder:
+        #     self.postencoder = Postencoder(self.config.postencoder)
 
     def __call__(
         self, speech: np.ndarray, speech_length: np.ndarray
@@ -47,8 +52,8 @@ class Encoder:
 
         mask = (make_pad_mask(feat_length)[:, None, :] == False).astype(np.float64)
 
-        if self.config.do_preencoder:
-            feats, feats_lengths = self.preencoder(feats, feats_lengths)
+        # if self.config.do_preencoder:
+        #     feats, feats_lengths = self.preencoder(feats, feats_lengths)
 
         # 3. forward encoder
         encoder_out, encoder_out_lens = \
@@ -57,9 +62,9 @@ class Encoder:
                 "mask": mask
             })
 
-        if self.config.do_postencoder:
-            encoder_out, encoder_out_lens = self.postencoder(
-                encoder_out, encoder_out_lens
-            )
+        # if self.config.do_postencoder:
+        #     encoder_out, encoder_out_lens = self.postencoder(
+        #         encoder_out, encoder_out_lens
+        #     )
 
         return encoder_out, encoder_out_lens
