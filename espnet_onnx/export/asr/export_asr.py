@@ -21,8 +21,8 @@ from onnxruntime.quantization import quantize_dynamic
 from .asr_models import Encoder
 from .asr_models import Decoder
 from .asr_models import CTC
-from .asr_models import SequentialRNNLM as onnxSeqRNNLM
-from .asr_models import TransformerLM as onnxTransformerLM
+from .lm.lm import SequentialRNNLM as onnxSeqRNNLM
+from .lm.lm import TransformerLM as onnxTransformerLM
 from .get_config import get_encoder_config
 from .get_config import get_decoder_config
 from .get_config import get_transducer_config

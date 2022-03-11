@@ -7,10 +7,12 @@ from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsamplin
 from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling6
 from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling8
 
+from .lm.lm import Embedding
 
 class Encoder(nn.Module):
     def __init__(self, model):
         super().__init__()
+        self.embed = Embedding(model.embed)
         self.model = model
 
     def forward(self, speech, mask):
@@ -20,10 +22,11 @@ class Encoder(nn.Module):
             or isinstance(self.model.embed, Conv2dSubsampling6)
             or isinstance(self.model.embed, Conv2dSubsampling8)
         ):
-            xs_pad, mask = self.model.embed(speech, mask)
+            xs_pad, mask = self.embed(speech, mask)
+            xs_pad = xs_pad[0]
         else:
-            xs_pad, mask = self.model.embed(speech)
-            
+            xs_pad = self.embed(speech)
+        
         xs_pad, masks = self.model.encoders(xs_pad, mask)
         if isinstance(xs_pad, tuple):
             xs_pad = xs_pad[0]
@@ -37,10 +40,11 @@ class Encoder(nn.Module):
 class Decoder(nn.Module):
     def __init__(self, model):
         super().__init__()
+        self.embed = Embedding(model.embed)
         self.model = model
 
     def forward(self, tgt, tgt_mask, memory, cache):
-        x = self.model.embed(tgt)
+        x = self.embed(tgt)
         new_cache = []
         for c, decoder in zip(cache, self.model.decoders):
             x, tgt_mask, memory, memory_mask = decoder(
@@ -59,65 +63,6 @@ class CTC(nn.Module):
 
     def forward(self, x):
         return torch.log_softmax(self.model(x), dim=2)
-
-
-class SequentialRNNLM(nn.Module):
-    def __init__(self, model):
-        super().__init__()
-        self.encoder = model.encoder
-        self.rnn = model.rnn
-        self.rnn_type = model.rnn_type
-        self.decoder = model.decoder
-
-    def forward(self, y, hidden1, hidden2=None):
-        # batch_score function.
-        emb = self.encoder(y)
-        if self.rnn_type == 'LSTM':
-            output, (hidden1, hidden2) = self.rnn(emb, (hidden1, hidden2))
-        else:
-            output, hidden1 = self.rnn(emb, hidden1)
-        
-        decoded = self.decoder(
-            output.contiguous().view(output.size(0) * output.size(1), output.size(2))
-        )
-        if self.rnn_type == 'LSTM':
-            return (
-                decoded.view(output.size(0), output.size(1), decoded.size(1)),
-                hidden1,
-                hidden2
-            )
-        else:
-            return (
-                decoded.view(output.size(0), output.size(1), decoded.size(1)),
-                hidden1
-            )
-
-
-class TransformerLM(nn.Module):
-    def __init__(self, model):
-        super().__init__()
-        self.embed = model.embed
-        self.encoder = model.encoder
-        self.decoder = model.decoder
-
-    def forward(self, y, mask, cache):
-        xs = self.embed(y)
-        # forward_one_step of Encoder
-        if isinstance(self.encoder.embed, Conv2dSubsampling):
-            xs, mask = self.encoder.embed(xs, mask)
-        else:
-            xs = self.encoder.embed(xs)
-            
-        new_cache = []
-        for c, e in zip(cache, self.encoder.encoders):
-            xs, mask = e(xs, mask, cache=c)
-            new_cache.append(xs)
-            
-        if self.encoder.normalize_before:
-            xs = self.encoder.after_norm(xs)
-            
-        h = self.decoder(xs[:, -1])
-        return h, new_cache
 
 
 # class JointNetwork(nn.Module):
