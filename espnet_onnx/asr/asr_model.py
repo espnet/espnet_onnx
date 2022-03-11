@@ -12,7 +12,8 @@ import librosa
 
 from espnet_onnx.asr.model.encoder import Encoder
 from espnet_onnx.asr.model.decoder import get_decoder
-from espnet_onnx.asr.model.seqrnn_lm import SequentialRNNLM
+from espnet_onnx.asr.model.lm.seqrnn_lm import SequentialRNNLM
+from espnet_onnx.asr.model.lm.transformer_lm import TransformerLM
 from espnet_onnx.asr.scorer.ctc_prefix_scorer import CTCPrefixScorer
 from espnet_onnx.asr.scorer.length_bonus import LengthBonus
 from espnet_onnx.asr.scorer.interface import BatchScorerInterface
@@ -62,8 +63,10 @@ class Speech2Text:
                 scorers.update(
                     lm=SequentialRNNLM(config.lm, use_quantized)
                 )
-            else:
-                raise ValueError('TransformerLM is not supported')
+            elif config.lm.lm_type == 'TransformerLM':
+                scorers.update(
+                    lm=TransformerLM(config.lm, use_quantized)
+                )
 
         # 3. Build ngram model
         if config.ngram.use_ngram:
@@ -121,14 +124,15 @@ class Speech2Text:
             )
 
         # 5. Build text converter
+        print(config.tokenizer.token_type)
         if config.tokenizer.token_type is None:
             self.tokenizer = None
+        elif config.tokenizer.token_type == 'bpe':
+            self.tokenizer = build_tokenizer(
+                'bpe', config.tokenizer.bpemodel)
         else:
-            if config.tokenizer.token_type == 'bpe':
-                self.tokenizer = build_tokenizer(
-                    'bpe', config.tokenizer.bpemodel)
-            else:
-                self.tokenizer = None
+            self.tokenizer = build_tokenizer(token_type=config.tokenizer.token_type)
+            
         self.converter = TokenIDConverter(token_list=config.token.list)
         self.config = config
 

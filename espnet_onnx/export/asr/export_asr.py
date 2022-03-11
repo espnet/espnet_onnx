@@ -12,6 +12,8 @@ from espnet2.asr.espnet_model import ESPnetASRModel
 from espnet2.bin.asr_inference import Speech2Text
 from espnet2.lm.seq_rnn_lm import SequentialRNNLM
 from espnet2.lm.transformer_lm import TransformerLM
+from espnet2.asr.decoder.rnn_decoder import RNNDecoder
+from espnet2.asr.decoder.transformer_decoder import TransformerDecoder
 
 import onnx
 from onnxruntime.quantization import quantize_dynamic
@@ -19,7 +21,8 @@ from onnxruntime.quantization import quantize_dynamic
 from .asr_models import Encoder
 from .asr_models import Decoder
 from .asr_models import CTC
-from .asr_models import SequentialRNNLM as onnxSeqRNNLM
+from .lm.lm import SequentialRNNLM as onnxSeqRNNLM
+from .lm.lm import TransformerLM as onnxTransformerLM
 from .get_config import get_encoder_config
 from .get_config import get_decoder_config
 from .get_config import get_transducer_config
@@ -59,8 +62,8 @@ def export_encoder(model, feats, path):
     return model(feats, torch.LongTensor([feats.shape[1]]))
 
 
-def export_decoder(model, x, path):
-    tgt = torch.LongTensor([0, 4999]).unsqueeze(0)
+def export_transformer_dec(model, x, path, sos_token):
+    tgt = torch.LongTensor([0, sos_token]).unsqueeze(0)
     tgt_mask = torch.from_numpy(subsequent_mask(2)[np.newaxis, :])
     # get cache size
     emb_out = model.embed(tgt)
@@ -115,6 +118,13 @@ def export_decoder(model, x, path):
     return dec_out.shape[-1]
 
 
+def export_decoder(model, x, path, sos_token):
+    if isinstance(model, TransformerDecoder):
+        return export_transformer_dec(model, x, path, sos_token)
+    elif isinstance(model, RNNDecoder):
+        raise ValueError('Currently RNNDecoder is not supported.')
+
+
 def export_ctc(model, x, path):
     ctc_input_names = ['x']
     ctc_output_names = ['ctc_out']
@@ -135,13 +145,13 @@ def export_ctc(model, x, path):
     )
 
 
-def export_seq_rnn(model, path):
-    x_enc = torch.LongTensor([0, 4999]).unsqueeze(0)
+def export_seq_rnn(model, path, sos_token):
+    tgt = torch.LongTensor([0, sos_token]).unsqueeze(0)
     hidden = torch.randn(model.nlayers, 1, model.nhid)
     file_name = os.path.join(path, 'lm.onnx')
     lm_input_names = ['x', 'in_hidden1']
     lm_output_names = ['y', 'out_hidden1']
-    lm_inputs = (x_enc, hidden)
+    lm_inputs = (tgt, hidden)
     dynamic_axes = {
         'x': {
             0: 'x_batch',
@@ -160,7 +170,7 @@ def export_seq_rnn(model, path):
     if model.rnn_type == 'LSTM':
         lm_input_names += ['in_hidden2']
         lm_output_names += ['out_hidden2']
-        lm_inputs = (x_enc, hidden, hidden)
+        lm_inputs = (tgt, hidden, hidden)
         dynamic_axes.update({
             'in_hidden2': {
                 1: 'hidden2_batch'
@@ -182,12 +192,65 @@ def export_seq_rnn(model, path):
     )
 
 
-def export_lm(model, path):
+def export_transformer_lm(model, path, sos_token):
+    tgt = torch.LongTensor([0, sos_token]).unsqueeze(0)
+    ys_mask = tgt != 0
+    m = torch.from_numpy(subsequent_mask(ys_mask.shape[-1])[None, :])
+    mask = ys_mask[None, :] * m
+    cache = [
+        torch.zeros((1, 1, model.encoder.encoders[0].size))
+        for _ in range(len(model.encoder.encoders))
+    ]
+    lm_input_names = ['tgt', 'tgt_mask'] \
+        + ['cache_%d' % i for i in range(len(cache))]
+    lm_output_names = ['y'] \
+        + ['out_cache_%d' % i for i in range(len(cache))]
+    dynamic_axes = {
+        'tgt': {
+            0: 'tgt_batch',
+            1: 'tgt_length'
+        },
+        'tgt_mask': {
+            0: 'tgt_mask_batch',
+            1: 'tgt_mask_length',
+            2: 'tgt_mask_height'
+        }
+    }
+    dynamic_axes.update({
+        'cache_%d' % d: {
+            0: 'cache_%d_batch' % d,
+            1: 'cache_%d_length' % d
+        }
+        for d in range(len(model.encoder.encoders))
+    })
+    dynamic_axes.update({
+        'out_cache_%d' % d: {
+            0: 'out_cache_%d_batch' % d,
+            1: 'out_cache_%d_length' % d
+        }
+        for d in range(len(model.encoder.encoders))
+    })
+    lm_inputs = (tgt, mask, cache)
+    file_name = os.path.join(path, 'lm.onnx')
+    # export encoder
+    torch.onnx.export(
+        onnxTransformerLM(model),
+        lm_inputs,
+        file_name,
+        verbose=True,
+        opset_version=11,
+        input_names=lm_input_names,
+        output_names=lm_output_names,
+        dynamic_axes=dynamic_axes
+    )
+
+
+def export_lm(model, path, sos_token):
     if isinstance(model, SequentialRNNLM):
-        export_seq_rnn(model, path)
+        export_seq_rnn(model, path, sos_token)
         
     elif isinstance(model, TransformerLM):
-        raise Error('Currently TransformerLM is nor supported.')
+        export_transformer_lm(model, path, sos_token)
 
 
 def create_config(model, path, decoder_odim):
@@ -240,17 +303,18 @@ def export_model(
 
     if not os.path.exists(onnx_path):
         os.mkdir(onnx_path)
-
+    sos_token = model.asr_model.sos
     sample_feat = torch.randn((1, 100, 80))
+    
     enc_out = export_encoder(model.asr_model.encoder, sample_feat, onnx_path)
     if isinstance(enc_out, Tuple):
         enc_out = enc_out[0]
 
-    decoder_odim = export_decoder(model.asr_model.decoder, enc_out, onnx_path)
+    decoder_odim = export_decoder(model.asr_model.decoder, enc_out, onnx_path, sos_token)
     export_ctc(model.asr_model.ctc.ctc_lo, enc_out, onnx_path)
     
     if 'lm' in model.beam_search.full_scorers.keys():
-        export_lm(model.beam_search.full_scorers['lm'], onnx_path)
+        export_lm(model.beam_search.full_scorers['lm'], onnx_path, sos_token)
 
     config_name = os.path.join(onnx_path, 'config.json')
     model_config = create_config(model, onnx_path, decoder_odim)

@@ -26,6 +26,12 @@ class OnnxDecoderModel(BatchScorerInterface):
         config,
         use_quantized
     ):
+        """Onnx support for espnet2.asr.decoder.transformer_decoder
+
+        Args:
+            config (Config):
+            use_quantized (bool): Flag to use quantized model
+        """
         if use_quantized:
             self.decoder = onnxruntime.InferenceSession(config.quantized_model_path)
         else:

@@ -6,6 +6,10 @@ from espnet2.asr.transducer.transducer_decoder import TransducerDecoder
 from espnet2.asr.transducer.beam_search_transducer import BeamSearchTransducer
 from espnet2.lm.seq_rnn_lm import SequentialRNNLM
 from espnet2.lm.transformer_lm import TransformerLM
+from espnet2.text.char_tokenizer import CharTokenizer
+from espnet2.text.phoneme_tokenizer import PhonemeTokenizer
+from espnet2.text.sentencepiece_tokenizer import SentencepiecesTokenizer
+from espnet2.text.word_tokenizer import WordTokenizer
 
 
 def get_frontend_config(model):
@@ -101,8 +105,14 @@ def get_lm_config(model, path):
             "nhid": model.nhid,
             "nlayers": model.nlayers
         }
-    else:
-        raise Error('TransformerLm is not supported.')
+    elif isinstance(model, TransformerLM):
+        return {
+            "use_lm": True,
+            "model_path": os.path.join(path, "lm.onnx"),
+            "lm_type": "TransformerLM",
+            "odim": model.encoder.encoders[0].size,
+            "nlayers": len(model.encoder.encoders)
+        }
 
 
 def get_ngram_config(model):
@@ -149,8 +159,20 @@ def get_quantize_config(quantize_path, model_config):
 def get_tokenizer_config(model):
     if model is None:
         return {}
-    else:
+    elif isinstance(model, SentencepiecesTokenizer):
         return {
             "token_type": "bpe",
             "bpemodel": model.model
+        }
+    elif isinstance(model, WordTokenizer):
+        return {
+            "token_type":"word"
+        }
+    elif isinstance(model, CharTokenizer):
+        return {
+            "token_type": "char"
+        }
+    elif isinstance(model, PhonemeTokenizer):
+        return {
+            "token_type": "phn"
         }

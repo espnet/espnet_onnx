@@ -1,34 +1,13 @@
-from typing import Iterable
-from typing import List, Union
 from pathlib import Path
-import sentencepiece as spm
+from typing import Iterable
+from typing import Union
 
-class SentencepiecesTokenizer():
-    def __init__(self, model: Union[Path, str]):
-        self.model = str(model)
-        # NOTE(kamo):
-        # Don't build SentencePieceProcessor in __init__()
-        # because it's not picklable and it may cause following error,
-        # "TypeError: can't pickle SwigPyObject objects",
-        # when giving it as argument of "multiprocessing.Process()".
-        self.sp = None
+from typeguard import check_argument_types
 
-    def __repr__(self):
-        return f'{self.__class__.__name__}(model="{self.model}")'
-
-    def _build_sentence_piece_processor(self):
-        # Build SentencePieceProcessor lazily.
-        if self.sp is None:
-            self.sp = spm.SentencePieceProcessor()
-            self.sp.load(self.model)
-
-    def text2tokens(self, line: str) -> List[str]:
-        self._build_sentence_piece_processor()
-        return self.sp.EncodeAsPieces(line)
-
-    def tokens2text(self, tokens: Iterable[str]) -> str:
-        self._build_sentence_piece_processor()
-        return self.sp.DecodePieces(list(tokens))
+from espnet_onnx.asr.postprocess.tokenizers.char_tokenizer import CharTokenizer
+from espnet_onnx.asr.postprocess.tokenizers.phoneme_tokenizer import PhonemeTokenizer
+from espnet_onnx.asr.postprocess.tokenizers.sentencepiece_tokenizer import SentencepiecesTokenizer
+from espnet_onnx.asr.postprocess.tokenizers.word_tokenizer import WordTokenizer
 
 
 def build_tokenizer(
@@ -41,4 +20,43 @@ def build_tokenizer(
     g2p_type: str = None,
 ):
     """A helper function to instantiate Tokenizer"""
-    return SentencepiecesTokenizer(bpemodel)
+    assert check_argument_types()
+    if token_type == "bpe":
+        if bpemodel is None:
+            raise ValueError('bpemodel is required if token_type = "bpe"')
+
+        if remove_non_linguistic_symbols:
+            raise RuntimeError(
+                "remove_non_linguistic_symbols is not implemented for token_type=bpe"
+            )
+        return SentencepiecesTokenizer(bpemodel)
+
+    elif token_type == "word":
+        if remove_non_linguistic_symbols and non_linguistic_symbols is not None:
+            return WordTokenizer(
+                delimiter=delimiter,
+                non_linguistic_symbols=non_linguistic_symbols,
+                remove_non_linguistic_symbols=True,
+            )
+        else:
+            return WordTokenizer(delimiter=delimiter)
+
+    elif token_type == "char":
+        return CharTokenizer(
+            non_linguistic_symbols=non_linguistic_symbols,
+            space_symbol=space_symbol,
+            remove_non_linguistic_symbols=remove_non_linguistic_symbols,
+        )
+
+    elif token_type == "phn":
+        return PhonemeTokenizer(
+            g2p_type=g2p_type,
+            non_linguistic_symbols=non_linguistic_symbols,
+            space_symbol=space_symbol,
+            remove_non_linguistic_symbols=remove_non_linguistic_symbols,
+        )
+
+    else:
+        raise ValueError(
+            f"token_mode must be one of bpe, word, char or phn: " f"{token_type}"
+        )

@@ -29,4 +29,4 @@ class Frontend():
         # input_power: (Batch, [Channel,] Length, Freq)
         #       -> input_feats: (Batch, Length, Dim)
         input_feats, _ = self.logmel(input_power, feats_lens)
-        return input_feats[:, 1:-1], feats_lens - 2
+        return input_feats, feats_lens
