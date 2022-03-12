@@ -5,6 +5,8 @@ from typeguard import check_argument_types
 import os
 import glob
 import json
+from datetime import datetime
+import hashlib
 
 import numpy as np
 import torch
@@ -33,6 +35,12 @@ from .get_config import get_token_config
 from .get_config import get_tokenizer_config
 from espnet_onnx.utils.function import make_pad_mask
 from espnet_onnx.utils.function import subsequent_mask
+from espnet_onnx.utils.config import save_config
+from espnet_onnx.utils.config import update_model_path
+
+
+def str_to_hash(string: Union[str, Path]) -> str:
+    return hashlib.md5(str(string).encode("utf-8")).hexdigest()
 
 
 def export_encoder(model, feats, path):
@@ -279,7 +287,7 @@ def create_config(model, path, decoder_odim):
     return ret
 
 
-def quantize(model_from, model_to):
+def quantize_model(model_from, model_to):
     ret = {}
     models = glob.glob(os.path.join(model_from, "*.onnx"))
     for m in models:
@@ -290,54 +298,54 @@ def quantize(model_from, model_to):
             export_file
         )
         ret[basename] = export_file
+        os.remove(os.path.join(model_from, basename + '-opt.onnx'))
     return ret
 
 
-def export_model(
-    model: Speech2Text,
-    onnx_path: Union[Path, str],
-    quantize_model: bool = False,
-    quantize_path: Union[Path, str] = None
-):
-    assert check_argument_types()
+class ModelExport:
+    def __init__(self, cache_dir: Union[Path, str] = None):
+        if cache_dir is None:
+            cache_dir = Path.home() / ".cache" / "espnet_onnx"
+        
+        self.cache_dir = cache_dir
 
-    if not os.path.exists(onnx_path):
-        os.mkdir(onnx_path)
-    sos_token = model.asr_model.sos
-    sample_feat = torch.randn((1, 100, 80))
-    
-    enc_out = export_encoder(model.asr_model.encoder, sample_feat, onnx_path)
-    if isinstance(enc_out, Tuple):
-        enc_out = enc_out[0]
+    def export(self, model: Speech2Text, model_name: str = None, quantize: bool = False):
+        assert check_argument_types()
+        if model_name is None:
+            model_name = datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        base_dir = self.cache_dir / model_name
+        export_dir = base_dir / 'full'
+        export_dir.mkdir(parents=True, exist_ok=True)
+        
+        sos_token = model.asr_model.sos
+        sample_feat = torch.randn((1, 100, 80))
+        
+        enc_out = export_encoder(model.asr_model.encoder, sample_feat, export_dir)
+        if isinstance(enc_out, Tuple):
+            enc_out = enc_out[0]
 
-    decoder_odim = export_decoder(model.asr_model.decoder, enc_out, onnx_path, sos_token)
-    export_ctc(model.asr_model.ctc.ctc_lo, enc_out, onnx_path)
-    
-    if 'lm' in model.beam_search.full_scorers.keys():
-        export_lm(model.beam_search.full_scorers['lm'], onnx_path, sos_token)
+        decoder_odim = export_decoder(model.asr_model.decoder, enc_out, export_dir, sos_token)
+        export_ctc(model.asr_model.ctc.ctc_lo, enc_out, export_dir)
+        
+        if 'lm' in model.beam_search.full_scorers.keys():
+            export_lm(model.beam_search.full_scorers['lm'], export_dir, sos_token)
 
-    config_name = os.path.join(onnx_path, 'config.json')
-    model_config = create_config(model, onnx_path, decoder_odim)
-    
-    if quantize_model:
-        if quantize_path is None:
-            raise Error('You have to specify export path when creating quantized model.')
-             
-        if not os.path.exists(quantize_path):
-            os.mkdir(quantize_path)
-        qt_config = quantize(onnx_path, quantize_path)
-        for m in qt_config.keys():
-            model_config[m].update(quantized_model_path=qt_config[m])
-    
-    with open(config_name, 'w', encoding='utf-8') as f:
-        f.write(json.dumps(model_config))
+        config_name = base_dir / 'config.yaml'
+        model_config = create_config(model, export_dir, decoder_odim)
+        
+        if quantize:
+            quantize_dir = base_dir / 'quantize'
+            quantize_dir.mkdir(exist_ok=True)
+            
+            qt_config = quantize_model(export_dir, quantize_dir)
+            for m in qt_config.keys():
+                model_config[m].update(quantized_model_path=qt_config[m])
+        
+        save_config(model_config, config_name)
+        update_model_path(model_name, base_dir)
 
-
-def export_from_pretrained(
-    model_name: str,
-    onnx_path: Union[Path, str],
-    quantize_model: bool = False,
-    quantize_path: Union[Path, str] = None
-):
-    model = Speech2Text.from_pretrained(model_name)
-    export_model(model, onnx_path, quantize_model, quantize_path)
+    def export_from_pretrained(self, tag_name: str, quantize: bool = False):
+        assert check_argument_types()
+        model = Speech2Text.from_pretrained(tag_name)
+        self.export(model, tag_name.replace(' ', '-'), quantize)

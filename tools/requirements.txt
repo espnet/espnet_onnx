@@ -4,3 +4,4 @@ librosa
 sentencepiece
 flask
 typeguard
+pyyaml

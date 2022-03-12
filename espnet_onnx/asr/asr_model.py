@@ -9,6 +9,7 @@ import os
 import logging
 import numpy as np
 import librosa
+import glob
 
 from espnet_onnx.asr.model.encoder import Encoder
 from espnet_onnx.asr.model.decoder import get_decoder
@@ -24,6 +25,7 @@ from espnet_onnx.asr.postprocess.build_tokenizer import build_tokenizer
 from espnet_onnx.asr.postprocess.token_id_converter import TokenIDConverter
 
 from espnet_onnx.utils.config import get_config
+from espnet_onnx.utils.config import get_tag_config
 
 
 class Speech2Text:
@@ -32,13 +34,26 @@ class Speech2Text:
     """
 
     def __init__(self,
+                 tag_name: str = None,
                  model_dir: Union[Path, str] = None,
                  use_quantized: bool = False,
                  ):
         assert check_argument_types()
-
+        if tag_name is None and model_dir is None:
+            raise ValueError('tag_name or model_dir should be defined.')
+        
+        if tag_name is not None:
+            tag_config = get_tag_config()
+            if not tag_name in tag_config.keys():
+                raise RuntimeError(f'Model path for tag_name "{tag_name}" is not set on tag_config.yaml.' \
+                    + 'You have to export to onnx format with `espnet_onnx.export.asr.export_asr.ModelExport`,' \
+                    + 'or have to set exported model path in tag_config.yaml.')
+            model_dir = tag_config[tag_name]
+            
         # 1. Build asr model
-        config = get_config(os.path.join(model_dir, 'config.json'))
+        config_file = glob.glob(os.path.join(model_dir, 'config.*'))[0]
+        config = get_config(config_file)
+
         if use_quantized and 'quantized_model_path' not in config.encoder.keys():
             # check if quantized model config is defined.
             raise ValueError(
