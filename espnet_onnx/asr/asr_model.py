@@ -9,6 +9,7 @@ import os
 import logging
 import numpy as np
 import librosa
+import glob
 
 from espnet_onnx.asr.model.encoder import Encoder
 from espnet_onnx.asr.model.decoder import get_decoder
@@ -38,7 +39,9 @@ class Speech2Text:
         assert check_argument_types()
 
         # 1. Build asr model
-        config = get_config(os.path.join(model_dir, 'config.json'))
+        config_file = glob.glob(os.path.join(model_dir, 'config.*'))[0]
+        config = get_config(config_file)
+
         if use_quantized and 'quantized_model_path' not in config.encoder.keys():
             # check if quantized model config is defined.
             raise ValueError(

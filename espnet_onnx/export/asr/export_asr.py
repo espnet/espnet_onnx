@@ -35,6 +35,7 @@ from .get_config import get_token_config
 from .get_config import get_tokenizer_config
 from espnet_onnx.utils.function import make_pad_mask
 from espnet_onnx.utils.function import subsequent_mask
+from espnet_onnx.utils.config import save_config
 
 
 def str_to_hash(string: Union[str, Path]) -> str:
@@ -328,7 +329,7 @@ class ModelExport:
         if 'lm' in model.beam_search.full_scorers.keys():
             export_lm(model.beam_search.full_scorers['lm'], export_dir, sos_token)
 
-        config_name = self.cache_dir / model_name / 'config.json'
+        config_name = self.cache_dir / model_name / 'config.yaml'
         model_config = create_config(model, export_dir, decoder_odim)
         
         if quantize:
@@ -339,8 +340,7 @@ class ModelExport:
             for m in qt_config.keys():
                 model_config[m].update(quantized_model_path=qt_config[m])
         
-        with open(config_name, 'w', encoding='utf-8') as f:
-            f.write(json.dumps(model_config))
+        save_config(model_config, config_name)
 
     def export_from_pretrained(self, tag_name: str, quantize: bool = False):
         assert check_argument_types()
