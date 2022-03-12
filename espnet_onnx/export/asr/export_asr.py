@@ -17,7 +17,6 @@ from espnet2.lm.transformer_lm import TransformerLM
 from espnet2.asr.decoder.rnn_decoder import RNNDecoder
 from espnet2.asr.decoder.transformer_decoder import TransformerDecoder
 
-import onnx
 from onnxruntime.quantization import quantize_dynamic
 
 from .asr_models import Encoder
