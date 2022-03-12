@@ -1,9 +1,11 @@
 import six
+
 from typing import Any
 from typing import Tuple
 from typing import List
 from typing import Union
 from pathlib import Path
+from typeguard import check_argument_types
 
 import numpy as np
 import onnxruntime
@@ -21,7 +23,8 @@ class CTCPrefixScore:
     simultaneously
     """
 
-    def __init__(self, x, blank, eos, xp):
+    def __init__(self, x: np.ndarray, blank: int, eos: float, xp: np):
+        assert check_argument_types()
         self.xp = xp
         self.logzero = -10000000000.0
         self.blank = blank
@@ -105,13 +108,14 @@ class CTCPrefixScore:
 class CTCPrefixScorer(BatchPartialScorerInterface):
     """Decoder interface wrapper for CTCPrefixScore."""
 
-    def __init__(self, ctc, eos, use_quantized):
+    def __init__(self, ctc: Config, eos: int, use_quantized: bool = False):
         """Initialize class.
         Args:
-            ctc (torch.nn.Module): The CTC implementation.
+            ctc (np.ndarray): The CTC implementation.
                 For example, :class:`espnet.nets.pytorch_backend.ctc.CTC`
             eos (int): The end-of-sequence id.
         """
+        assert check_argument_types()
         if use_quantized:
             self.ctc = onnxruntime.InferenceSession(ctc.quantized_model_path)
         else:
@@ -207,7 +211,7 @@ class CTCPrefixScorer(BatchPartialScorerInterface):
         return self.impl(y, batch_state, ids)
 
 
-class CTCPrefixScoreTH(object):
+class CTCPrefixScoreTH:
     """Batch processing of CTCPrefixScore
     which is based on Algorithm 2 in WATANABE et al.
     "HYBRID CTC/ATTENTION ARCHITECTURE FOR END-TO-END SPEECH RECOGNITION,"
@@ -217,7 +221,7 @@ class CTCPrefixScoreTH(object):
     Speech Recognition," In INTERSPEECH (pp. 3825-3829), 2019.
     """
 
-    def __init__(self, x, xlens, blank, eos, margin=0):
+    def __init__(self, x: np.ndarray, xlens: np.ndarray, blank: int, eos: int, margin: int = 0):
         """Construct CTC prefix scorer
         :param np.ndarray x: input label posterior sequences (B, T, O)
         :param np.ndarray xlens: input lengths (B,)
@@ -225,6 +229,7 @@ class CTCPrefixScoreTH(object):
         :param int eos: end-of-sequence id
         :param int margin: margin parameter for windowing (0 means no windowing)
         """
+        assert check_argument_types()
         # In the comment lines,
         # we assume T: input_length, B: batch size, W: beam width, O: output dim.
         self.logzero = -10000000000.0
@@ -244,7 +249,8 @@ class CTCPrefixScoreTH(object):
         # Reshape input x
         xn = x.transpose(1, 0, 2)  # (B, T, O) -> (T, B, O)
         xb = xn[:, :, None, self.blank].repeat(self.odim, axis=2)
-        self.x = np.concatenate([xn[None,:], xb[None,:]]) # operation is faster than np.stack
+        # operation is faster than np.stack
+        self.x = np.concatenate([xn[None, :], xb[None, :]])
         self.end_frames = xlens - 1
 
         # Setup CTC windowing
