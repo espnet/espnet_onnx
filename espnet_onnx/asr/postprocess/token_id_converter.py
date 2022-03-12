@@ -38,12 +38,12 @@ class TokenIDConverter:
         self.token2id: Dict[str, int] = {}
         for i, t in enumerate(self.token_list):
             if t in self.token2id:
-                raise RuntimeError(f'Symbol "{t}" is duplicated')
+                raise Error(f'Symbol "{t}" is duplicated')
             self.token2id[t] = i
 
         self.unk_symbol = unk_symbol
         if self.unk_symbol not in self.token2id:
-            raise RuntimeError(
+            raise Error(
                 f"Unknown symbol '{unk_symbol}' doesn't exist in the token_list"
             )
         self.unk_id = self.token2id[self.unk_symbol]
@@ -53,7 +53,7 @@ class TokenIDConverter:
 
     def ids2tokens(self, integers: Union[np.ndarray, Iterable[int]]) -> List[str]:
         if isinstance(integers, np.ndarray) and integers.ndim != 1:
-            raise ValueError(f"Must be 1 dim ndarray, but got {integers.ndim}")
+            raise Error(f"Must be 1 dim ndarray, but got {integers.ndim}")
         return [self.token_list[i] for i in integers]
 
     def tokens2ids(self, tokens: Iterable[str]) -> List[int]:

@@ -31,7 +31,7 @@ def get_pos_emb(pos_emb):
     elif isinstance(pos_emb, nn.Sequential) and len(pos_emb) == 0:
         return pos_emb
     else:
-        raise ValueError('Embedding model is not supported.')
+        raise Error('Embedding model is not supported.')
 
 
 class Embedding(nn.Module):
