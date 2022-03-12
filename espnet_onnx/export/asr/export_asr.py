@@ -6,7 +6,7 @@ import os
 import glob
 import json
 from datetime import datetime
-import hashlib
+import shutil
 
 import numpy as np
 import torch
@@ -297,6 +297,11 @@ def quantize_model(model_from, model_to):
     return ret
 
 
+def copy_stats(model, path):
+    stats_file = model.stats_file
+    shutil.copyfile(stats_file, path / 'feats_stats.npz')
+
+
 class ModelExport:
     def __init__(self, cache_dir: Union[Path, str] = None):
         if cache_dir is None:
@@ -313,21 +318,25 @@ class ModelExport:
         export_dir = base_dir / 'full'
         export_dir.mkdir(parents=True, exist_ok=True)
         
-        sos_token = model.asr_model.sos
-        sample_feat = torch.randn((1, 100, 80))
+        # sos_token = model.asr_model.sos
+        # sample_feat = torch.randn((1, 100, 80))
         
-        enc_out = export_encoder(model.asr_model.encoder, sample_feat, export_dir)
-        if isinstance(enc_out, Tuple):
-            enc_out = enc_out[0]
+        # enc_out = export_encoder(model.asr_model.encoder, sample_feat, export_dir)
+        # if model.asr_model.normalize is not None:
+        #     copy_stats(model.asr_model.normalize, export_dir)
+            
+        # if isinstance(enc_out, Tuple):
+        #     enc_out = enc_out[0]
 
-        decoder_odim = export_decoder(model.asr_model.decoder, enc_out, export_dir, sos_token)
-        export_ctc(model.asr_model.ctc.ctc_lo, enc_out, export_dir)
+        # decoder_odim = export_decoder(model.asr_model.decoder, enc_out, export_dir, sos_token)
+        # export_ctc(model.asr_model.ctc.ctc_lo, enc_out, export_dir)
         
-        if 'lm' in model.beam_search.full_scorers.keys():
-            export_lm(model.beam_search.full_scorers['lm'], export_dir, sos_token)
+        # if 'lm' in model.beam_search.full_scorers.keys():
+        #     export_lm(model.beam_search.full_scorers['lm'], export_dir, sos_token)
 
         config_name = base_dir / 'config.yaml'
-        model_config = create_config(model, export_dir, decoder_odim)
+        # model_config = create_config(model, export_dir, decoder_odim)
+        model_config = create_config(model, export_dir, 512)
         
         if quantize:
             quantize_dir = base_dir / 'quantize'
