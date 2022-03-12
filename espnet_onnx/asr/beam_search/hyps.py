@@ -1,9 +1,9 @@
 from typing import Union
 from typing import Dict
-from typing import NamedTuple
-from typing import Any
 from typing import List
+from typing import NamedTuple
 from typing import Tuple
+from typing import Any
 from typing import Optional
 
 import numpy as np
@@ -58,14 +58,3 @@ class ExtendedHypothesis(TransducerHypothesis):
 
     dec_out: List[np.ndarray] = None
     lm_scores: np.ndarray = None
-
-
-
-
-
-
-
-
-
-
-

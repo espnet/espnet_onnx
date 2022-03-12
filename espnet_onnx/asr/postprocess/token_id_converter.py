@@ -1,11 +1,11 @@
-from pathlib import Path
 from typing import Dict
 from typing import Iterable
 from typing import List
 from typing import Union
+from pathlib import Path
+from typeguard import check_argument_types
 
 import numpy as np
-from typeguard import check_argument_types
 
 
 class TokenIDConverter:

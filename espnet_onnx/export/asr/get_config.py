@@ -34,12 +34,12 @@ def get_frontend_config(model):
     }
 
 
-def get_gmvn_config(model):
+def get_gmvn_config(model, path):
     return {
         "norm_means": model.norm_means,
         "norm_vars": model.norm_vars,
         "eps": model.eps,
-        "stats_file": str(model.stats_file)
+        "stats_file": str(path / 'feats_stats.npz')
     }
 
 
@@ -53,7 +53,7 @@ def get_encoder_config(model, path):
         do_postencoder=model.postencoder is not None
     )
     if ret['do_normalize']:
-        ret.update(gmvn=get_gmvn_config(model.normalize))
+        ret.update(gmvn=get_gmvn_config(model.normalize, path))
     if ret['do_preencoder']:
         ret.update(preencoder=get_preenc_config(model.preencoder))
     if ret['do_postencoder']:

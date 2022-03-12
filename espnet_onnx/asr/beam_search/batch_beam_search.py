@@ -6,14 +6,17 @@ from typing import Dict
 from typing import List
 from typing import Tuple
 import logging
-import sys
 
 import numpy as np
 
-from espnet_onnx.utils.function import pad_sequence, topk
+from espnet_onnx.utils.function import (
+    pad_sequence,
+    topk
+)
 from .beam_search import BeamSearch
 from .hyps import Hypothesis
 from .hyps import BatchHypothesis
+
 
 class BatchBeamSearch(BeamSearch):
     """Batch beam search implementation."""
@@ -200,9 +203,6 @@ class BatchBeamSearch(BeamSearch):
                 else scores[self.pre_beam_score_key]
             )
             part_ids = topk(pre_beam_scores, self.pre_beam_size)
-        # NOTE(takaaki-hori): Unlike BeamSearch, we assume that score_partial returns
-        # full-size score matrices, which has non-zero scores for part_ids and zeros
-        # for others.
         part_scores, part_states = self.score_partial(
             running_hyps, part_ids, x)
         for k in self.part_scorers:
@@ -210,9 +210,6 @@ class BatchBeamSearch(BeamSearch):
         # add previous hyp scores
         weighted_scores += np.expand_dims(running_hyps.score, 1)
 
-        # TODO(karita): do not use list. use batch instead
-        # see also https://github.com/espnet/espnet/pull/1402#discussion_r354561029
-        # update hyps
         best_hyps = []
         prev_hyps = self.unbatchfy(running_hyps)
         for (
@@ -282,7 +279,7 @@ class BatchBeamSearch(BeamSearch):
             )
         # add eos in the final loop to avoid that there are no ended hyps
         if i == maxlen - 1:
-            logging.info("adding <eos> in the last position in the loop")
+            logging.debug("adding <eos> in the last position in the loop")
             yseq_eos = np.hstack(
                 (
                     running_hyps.yseq,

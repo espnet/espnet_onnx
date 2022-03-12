@@ -5,19 +5,17 @@
 
 .PHONY: all clean
 
-all: cpu gpu
+all: venv infer
 
 
-cpu:
+venv:
 	python3 -m venv venv
-		. venv/bin/activate; pip install -U pip; pip install -r requirements.txt
 
-cpu_export:
-	python3 -m venv venv
-		. venv/bin/activate; pip install -U pip; pip install -r requirements.txt
+infer:
+	. venv/bin/activate; pip install -U pip; pip install -r requirements.txt
 
-gpu:
-	. venv/bin/activate; pip install torch torchvision
+onnx_export:
+	. venv/bin/activate; pip install -r requirements_export.txt
 
 clean:
 	rm -fr venv dist build *.egg-info

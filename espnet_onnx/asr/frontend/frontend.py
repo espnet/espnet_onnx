@@ -1,23 +1,33 @@
-
 from typing import Union
 from pathlib import Path
+from typeguard import check_argument_types
 
-import onnxruntime
 import numpy as np
+import onnxruntime
 
 from .stft import Stft
 from .logmel import LogMel
 
+from espnet_onnx.utils.config import Config
 
-class Frontend():
+
+class Frontend:
+    """Default frontend module.
+    This class is based on espnet2.asr.frontend.default.DefaultFrontend
+
+    Args:
+        config (Config): configuration for default frontend
+    """
+
     def __init__(
         self,
-        config
+        config: Config,
     ):
         self.stft = Stft(config.stft)
         self.logmel = LogMel(config.logmel)
 
     def __call__(self, inputs: np.ndarray, input_length: np.ndarray):
+        assert check_argument_types()
         # STFT
         input_stft, feats_lens = self.stft(inputs, input_length)
 

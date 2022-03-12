@@ -1,10 +1,13 @@
+from typeguard import check_argument_types
 import numpy as np
+
 
 def get_window(
     window_type: str,
     length: int,
-    periodic:bool = True
+    periodic: bool = True
 ):
+    assert check_argument_types()
     N = length + 1 if periodic else length
     if window_type == 'bartlett':
         w = np.bartlett(N)

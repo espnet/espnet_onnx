@@ -6,7 +6,7 @@ import os
 import glob
 import json
 from datetime import datetime
-import hashlib
+import shutil
 
 import numpy as np
 import torch
@@ -17,7 +17,6 @@ from espnet2.lm.transformer_lm import TransformerLM
 from espnet2.asr.decoder.rnn_decoder import RNNDecoder
 from espnet2.asr.decoder.transformer_decoder import TransformerDecoder
 
-import onnx
 from onnxruntime.quantization import quantize_dynamic
 
 from .asr_models import Encoder
@@ -37,10 +36,6 @@ from espnet_onnx.utils.function import make_pad_mask
 from espnet_onnx.utils.function import subsequent_mask
 from espnet_onnx.utils.config import save_config
 from espnet_onnx.utils.config import update_model_path
-
-
-def str_to_hash(string: Union[str, Path]) -> str:
-    return hashlib.md5(str(string).encode("utf-8")).hexdigest()
 
 
 def export_encoder(model, feats, path):
@@ -302,6 +297,11 @@ def quantize_model(model_from, model_to):
     return ret
 
 
+def copy_stats(model, path):
+    stats_file = model.stats_file
+    shutil.copyfile(stats_file, path / 'feats_stats.npz')
+
+
 class ModelExport:
     def __init__(self, cache_dir: Union[Path, str] = None):
         if cache_dir is None:
@@ -322,6 +322,9 @@ class ModelExport:
         sample_feat = torch.randn((1, 100, 80))
         
         enc_out = export_encoder(model.asr_model.encoder, sample_feat, export_dir)
+        if model.asr_model.normalize is not None:
+            copy_stats(model.asr_model.normalize, export_dir)
+            
         if isinstance(enc_out, Tuple):
             enc_out = enc_out[0]
 

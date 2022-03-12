@@ -10,3 +10,7 @@ pyopenjtalk
 pypinyin
 g2pk
 phonemizer
+torch
+espnet
+espnet_model_zoo
+onnx

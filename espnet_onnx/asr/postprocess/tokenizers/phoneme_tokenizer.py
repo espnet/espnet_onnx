@@ -1,15 +1,16 @@
-import logging
-from pathlib import Path
 import re
+import logging
+import warnings
+
 from typing import Iterable
 from typing import List
 from typing import Optional
 from typing import Union
-import warnings
-
-import g2p_en
-import jamo
+from pathlib import Path
 from typeguard import check_argument_types
+
+import jamo
+import g2p_en
 
 
 g2p_choices = [
@@ -60,11 +61,11 @@ def pyopenjtalk_g2p(text) -> List[str]:
 
 def pyopenjtalk_g2p_accent(text) -> List[str]:
     import pyopenjtalk
-    import re
 
     phones = []
     for labels in pyopenjtalk.run_frontend(text)[1]:
-        p = re.findall(r"\-(.*?)\+.*?\/A:([0-9\-]+).*?\/F:.*?_([0-9]+)", labels)
+        p = re.findall(
+            r"\-(.*?)\+.*?\/A:([0-9\-]+).*?\/F:.*?_([0-9]+)", labels)
         if len(p) == 1:
             phones += [p[0][0], p[0][2], p[0][1]]
     return phones
@@ -72,14 +73,14 @@ def pyopenjtalk_g2p_accent(text) -> List[str]:
 
 def pyopenjtalk_g2p_accent_with_pause(text) -> List[str]:
     import pyopenjtalk
-    import re
 
     phones = []
     for labels in pyopenjtalk.run_frontend(text)[1]:
         if labels.split("-")[1].split("+")[0] == "pau":
             phones += ["pau"]
             continue
-        p = re.findall(r"\-(.*?)\+.*?\/A:([0-9\-]+).*?\/F:.*?_([0-9]+)", labels)
+        p = re.findall(
+            r"\-(.*?)\+.*?\/A:([0-9\-]+).*?\/F:.*?_([0-9]+)", labels)
         if len(p) == 1:
             phones += [p[0][0], p[0][2], p[0][1]]
     return phones
@@ -295,7 +296,8 @@ class Jaso:
         if self.no_space:
             graphemes = list(filter(lambda s: s != " ", graphemes))
         else:
-            graphemes = [x if x != " " else self.space_symbol for x in graphemes]
+            graphemes = [
+                x if x != " " else self.space_symbol for x in graphemes]
         return graphemes
 
 
@@ -486,7 +488,8 @@ class PhonemeTokenizer:
             non_linguistic_symbols = Path(non_linguistic_symbols)
             try:
                 with non_linguistic_symbols.open("r", encoding="utf-8") as f:
-                    self.non_linguistic_symbols = set(line.rstrip() for line in f)
+                    self.non_linguistic_symbols = set(
+                        line.rstrip() for line in f)
             except FileNotFoundError:
                 warnings.warn(f"{non_linguistic_symbols} doesn't exist.")
                 self.non_linguistic_symbols = set()
@@ -510,7 +513,7 @@ class PhonemeTokenizer:
                 if line.startswith(w):
                     if not self.remove_non_linguistic_symbols:
                         tokens.append(line[: len(w)])
-                    line = line[len(w) :]
+                    line = line[len(w):]
                     break
             else:
                 t = line[0]

@@ -1,20 +1,27 @@
-from distutils.version import LooseVersion
 from typing import Optional
 from typing import Tuple
-from typing import Union
-
 from typeguard import check_argument_types
-import librosa
-import numpy as np
 
-from espnet_onnx.utils.function import mask_fill, make_pad_mask
+import numpy as np
+import librosa
+
+from espnet_onnx.utils.function import (
+    make_pad_mask,
+    mask_fill
+)
+from espnet_onnx.utils.config import Config
 from .window import get_window
 
-class Stft():
+
+class Stft:
+    """STFT module.
+    """
+
     def __init__(
         self,
-        config
+        config: Config
     ):
+        assert check_argument_types()
         self.config = config
 
     def __call__(
@@ -27,7 +34,7 @@ class Stft():
         Returns:
             output: (Batch, Frames, Freq, 2)
         """
-        bs = input.shape[0]
+        assert check_argument_types()
         window = get_window(self.config.window, self.config.win_length)
         stft_kwargs = dict(
             n_fft=self.config.n_fft,
@@ -48,15 +55,15 @@ class Stft():
             stft = librosa.stft(input[i], **stft_kwargs)
             output.append(np.array(np.stack([stft.real, stft.imag], -1)))
         output = np.vstack(output).reshape(len(output), *output[0].shape)
-        
+
         if not self.config.onesided:
             len_conj = self.n_fft - output.shape[1]
-            conj = output[:, 1 : 1 + len_conj].flip(1)
+            conj = output[:, 1: 1 + len_conj].flip(1)
             conj[:, :, :, -1].data *= -1
             output = np.concatenate([output, conj], 1)
         if self.config.normalized:
             output = output * (stft_kwargs["window"].shape[0] ** (-0.5))
-            
+
         # output: (Batch, Freq, Frames, 2=real_imag)
         # -> (Batch, Frames, Freq, 2=real_imag)
         output = output.transpose(0, 2, 1, 3)
@@ -65,7 +72,8 @@ class Stft():
                 pad = self.config.n_fft // 2
                 ilens = ilens + 2 * pad
             olens = (ilens - self.config.n_fft) // self.config.hop_length + 1
-            output = mask_fill(output, make_pad_mask(olens, output, dim=1), 0.0)
+            output = mask_fill(output, make_pad_mask(
+                olens, output, dim=1), 0.0)
         else:
             olens = None
         return output, olens

@@ -6,6 +6,7 @@ import onnxruntime
 from scipy.special import log_softmax
 
 from espnet_onnx.asr.scorer.interface import BatchScorerInterface
+from espnet_onnx.utils.config import Config
 
 
 class SequentialRNNLM(BatchScorerInterface):
@@ -16,11 +17,12 @@ class SequentialRNNLM(BatchScorerInterface):
 
     def __init__(
         self,
-        config,
-        use_quantized
+        config: Config,
+        use_quantized: bool = False
     ):
         if use_quantized:
-            self.lm_session = onnxruntime.InferenceSession(config.quantized_model_path)
+            self.lm_session = onnxruntime.InferenceSession(
+                config.quantized_model_path)
         else:
             self.lm_session = onnxruntime.InferenceSession(config.model_path)
         self.enc_output_names = ['y'] \

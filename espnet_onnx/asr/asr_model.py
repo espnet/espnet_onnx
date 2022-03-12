@@ -41,22 +41,22 @@ class Speech2Text:
         assert check_argument_types()
         if tag_name is None and model_dir is None:
             raise ValueError('tag_name or model_dir should be defined.')
-        
+
         if tag_name is not None:
             tag_config = get_tag_config()
             if not tag_name in tag_config.keys():
-                raise RuntimeError(f'Model path for tag_name "{tag_name}" is not set on tag_config.yaml.' \
-                    + 'You have to export to onnx format with `espnet_onnx.export.asr.export_asr.ModelExport`,' \
-                    + 'or have to set exported model path in tag_config.yaml.')
+                raise RuntimeError(f'Model path for tag_name "{tag_name}" is not set on tag_config.yaml.'
+                                   + 'You have to export to onnx format with `espnet_onnx.export.asr.export_asr.ModelExport`,'
+                                   + 'or have to set exported model path in tag_config.yaml.')
             model_dir = tag_config[tag_name]
-            
+
         # 1. Build asr model
         config_file = glob.glob(os.path.join(model_dir, 'config.*'))[0]
         config = get_config(config_file)
 
         if use_quantized and 'quantized_model_path' not in config.encoder.keys():
             # check if quantized model config is defined.
-            raise ValueError(
+            raise RuntimeError(
                 'Configuration for quantized model is not defined.')
 
         # 2.
@@ -84,21 +84,22 @@ class Speech2Text:
                 )
 
         # 3. Build ngram model
-        if config.ngram.use_ngram:
-            if config.ngram.scorer_type == 'full':
-                scorers.update(
-                    ngram=NgramFullScorer(
-                        config.ngram.ngram_file,
-                        config.token.list
-                    )
-                )
-            else:
-                scorers.update(
-                    ngram=NgramPartialScorer(
-                        config.ngram.ngram_file,
-                        config.token.list
-                    )
-                )
+        # Currently not supported.
+        # if config.ngram.use_ngram:
+        #     if config.ngram.scorer_type == 'full':
+        #         scorers.update(
+        #             ngram=NgramFullScorer(
+        #                 config.ngram.ngram_file,
+        #                 config.token.list
+        #             )
+        #         )
+        #     else:
+        #         scorers.update(
+        #             ngram=NgramPartialScorer(
+        #                 config.ngram.ngram_file,
+        #                 config.token.list
+        #             )
+        #         )
 
         # 4. Build beam search object
         weights = dict(
@@ -108,14 +109,15 @@ class Speech2Text:
             length_bonus=config.weights.length_bonus,
         )
         if config.transducer.use_transducer_decoder:
-            self.beam_search = BSTransducer(
-                config.beam_search,
-                config.transducer,
-                config.token,
-                decoder=decoder,
-                # lm=scorers["lm"] if "lm" in scorers else None,
-                weights=weights
-            )
+            # self.beam_search = BSTransducer(
+            #     config.beam_search,
+            #     config.transducer,
+            #     config.token,
+            #     decoder=decoder,
+            #     # lm=scorers["lm"] if "lm" in scorers else None,
+            #     weights=weights
+            # )
+            raise ValueError('Transducer is currently not supported.')
         else:
             self.beam_search = BeamSearch(
                 config.beam_search,
@@ -139,15 +141,15 @@ class Speech2Text:
             )
 
         # 5. Build text converter
-        print(config.tokenizer.token_type)
         if config.tokenizer.token_type is None:
             self.tokenizer = None
         elif config.tokenizer.token_type == 'bpe':
             self.tokenizer = build_tokenizer(
                 'bpe', config.tokenizer.bpemodel)
         else:
-            self.tokenizer = build_tokenizer(token_type=config.tokenizer.token_type)
-            
+            self.tokenizer = build_tokenizer(
+                token_type=config.tokenizer.token_type)
+
         self.converter = TokenIDConverter(token_list=config.token.list)
         self.config = config
 
