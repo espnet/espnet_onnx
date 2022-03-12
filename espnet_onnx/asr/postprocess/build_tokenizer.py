@@ -1,7 +1,6 @@
-from pathlib import Path
 from typing import Iterable
 from typing import Union
-
+from pathlib import Path
 from typeguard import check_argument_types
 
 from espnet_onnx.asr.postprocess.tokenizers.char_tokenizer import CharTokenizer
@@ -58,5 +57,5 @@ def build_tokenizer(
 
     else:
         raise ValueError(
-            f"token_mode must be one of bpe, word, char or phn: " f"{token_type}"
+            f"Token_mode must be one of bpe, word, char or phn: {token_type}"
         )
