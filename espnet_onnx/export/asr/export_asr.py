@@ -303,10 +303,7 @@ def quantize_model(model_from, model_to):
 class ModelExport:
     def __init__(self, cache_dir: Union[Path, str] = None):
         if cache_dir is None:
-            cache_dir = Path(__file__).parent
-            # If not having write permission, fallback to homedir
-            if not os.access(cache_dir, os.W_OK):
-                cache_dir = Path.home() / ".cache" / "espnet_onnx"
+            cache_dir = Path.home() / ".cache" / "espnet_onnx"
         
         self.cache_dir = cache_dir
 
