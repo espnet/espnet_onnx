@@ -2,6 +2,5 @@ numpy
 onnxruntime
 librosa
 sentencepiece
-flask
 typeguard
 pyyaml

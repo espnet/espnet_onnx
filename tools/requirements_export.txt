@@ -1,0 +1,10 @@
+numpy==1.21
+librosa
+onnx
+onnxruntime
+sentencepiece
+typeguard
+pyyaml
+torch
+espnet
+espnet_model_zoo
