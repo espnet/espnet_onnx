@@ -1,23 +1,24 @@
- 
-from pathlib import Path
 from typing import Tuple
 from typing import Union
-
-import numpy as np
+from pathlib import Path
 from typeguard import check_argument_types
 
-from .logmel import make_pad_mask
-from espnet_onnx.utils.function import mask_fill
+import numpy as np
+
+from espnet_onnx.utils.function import (
+    make_pad_mask,
+    mask_fill
+)
 
 
-class GlobalMVN():
+class GlobalMVN:
     """Apply global mean and variance normalization
-    TODO(kamo): Make this class portable somehow
+
     Args:
-        stats_file: npy file
-        norm_means: Apply mean normalization
-        norm_vars: Apply var normalization
-        eps:
+        config.stats_file: npy file
+        config.norm_means: Apply mean normalization
+        config.norm_vars: Apply var normalization
+        config.eps:
     """
 
     def __init__(
@@ -25,13 +26,12 @@ class GlobalMVN():
         config
     ):
         assert check_argument_types()
-        super().__init__()
         self.norm_means = config.norm_means
         self.norm_vars = config.norm_vars
         self.eps = config.eps
         stats_file = Path(config.stats_file)
         stats = np.load(stats_file)
-        
+
         if isinstance(stats, np.ndarray):
             # Kaldi like stats
             count = stats[0].flatten()[-1]

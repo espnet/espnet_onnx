@@ -1,27 +1,32 @@
-
-import librosa
-import numpy as np
 from typing import Tuple
+from typeguard import check_argument_types
 
-from espnet_onnx.utils.function import mask_fill, make_pad_mask
+import numpy as np
+import librosa
+
+from espnet_onnx.utils.function import (
+    make_pad_mask,
+    mask_fill
+)
+from espnet_onnx.utils.config import Config
 
 
-class LogMel():
+class LogMel:
     """Convert STFT to fbank feats
     The arguments is same as librosa.filters.mel
     Args:
-        fs: number > 0 [scalar] sampling rate of the incoming signal
-        n_fft: int > 0 [scalar] number of FFT components
-        n_mels: int > 0 [scalar] number of Mel bands to generate
-        fmin: float >= 0 [scalar] lowest frequency (in Hz)
-        fmax: float >= 0 [scalar] highest frequency (in Hz).
+        config.fs: number > 0 [scalar] sampling rate of the incoming signal
+        config.n_fft: int > 0 [scalar] number of FFT components
+        config.n_mels: int > 0 [scalar] number of Mel bands to generate
+        config.fmin: float >= 0 [scalar] lowest frequency (in Hz)
+        config.fmax: float >= 0 [scalar] highest frequency (in Hz).
             If `None`, use `fmax = fs / 2.0`
-        htk: use HTK formula instead of Slaney
+        config.htk: use HTK formula instead of Slaney
     """
 
     def __init__(
         self,
-        config
+        config: Config
     ):
         fmin = 0 if config.fmin is None else config.fmin
         fmax = fs / 2 if config.fmax is None else config.fmax
