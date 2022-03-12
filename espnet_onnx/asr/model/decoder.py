@@ -17,7 +17,7 @@ from espnet_onnx.utils.config import Config
 def get_decoder(config, token_config: Config, td_config: Config, use_quantized: bool = False):
     if td_config.use_transducer_decoder:
         # return TransducerDecoder(config, token_config)
-        raise Error('Transducer is currently not supported.')
+        raise ValueError('Transducer is currently not supported.')
     else:
         return OnnxDecoderModel(config, use_quantized)
 

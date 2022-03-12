@@ -125,7 +125,7 @@ def export_decoder(model, x, path, sos_token):
     if isinstance(model, TransformerDecoder):
         return export_transformer_dec(model, x, path, sos_token)
     elif isinstance(model, RNNDecoder):
-        raise Error('Currently RNNDecoder is not supported.')
+        raise ValueError('Currently RNNDecoder is not supported.')
 
 
 def export_ctc(model, x, path):

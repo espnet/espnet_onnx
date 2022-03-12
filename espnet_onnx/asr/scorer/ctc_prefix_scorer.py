@@ -11,8 +11,11 @@ import numpy as np
 import onnxruntime
 from scipy.special import logsumexp
 
-from .interface import BatchScorerInterface
-from .interface import BatchPartialScorerInterface
+from espnet_onnx.utils.config import Config
+from .interface import (
+    BatchScorerInterface,
+    BatchPartialScorerInterface
+)
 
 
 class CTCPrefixScore:

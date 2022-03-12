@@ -14,7 +14,7 @@ def get_config(path):
         with open(path, 'r', encoding='utf-8') as f:
             dic = yaml.safe_load(f)
     else:
-        raise Error('Configuration format is not supported.')
+        raise ValueError('Configuration format is not supported.')
     return Config(dic)
 
 def save_config(config, path):
@@ -32,7 +32,7 @@ def save_config(config, path):
             else:
                 yaml.dump(config, f)
     else:
-        raise Error(f'File type {ext} is not supported.')
+        raise ValueError(f'File type {ext} is not supported.')
 
 def update_model_path(tag_name, model_path):
     # get configuration of the tag name.

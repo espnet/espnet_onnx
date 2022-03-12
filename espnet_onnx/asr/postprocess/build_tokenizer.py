@@ -22,10 +22,10 @@ def build_tokenizer(
     assert check_argument_types()
     if token_type == "bpe":
         if bpemodel is None:
-            raise Error('bpemodel is required if token_type = "bpe"')
+            raise ValueError('bpemodel is required if token_type = "bpe"')
 
         if remove_non_linguistic_symbols:
-            raise Error(
+            raise ValueError(
                 "remove_non_linguistic_symbols is not implemented for token_type=bpe"
             )
         return SentencepiecesTokenizer(bpemodel)
@@ -56,6 +56,6 @@ def build_tokenizer(
         )
 
     else:
-        raise Error(
+        raise ValueError(
             f"Token_mode must be one of bpe, word, char or phn: {token_type}"
         )

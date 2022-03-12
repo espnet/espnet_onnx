@@ -40,12 +40,12 @@ class Speech2Text:
                  ):
         assert check_argument_types()
         if tag_name is None and model_dir is None:
-            raise Error('tag_name or model_dir should be defined.')
+            raise ValueError('tag_name or model_dir should be defined.')
 
         if tag_name is not None:
             tag_config = get_tag_config()
             if not tag_name in tag_config.keys():
-                raise Error(f'Model path for tag_name "{tag_name}" is not set on tag_config.yaml.'
+                raise RuntimeError(f'Model path for tag_name "{tag_name}" is not set on tag_config.yaml.'
                                    + 'You have to export to onnx format with `espnet_onnx.export.asr.export_asr.ModelExport`,'
                                    + 'or have to set exported model path in tag_config.yaml.')
             model_dir = tag_config[tag_name]
@@ -56,7 +56,7 @@ class Speech2Text:
 
         if use_quantized and 'quantized_model_path' not in config.encoder.keys():
             # check if quantized model config is defined.
-            raise Error(
+            raise RuntimeError(
                 'Configuration for quantized model is not defined.')
 
         # 2.
@@ -117,7 +117,7 @@ class Speech2Text:
             #     # lm=scorers["lm"] if "lm" in scorers else None,
             #     weights=weights
             # )
-            raise Error('Transducer is currently not supported.')
+            raise ValueError('Transducer is currently not supported.')
         else:
             self.beam_search = BeamSearch(
                 config.beam_search,

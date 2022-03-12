@@ -20,6 +20,6 @@ def get_window(
     elif window_type == 'kaiser':
         w = np.kaiser(N)
     else:
-        raise Error(f'Window type ${window_type} is not supported.')
+        raise ValueError(f'Window type ${window_type} is not supported.')
     w = w[:-1] if periodic else w
     return w
