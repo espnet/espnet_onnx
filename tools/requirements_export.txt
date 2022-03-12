@@ -1,10 +1,15 @@
 numpy==1.21
-librosa
-onnx
 onnxruntime
+librosa
 sentencepiece
 typeguard
 pyyaml
+g2p_en
+jamo
+pyopenjtalk
+pypinyin
+g2pk
+phonemizer
 torch
 espnet
 espnet_model_zoo

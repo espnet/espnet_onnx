@@ -6,3 +6,7 @@ typeguard
 pyyaml
 g2p_en
 jamo
+pyopenjtalk
+pypinyin
+g2pk
+phonemizer
