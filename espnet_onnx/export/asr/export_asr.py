@@ -36,6 +36,7 @@ from .get_config import get_tokenizer_config
 from espnet_onnx.utils.function import make_pad_mask
 from espnet_onnx.utils.function import subsequent_mask
 from espnet_onnx.utils.config import save_config
+from espnet_onnx.utils.config import update_model_path
 
 
 def str_to_hash(string: Union[str, Path]) -> str:
@@ -312,8 +313,9 @@ class ModelExport:
         assert check_argument_types()
         if model_name is None:
             model_name = datetime.now().strftime("%Y%m%d_%H%M%S")
-            
-        export_dir = self.cache_dir / model_name / 'full'
+        
+        base_dir = self.cache_dir / model_name
+        export_dir = base_dir / 'full'
         export_dir.mkdir(parents=True, exist_ok=True)
         
         sos_token = model.asr_model.sos
@@ -329,11 +331,11 @@ class ModelExport:
         if 'lm' in model.beam_search.full_scorers.keys():
             export_lm(model.beam_search.full_scorers['lm'], export_dir, sos_token)
 
-        config_name = self.cache_dir / model_name / 'config.yaml'
+        config_name = base_dir / 'config.yaml'
         model_config = create_config(model, export_dir, decoder_odim)
         
         if quantize:
-            quantize_dir = self.cache_dir / model_name / 'quantize'
+            quantize_dir = base_dir / 'quantize'
             quantize_dir.mkdir(exist_ok=True)
             
             qt_config = quantize_model(export_dir, quantize_dir)
@@ -341,8 +343,9 @@ class ModelExport:
                 model_config[m].update(quantized_model_path=qt_config[m])
         
         save_config(model_config, config_name)
+        update_model_path(model_name, base_dir)
 
     def export_from_pretrained(self, tag_name: str, quantize: bool = False):
         assert check_argument_types()
         model = Speech2Text.from_pretrained(tag_name)
-        self.export(model, str_to_hash(tag_name), quantize)
+        self.export(model, tag_name.replace(' ', '-'), quantize)
