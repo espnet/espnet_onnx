@@ -1,6 +1,8 @@
-numpy
+numpy==1.21
 onnxruntime
 librosa
 sentencepiece
 typeguard
 pyyaml
+g2p_en
+jamo
