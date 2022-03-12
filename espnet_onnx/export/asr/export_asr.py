@@ -38,10 +38,6 @@ from espnet_onnx.utils.config import save_config
 from espnet_onnx.utils.config import update_model_path
 
 
-def str_to_hash(string: Union[str, Path]) -> str:
-    return hashlib.md5(str(string).encode("utf-8")).hexdigest()
-
-
 def export_encoder(model, feats, path):
     enc_input_names = ['feats', 'mask']
     enc_output_names = ['encoder_out', 'encoder_out_lens']
