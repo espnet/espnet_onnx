@@ -1,31 +1,33 @@
 """Beam search module."""
-
-from itertools import chain
-import logging
 from typing import Any
 from typing import Dict
 from typing import List
-from typing import NamedTuple
 from typing import Tuple
-from typing import Union
+from typeguard import check_argument_types
+
+import six
+import logging
+from itertools import chain
 
 import numpy as np
-import six
 
-from espnet_onnx.asr.scorer.interface import PartialScorerInterface
-from espnet_onnx.asr.scorer.interface import ScorerInterface
+from espnet_onnx.asr.scorer.interface import (
+    PartialScorerInterface,
+    ScorerInterface,
+)
 from espnet_onnx.utils.function import topk
+from espnet_onnx.utils.config import Config
 from .utils import end_detect
 from .hyps import Hypothesis
 
 
-class BeamSearch():
+class BeamSearch:
     """Beam search implementation."""
 
     def __init__(
         self,
-        bs_config,
-        token_config,
+        bs_config: Config,
+        token_config: Config,
         scorers: Dict[str, ScorerInterface],
         weights: Dict[str, float],
     ):
@@ -45,6 +47,8 @@ class BeamSearch():
             pre_beam_ratio (float): beam size in the pre-beam search
                 will be `int(pre_beam_ratio * beam_size)`
         """
+        assert check_argument_types()
+
         # set scorers
         self.weights = weights
         self.scorers = dict()
@@ -61,6 +65,7 @@ class BeamSearch():
             assert isinstance(
                 v, ScorerInterface
             ), f"{k} ({type(v)}) does not implement ScorerInterface"
+
             self.scorers[k] = v
             if isinstance(v, PartialScorerInterface):
                 self.part_scorers[k] = v
@@ -71,7 +76,8 @@ class BeamSearch():
         self.sos = token_config.sos
         self.eos = token_config.eos
         self.token_list = token_config.list
-        self.pre_beam_size = int(bs_config.pre_beam_ratio * bs_config.beam_size)
+        self.pre_beam_size = int(
+            bs_config.pre_beam_ratio * bs_config.beam_size)
         self.beam_size = bs_config.beam_size
         self.n_vocab = len(self.token_list)
         if (
@@ -79,7 +85,9 @@ class BeamSearch():
             and bs_config.pre_beam_score_key != "full"
             and bs_config.pre_beam_score_key not in self.full_scorers
         ):
-            raise KeyError(f"{bs_config.pre_beam_score_key} is not found in {self.full_scorers}")
+            raise KeyError(
+                f"{bs_config.pre_beam_score_key} is not found in {self.full_scorers}")
+
         self.pre_beam_score_key = bs_config.pre_beam_score_key
         self.do_pre_beam = (
             self.pre_beam_score_key is not None
@@ -95,7 +103,7 @@ class BeamSearch():
         self.minlenratio = bs_config.minlenratio
         self.maxlenratio = bs_config.maxlenratio
 
-    def init_hyp(self, x):
+    def init_hyp(self, x: np.ndarray) -> List[Hypothesis]:
         """Get an initial hypothesis data.
         Args:
             x (np.ndarray): The encoder output feature
@@ -112,7 +120,8 @@ class BeamSearch():
                 score=0.0,
                 scores=init_scores,
                 states=init_states,
-                yseq=np.array([0, self.sos]), # Add blank token before sos for onnx inference
+                # Add blank token before sos for onnx inference
+                yseq=np.array([0, self.sos]),
             )
         ]
 
@@ -166,7 +175,8 @@ class BeamSearch():
         scores = dict()
         states = dict()
         for k, d in self.part_scorers.items():
-            scores[k], states[k] = d.score_partial(hyp.yseq, ids, hyp.states[k], x)
+            scores[k], states[k] = d.score_partial(
+                hyp.yseq, ids, hyp.states[k], x)
         return scores, states
 
     def beam(
@@ -310,9 +320,9 @@ class BeamSearch():
         else:
             maxlen = max(1, int(self.maxlenratio * x.shape[0]))
         minlen = int(self.minlenratio * x.shape[0])
-        logging.info("decoder input length: " + str(x.shape[0]))
-        logging.info("max output length: " + str(maxlen))
-        logging.info("min output length: " + str(minlen))
+        logging.debug("decoder input length: " + str(x.shape[0]))
+        logging.debug("max output length: " + str(maxlen))
+        logging.debug("min output length: " + str(minlen))
 
         # main loop of prefix search
         running_hyps = self.init_hyp(x)
@@ -324,19 +334,19 @@ class BeamSearch():
             running_hyps = self.post_process(i, maxlen, best, ended_hyps)
             # end detection
             if self.maxlenratio == 0.0 and end_detect([h.asdict() for h in ended_hyps], i):
-                logging.info(f"end detected at {i}")
+                logging.debug(f"End detected at {i}")
                 break
             if len(running_hyps) == 0:
-                logging.info("no hypothesis. Finish decoding.")
+                logging.debug("No hypothesis. Finish decoding.")
                 break
             else:
-                logging.debug(f"remained hypotheses: {len(running_hyps)}")
+                logging.debug(f"Remained hypotheses: {len(running_hyps)}")
 
         nbest_hyps = sorted(ended_hyps, key=lambda x: x.score, reverse=True)
         # check the number of hypotheses reaching to eos
         if len(nbest_hyps) == 0:
             logging.warning(
-                "there is no N-best results, perform recognition "
+                "There is no N-best results, perform recognition "
                 "again with smaller minlenratio."
             )
             return (
@@ -348,15 +358,16 @@ class BeamSearch():
         # report the best result
         best = nbest_hyps[0]
         for k, v in best.scores.items():
-            logging.info(
+            logging.debug(
                 f"{v:6.2f} * {self.weights[k]:3} = {v * self.weights[k]:6.2f} for {k}"
             )
-        logging.info(f"total log probability: {best.score:.2f}")
-        logging.info(f"normalized log probability: {best.score / len(best.yseq):.2f}")
-        logging.info(f"total number of ended hypotheses: {len(nbest_hyps)}")
+        logging.debug(f"Total log probability: {best.score:.2f}")
+        logging.debug(
+            f"Normalized log probability: {best.score / len(best.yseq):.2f}")
+        logging.debug(f"Total number of ended hypotheses: {len(nbest_hyps)}")
         if self.token_list is not None:
-            logging.info(
-                "best hypo: "
+            logging.debug(
+                "Best hypo: "
                 + "".join([self.token_list[int(x)] for x in best.yseq[1:-1]])
                 + "\n"
             )
@@ -378,16 +389,16 @@ class BeamSearch():
         Returns:
             List[Hypothesis]: The new running hypotheses.
         """
-        n_batch = running_hyps.yseq.shape[0]
-        logging.debug(f"the number of running hypotheses: {len(running_hyps)}")
+        logging.debug(f"The number of running hypotheses: {len(running_hyps)}")
         if self.token_list is not None:
             logging.debug(
-                "best hypo: "
-                + "".join([self.token_list[x] for x in running_hyps[0].yseq[1:]])
+                "Best hypo: "
+                + "".join([self.token_list[x]
+                           for x in running_hyps[0].yseq[1:]])
             )
         # add eos in the final loop to avoid that there are no ended hyps
         if i == maxlen - 1:
-            logging.info("adding <eos> in the last position in the loop")
+            logging.debug("Adding <eos> in the last position in the loop")
             running_hyps = [
                 h._replace(yseq=self.append_token(h.yseq, self.eos))
                 for h in running_hyps
