@@ -1,51 +1,38 @@
 from typing import Union
-from typing import Tuple
 from pathlib import Path
 from typeguard import check_argument_types
 
 import os
 import glob
-import json
 from datetime import datetime
 import shutil
 
 import numpy as np
 import torch
-from espnet2.asr.espnet_model import ESPnetASRModel
-from espnet2.bin.asr_inference import Speech2Text
-# from espnet2.lm.seq_rnn_lm import SequentialRNNLM
-# from espnet2.lm.transformer_lm import TransformerLM
-# from espnet2.asr.decoder.rnn_decoder import RNNDecoder
-# from espnet2.asr.decoder.transformer_decoder import TransformerDecoder
-
 from onnxruntime.quantization import quantize_dynamic
 
+from espnet2.bin.asr_inference import Speech2Text
 from .models import (
     Encoder,
     Decoder,
     CTC,
     LanguageModel
 )
-# from .asr_models import Decoder
-# from .asr_models import CTC
-# from .lm.lm import SequentialRNNLM as onnxSeqRNNLM
-# from .lm.lm import TransformerLM as onnxTransformerLM
-# from .get_config import get_encoder_config
-# from .get_config import get_decoder_config
-# from .get_config import get_transducer_config
-# from .get_config import get_lm_config
-from .get_config import get_ngram_config
-from .get_config import get_beam_config
-from .get_config import get_token_config
-from .get_config import get_tokenizer_config
-# from espnet_onnx.utils.function import make_pad_mask
-# from espnet_onnx.utils.function import subsequent_mask
-from espnet_onnx.utils.config import save_config
-from espnet_onnx.utils.config import update_model_path
+from .get_config import (
+    get_ngram_config,
+    get_beam_config,
+    get_token_config,
+    get_tokenizer_config
+)
+from espnet_onnx.utils.config import (
+    save_config,
+    update_model_path
+)
 
 
 class ModelExport:
     def __init__(self, cache_dir: Union[Path, str] = None):
+        assert check_argument_types()
         if cache_dir is None:
             cache_dir = Path.home() / ".cache" / "espnet_onnx"
         
@@ -72,14 +59,17 @@ class ModelExport:
         self._export_encoder(enc_model, export_dir)
         model_config.update(encoder=enc_model.get_model_config(model.asr_model, export_dir))
         
+        # export decoder
         dec_model = Decoder(model.asr_model.decoder)
         self._export_decoder(dec_model, enc_out_size, export_dir)
         model_config.update(decoder=dec_model.get_model_config(export_dir))
         
+        # export ctc
         ctc_model = CTC(model.asr_model.ctc.ctc_lo)
         self._export_ctc(ctc_model, enc_out_size, export_dir)
         model_config.update(ctc=ctc_model.get_model_config(export_dir))
         
+        # export lm
         if 'lm' in model.beam_search.full_scorers.keys():
             lm_model = LanguageModel(model.beam_search.full_scorers['lm'])
             self._export_lm(lm_model, enc_out_size, export_dir)
@@ -87,16 +77,14 @@ class ModelExport:
         else:
             model_config.update(lm=dict(use_lm=False))
 
-        config_name = base_dir / 'config.yaml'
-        
         if quantize:
             quantize_dir = base_dir / 'quantize'
             quantize_dir.mkdir(exist_ok=True)
-            
             qt_config = self._quantize_model(export_dir, quantize_dir)
             for m in qt_config.keys():
                 model_config[m].update(quantized_model_path=qt_config[m])
         
+        config_name = base_dir / 'config.yaml'
         save_config(model_config, config_name)
         update_model_path(model_name, base_dir)
 

@@ -6,6 +6,7 @@ import torch.nn as nn
 from espnet2.asr.decoder.rnn_decoder import RNNDecoder
 from espnet2.asr.decoder.transformer_decoder import TransformerDecoder
 from espnet2.asr.transducer.transducer_decoder import TransducerDecoder
+
 from espnet_onnx.utils.function import subsequent_mask
 from .language_models.lm import Embedding
 from .abs_model import AbsModel
@@ -30,7 +31,7 @@ class Decoder(nn.Module, AbsModel):
         y = self.model.after_norm(x[:, -1])
         y = torch.log_softmax(self.model.output_layer(y), dim=-1)
         return y, new_cache
-    
+
     def get_dummy_inputs(self, enc_size):
         tgt = torch.LongTensor([0, 1]).unsqueeze(0)
         tgt_mask = torch.from_numpy(subsequent_mask(2)[None, :])
@@ -43,11 +44,11 @@ class Decoder(nn.Module, AbsModel):
 
     def get_input_names(self):
         return ['tgt', 'tgt_mask', 'memory'] \
-        + ['cache_%d' % i for i in range(len(self.model.decoders))]
+            + ['cache_%d' % i for i in range(len(self.model.decoders))]
 
     def get_output_names(self):
         return ['y'] \
-        + ['out_cache_%d' % i for i in range(len(self.model.decoders))]
+            + ['out_cache_%d' % i for i in range(len(self.model.decoders))]
 
     def get_dynamic_axes(self):
         ret = {
@@ -97,5 +98,3 @@ class Decoder(nn.Module, AbsModel):
             #     "odim": decoder_odim
             # }
             raise ValueError('TransducerDecoder is currently not supported')
-            
-

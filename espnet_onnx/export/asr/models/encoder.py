@@ -1,8 +1,8 @@
 import os
 
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
 
 from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling
 from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling2
@@ -41,7 +41,7 @@ class Encoder(nn.Module, AbsModel):
 
         olens = masks.squeeze(1).sum(1)
         return xs_pad, olens, None
-    
+
     def get_dummy_inputs(self):
         feats = torch.randn(1, 100, 80)
         mask = torch.from_numpy(make_pad_mask(
@@ -108,5 +108,5 @@ class Encoder(nn.Module, AbsModel):
             "norm_means": normalize.norm_means,
             "norm_vars": normalize.norm_vars,
             "eps": normalize.eps,
-            "stats_file": str(path / 'feats_stats.npz')
+            "stats_file": str(path.parent / 'feats_stats.npz')
         }

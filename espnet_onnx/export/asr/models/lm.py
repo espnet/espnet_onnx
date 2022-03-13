@@ -1,12 +1,9 @@
-import os
-
 import torch
 import torch.nn as nn
 
 from espnet2.lm.seq_rnn_lm import SequentialRNNLM as espnetSequentialRNNLM
 from espnet2.lm.transformer_lm import TransformerLM as espnetTransformerLM
 
-from espnet_onnx.utils.function import make_pad_mask
 from .language_models.lm import (
     SequentialRNNLM,
     TransformerLM
@@ -19,13 +16,13 @@ class LanguageModel(nn.Module, AbsModel):
         super().__init__()
         if isinstance(model, espnetSequentialRNNLM):
             self.model = SequentialRNNLM(model)
-            
+
         elif isinstance(model, espnetTransformerLM):
             self.model = TransformerLM(model)
 
     def forward(self, *args, **kwargs):
         return self.model.forward(*args, **kwargs)
-    
+
     def get_dummy_inputs(self, *args, **kwargs):
         return self.model.get_dummy_inputs(*args, **kwargs)
 
