@@ -1,3 +1,5 @@
+import os
+
 import torch
 import torch.nn as nn
 
@@ -11,6 +13,9 @@ from espnet.nets.pytorch_backend.transformer.embedding import (
     RelPositionalEncoding,  # noqa: H301
     LegacyRelPositionalEncoding,  # noqa: H301
 )
+
+from espnet_onnx.utils.function import subsequent_mask
+from ..abs_model import AbsModel
 from .embed import (
     OnnxPositionalEncoding,
     OnnxScaledPositionalEncoding,
@@ -65,13 +70,15 @@ class Embedding(nn.Module):
                 return xs, mask[:, :, :-2:2][:, :, :-2:2][:, :, :-2:2]
 
 
-class SequentialRNNLM(nn.Module):
+class SequentialRNNLM(nn.Module, AbsModel):
     def __init__(self, model):
         super().__init__()
         self.encoder = model.encoder
         self.rnn = model.rnn
         self.rnn_type = model.rnn_type
         self.decoder = model.decoder
+        self.nlayers = model.nlayers
+        self.nhid = model.nhid
 
     def forward(self, y, hidden1, hidden2=None):
         # batch_score function.
@@ -95,6 +102,63 @@ class SequentialRNNLM(nn.Module):
                 decoded.view(output.size(0), output.size(1), decoded.size(1)),
                 hidden1
             )
+    
+    def get_dummy_inputs(self, enc_size):
+        tgt = torch.LongTensor([0, 1]).unsqueeze(0)
+        hidden = torch.randn(self.nlayers, 1, self.nhid)
+        if self.rnn_type == 'LSTM':
+            return (tgt, hidden, hidden)
+        else:
+            return (tgt, hidden)
+    
+    def get_input_names(self):
+        if self.rnn_type == 'LSTM':
+            return ['x', 'hidden1', 'hidden2']
+        else:
+            return ['x', 'hidden1']
+
+    def get_output_names(self):
+        if self.rnn_type == 'LSTM':
+            return ['y', 'out_hidden1', 'out_hidden2']
+        else:
+            return ['y', 'out_hidden1']
+
+    def get_dynamix_axes(self):
+        ret = {
+            'x': {
+                0: 'x_batch',
+                1: 'x_length'
+            },
+            'y': {
+                0: 'y_batch'
+            },
+            'in_hidden1': {
+                1: 'hidden1_batch'
+            },
+            'out_hidden1': {
+                1: 'out_hidden1_batch'
+            }
+        }
+        if self.rnn_type == 'LSTM':
+            ret.update({
+                'in_hidden2': {
+                    1: 'hidden2_batch'
+                },
+                'out_hidden2': {
+                    1: 'out_hidden2_batch'
+                }
+            })
+        return ret
+    
+    def get_model_config(self, path):
+        return {
+            "use_lm": True,
+            "model_path": os.path.join(path, "lm.onnx"),
+            "lm_type": "SequentialRNNLM",
+            "rnn_type": self.rnn_type,
+            "nhid": self.nhid,
+            "nlayers": self.nlayers
+        }
 
 
 class TransformerLM(nn.Module):
@@ -122,3 +186,60 @@ class TransformerLM(nn.Module):
 
         h = self.decoder(xs[:, -1])
         return h, new_cache
+
+    def get_dummy_inputs(self, enc_size):
+        tgt = torch.LongTensor([0, sos_token]).unsqueeze(0)
+        ys_mask = tgt != 0
+        m = torch.from_numpy(subsequent_mask(ys_mask.shape[-1])[None, :])
+        mask = ys_mask[None, :] * m
+        cache = [
+            torch.zeros((1, 1, enc_size))
+            for _ in range(len(self.encoder.encoders))
+        ]
+        return (tgt, mask, cache)
+    
+    def get_input_names(self):
+        return ['tgt', 'tgt_mask'] \
+        + ['cache_%d' % i for i in range(len(self.encoder.encoders))]
+    
+    def get_output_names(self):
+        return ['y'] \
+        + ['out_cache_%d' % i for i in range(len(self.encoder.encoders))]
+        
+    def get_dynamix_axes(self):
+        ret = {
+            'tgt': {
+                0: 'tgt_batch',
+                1: 'tgt_length'
+            },
+            'tgt_mask': {
+                0: 'tgt_mask_batch',
+                1: 'tgt_mask_length',
+                2: 'tgt_mask_height'
+            }
+        }
+        ret.update({
+            'cache_%d' % d: {
+                0: 'cache_%d_batch' % d,
+                1: 'cache_%d_length' % d
+            }
+            for d in range(len(self.encoder.encoders))
+        })
+        ret.update({
+            'out_cache_%d' % d: {
+                0: 'out_cache_%d_batch' % d,
+                1: 'out_cache_%d_length' % d
+            }
+            for d in range(len(self.encoder.encoders))
+        })
+        return ret
+    
+    def get_model_config(self, path):
+        return {
+            "use_lm": True,
+            "model_path": os.path.join(path, "lm.onnx"),
+            "lm_type": "TransformerLM",
+            "odim": self.encoder.encoders[0].size,
+            "nlayers": len(self.encoder.encoders)
+        }
+    

@@ -39,7 +39,7 @@ def get_gmvn_config(model, path):
         "norm_means": model.norm_means,
         "norm_vars": model.norm_vars,
         "eps": model.eps,
-        "stats_file": str(path / 'feats_stats.npz')
+        "stats_file": str(path.parent / 'feats_stats.npz')
     }
 
 
