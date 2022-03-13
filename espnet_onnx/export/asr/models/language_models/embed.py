@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
 # Copyright 2019 Shigeki Karita
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
-
+# Modified by Masao-Someki
 """Positional Encoding Module."""
 
 import math
@@ -66,7 +65,8 @@ class OnnxPositionalEncoding(torch.nn.Module):
                 x.size(1) - 1, -1, -1.0, dtype=torch.float32
             ).unsqueeze(1)
         else:
-            position = torch.arange(0, x.size(1), dtype=torch.float32).unsqueeze(1)
+            position = torch.arange(
+                0, x.size(1), dtype=torch.float32).unsqueeze(1)
         div_term = torch.exp(
             torch.arange(0, self.d_model, 2, dtype=torch.float32)
             * -(math.log(10000.0) / self.d_model)
@@ -137,6 +137,7 @@ class OnnxLegacyRelPositionalEncoding(OnnxPositionalEncoding):
         max_len (int): Maximum input length.
 
     """
+
     def __init__(self, model, max_len=512):
         """Initialize class."""
         super().__init__(
@@ -227,7 +228,7 @@ class OnnxRelPositionalEncoding(torch.nn.Module):
         x = x * self.xscale
         pos_emb = self.pe[
             :,
-            self.pe.size(1) // 2 - x.size(1) + 1 : self.pe.size(1) // 2 + x.size(1),
+            self.pe.size(1) // 2 - x.size(1) + 1: self.pe.size(1) // 2 + x.size(1),
         ]
         return x, pos_emb
 
