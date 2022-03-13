@@ -113,9 +113,9 @@ class SequentialRNNLM(nn.Module, AbsModel):
     
     def get_input_names(self):
         if self.rnn_type == 'LSTM':
-            return ['x', 'hidden1', 'hidden2']
+            return ['x', 'in_hidden1', 'in_hidden2']
         else:
-            return ['x', 'hidden1']
+            return ['x', 'in_hidden1']
 
     def get_output_names(self):
         if self.rnn_type == 'LSTM':
