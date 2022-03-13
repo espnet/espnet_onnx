@@ -1,6 +1,6 @@
 # espnet_onnx
-**ESPNet without PyTorch!**
-Users can easily export espnet models to onnx format.
+**ESPNet without PyTorch!**  
+Users can easily export espnet models to onnx format.  
 There is no need to install PyTorch or ESPNet on your machine if you already have exported files!
 
 **Note**: This repository is not registered on pypi yet, so please clone and place the scripts in some directory.
@@ -134,13 +134,13 @@ And I removed `extend_pe()` from positional encoding module. The length of `pe` 
 
 
 
-**pre encoder**
+**pre encoder**  
 not supported.
 
-**post encoder**
+**post encoder**  
 not supported.
 
-**transducer**
+**transducer**  
 not supported.
 
 
