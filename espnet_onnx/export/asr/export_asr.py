@@ -38,12 +38,12 @@ class ModelExport:
 
         self.cache_dir = cache_dir
 
-    def export(self, model: Speech2Text, model_name: str = None, quantize: bool = False):
+    def export(self, model: Speech2Text, tag_name: str = None, quantize: bool = False):
         assert check_argument_types()
-        if model_name is None:
-            model_name = datetime.now().strftime("%Y%m%d_%H%M%S")
+        if tag_name is None:
+            tag_name = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-        base_dir = self.cache_dir / model_name
+        base_dir = self.cache_dir / tag_name
         export_dir = base_dir / 'full'
         export_dir.mkdir(parents=True, exist_ok=True)
 
@@ -87,7 +87,7 @@ class ModelExport:
 
         config_name = base_dir / 'config.yaml'
         save_config(model_config, config_name)
-        update_model_path(model_name, base_dir)
+        update_model_path(tag_name, base_dir)
 
     def export_from_pretrained(self, tag_name: str, quantize: bool = False):
         assert check_argument_types()
