@@ -1,20 +1,9 @@
 # espnet_onnx
 **ESPNet without PyTorch!**
-
 Users can easily export espnet models to onnx format.
-
 There is no need to install PyTorch or ESPNet on your machine if you already have exported files!
 
-**Note**: This repository is not registered to pypi yet, so please clone and place scripts in some directory.
-
-
-
-## Table of Contents
-
-- Usage
-- API Reference
-- Modification from ESPNet
-- Supported archs
+**Note**: This repository is not registered on pypi yet, so please clone and place the scripts in some directory.
 
 
 
@@ -72,9 +61,8 @@ nbest = speech2text(y)
 **args**
 
 - `tag_name` : `tag_name` defined in `table.csv` in `espnet_model_zoo`.
-
-  If a user set a custom `model_name` when export model with `export()`, then `tag_name` should be `model_name`. The `tag_name` should be defined in `tag_config.yaml`, which will be created when exporting model.
-
+If a user set a custom `model_name` when export model with `export()`, then `tag_name` should be `model_name`. The `tag_name` should be defined in `tag_config.yaml`, which will be created when exporting model.
+  
 - `model_dir`: Path to the model directory. Configuration file should be located in `<model_dir>/config.yaml`
 
 - `use_quantized`: Flag to use quantized model.
@@ -95,15 +83,13 @@ nbest = speech2text(y)
 
 
 
-## Modification from ESPNet
+## Changes from ESPNet
 
 To avoid the cache problem, I modified some scripts from the original espnet implementation.
 
 1. Add `<blank>` before `<sos>`
 2. Give some `torch.zeros()` arrays to the model.
 3. Remove the first token in post process. (remove `blank`)
-
-
 
 And I removed `extend_pe()` from positional encoding module. The length of `pe` is 512 by default. 
 
@@ -149,19 +135,12 @@ And I removed `extend_pe()` from positional encoding module. The length of `pe` 
 
 
 **pre encoder**
-
 not supported.
-
-
 
 **post encoder**
-
 not supported.
 
-
-
 **transducer**
-
 not supported.
 
 
@@ -173,9 +152,16 @@ not supported.
 
 
 
+## COPYRIGHT
+
+Copyright (c) 2022 Maso Someki
+
+Released under [MIT licence](https://opensource.org/licenses/mit-license.php)
+
+
+
 ## Author
 
 Masao Someki
 
 contact: `masao.someki@gmail.com`
-
