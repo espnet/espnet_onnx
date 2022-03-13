@@ -132,3 +132,4 @@ dmypy.json
 *.wav
 *.mp3
 *.onnx
+tag_config.yaml
