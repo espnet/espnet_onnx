@@ -5,6 +5,7 @@ import numpy as np
 
 from espnet_onnx.asr.frontend.frontend import Frontend
 from espnet_onnx.asr.frontend.global_mvn import GlobalMVN
+from espnet_onnx.asr.frontend.utterance_mvn import UtteranceMVN
 from espnet_onnx.asr.scorer.interface import BatchScorerInterface
 from espnet_onnx.utils.function import (
     subsequent_mask,
@@ -29,7 +30,10 @@ class Encoder:
 
         self.frontend = Frontend(self.config.frontend)
         if self.config.do_normalize:
-            self.normalize = GlobalMVN(self.config.gmvn)
+            if self.config.normalize.type == 'gmvn':
+                self.normalize = GlobalMVN(self.config.normalize)
+            elif self.config.normalize.type == 'utterance_mvn':
+                self.normalize = UtteranceMVN(self.config.normalize)
 
         # if self.config.do_preencoder:
         #     self.preencoder = Preencoder(self.config.preencoder)
