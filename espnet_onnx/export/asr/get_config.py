@@ -31,13 +31,14 @@ def get_token_config(model):
     }
 
 
-def get_tokenizer_config(model):
+def get_tokenizer_config(model, path):
     if model is None:
         return {}
     elif isinstance(model, SentencepiecesTokenizer):
+        model_name = os.path.basename(model.model)
         return {
             "token_type": "bpe",
-            "bpemodel": model.model
+            "bpemodel": str(path.parent / model_name)
         }
     elif isinstance(model, WordTokenizer):
         return {
