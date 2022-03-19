@@ -73,7 +73,7 @@ class ModelExport:
         # export lm
         if 'lm' in model.beam_search.full_scorers.keys():
             lm_model = LanguageModel(model.beam_search.full_scorers['lm'])
-            self._export_lm(lm_model, enc_out_size, export_dir)
+            self._export_lm(lm_model, export_dir)
             model_config.update(lm=lm_model.get_model_config(export_dir))
         else:
             model_config.update(lm=dict(use_lm=False))
@@ -150,12 +150,12 @@ class ModelExport:
             dynamic_axes=ctc_model.get_dynamic_axes()
         )
 
-    def _export_lm(self, lm_model, enc_size, path):
+    def _export_lm(self, lm_model, path):
         file_name = os.path.join(path, 'lm.onnx')
         # export encoder
         torch.onnx.export(
             lm_model,
-            lm_model.get_dummy_inputs(enc_size),
+            lm_model.get_dummy_inputs(),
             file_name,
             verbose=True,
             opset_version=11,
