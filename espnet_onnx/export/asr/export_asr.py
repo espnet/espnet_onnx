@@ -44,7 +44,7 @@ class ModelExport:
         if tag_name is None:
             tag_name = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-        base_dir = self.cache_dir / tag_name
+        base_dir = self.cache_dir / tag_name.replace(' ', '-')
         export_dir = base_dir / 'full'
         export_dir.mkdir(parents=True, exist_ok=True)
 
@@ -92,7 +92,7 @@ class ModelExport:
     def export_from_pretrained(self, tag_name: str, quantize: bool = False):
         assert check_argument_types()
         model = Speech2Text.from_pretrained(tag_name)
-        self.export(model, tag_name.replace(' ', '-'), quantize)
+        self.export(model, tag_name, quantize)
 
     def _create_config(self, model, path):
         ret = {}
@@ -166,7 +166,8 @@ class ModelExport:
 
     def _copy_files(self, model, path):
         # copy stats file
-        if model.asr_model.normalize is not None:
+        if model.asr_model.normalize is not None \
+            and hasattr(model.asr_model.normalize, 'stats_file'):
             stats_file = model.asr_model.normalize.stats_file
             shutil.copy(stats_file, path)
         
