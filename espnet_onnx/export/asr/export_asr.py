@@ -14,7 +14,7 @@ from onnxruntime.quantization import quantize_dynamic
 from espnet2.bin.asr_inference import Speech2Text
 from espnet2.text.sentencepiece_tokenizer import SentencepiecesTokenizer
 from .models import (
-    Encoder,
+    get_encoder,
     Decoder,
     CTC,
     LanguageModel
@@ -54,8 +54,8 @@ class ModelExport:
         model_config = self._create_config(model, export_dir)
 
         # export encoder
-        enc_model = Encoder(model.asr_model.encoder)
-        enc_out_size = model.asr_model.encoder.encoders[0].size
+        enc_model = get_encoder(model.asr_model.encoder)
+        enc_out_size = enc_model.get_output_size()
         self._export_encoder(enc_model, export_dir)
         model_config.update(encoder=enc_model.get_model_config(
             model.asr_model, export_dir))
