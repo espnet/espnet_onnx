@@ -105,7 +105,7 @@ And I removed `extend_pe()` from positional encoding module. The length of `pe` 
 | ContextualBlockConformerEncoder   | not tested |
 | ContextualBlockTransformerEncoder | not tested |
 | FairseqHubertEncoder              | not tested |
-| RNNEncoder                        | ×          |
+| RNNEncoder                        | ◯         |
 | TransformerEncoder                | ◯          |
 | VGGRNNEncoder                     | not tested |
 | FairSeqWav2Vec2Encoder            | not tested |
