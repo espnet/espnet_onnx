@@ -10,7 +10,6 @@ from espnet_onnx.utils.function import (
     mask_fill
 )
 from espnet_onnx.utils.config import Config
-from .window import get_window
 
 
 class Stft:
@@ -35,19 +34,12 @@ class Stft:
             output: (Batch, Frames, Freq, 2)
         """
         assert check_argument_types()
-        window = get_window(self.config.window, self.config.win_length)
         stft_kwargs = dict(
             n_fft=self.config.n_fft,
             win_length=self.config.win_length,
             hop_length=self.config.hop_length,
             center=self.config.center,
-            window=window,
-        )
-        # pad the given window to n_fft
-        n_pad_left = (self.config.n_fft - window.shape[0]) // 2
-        n_pad_right = self.config.n_fft - window.shape[0] - n_pad_left
-        stft_kwargs["window"] = np.hstack(
-            [np.zeros(n_pad_left), window, np.zeros(n_pad_right)]
+            window=self.config.window,
         )
         output = []
         # iterate over istances in a batch

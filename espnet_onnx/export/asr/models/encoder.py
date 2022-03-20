@@ -9,6 +9,8 @@ from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsamplin
 from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling6
 from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling8
 from espnet2.asr.frontend.default import DefaultFrontend
+from espnet2.layers.global_mvn import GlobalMVN
+from espnet2.layers.utterance_mvn import UtteranceMVN
 
 from espnet_onnx.utils.function import make_pad_mask
 from .language_models.lm import Embedding
@@ -74,7 +76,7 @@ class Encoder(nn.Module, AbsModel):
             do_postencoder=asr_model.postencoder is not None
         )
         if ret['do_normalize']:
-            ret.update(gmvn=self.get_gmvn_config(asr_model.normalize, path))
+            ret.update(normalize=self.get_norm_config(asr_model.normalize, path))
         # Currently preencoder, postencoder is not supported.
         # if ret['do_preencoder']:
         #     ret.update(preencoder=get_preenc_config(self.model.preencoder))
@@ -103,10 +105,19 @@ class Encoder(nn.Module, AbsModel):
             "logmel": logmel_config
         }
 
-    def get_gmvn_config(self, normalize, path):
-        return {
-            "norm_means": normalize.norm_means,
-            "norm_vars": normalize.norm_vars,
-            "eps": normalize.eps,
-            "stats_file": str(path.parent / 'feats_stats.npz')
-        }
+    def get_norm_config(self, normalize, path):
+        if isinstance(normalize, GlobalMVN):
+            return {
+                "type":"gmvn",
+                "norm_means": normalize.norm_means,
+                "norm_vars": normalize.norm_vars,
+                "eps": normalize.eps,
+                "stats_file": str(path.parent / 'feats_stats.npz')
+            }
+        elif isinstance(normalize, UtteranceMVN):
+            return {
+                "type": "utterance_mvn",
+                "norm_means": normalize.norm_means,
+                "norm_vars": normalize.norm_vars,
+                "eps": normalize.eps,
+            }

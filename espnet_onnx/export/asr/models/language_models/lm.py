@@ -103,7 +103,7 @@ class SequentialRNNLM(nn.Module, AbsModel):
                 hidden1
             )
     
-    def get_dummy_inputs(self, enc_size):
+    def get_dummy_inputs(self):
         tgt = torch.LongTensor([0, 1]).unsqueeze(0)
         hidden = torch.randn(self.nlayers, 1, self.nhid)
         if self.rnn_type == 'LSTM':
@@ -187,13 +187,13 @@ class TransformerLM(nn.Module):
         h = self.decoder(xs[:, -1])
         return h, new_cache
 
-    def get_dummy_inputs(self, enc_size):
-        tgt = torch.LongTensor([0, sos_token]).unsqueeze(0)
+    def get_dummy_inputs(self):
+        tgt = torch.LongTensor([0, 1]).unsqueeze(0)
         ys_mask = tgt != 0
         m = torch.from_numpy(subsequent_mask(ys_mask.shape[-1])[None, :])
         mask = ys_mask[None, :] * m
         cache = [
-            torch.zeros((1, 1, enc_size))
+            torch.zeros((1, 1, self.encoder.encoders[0].size))
             for _ in range(len(self.encoder.encoders))
         ]
         return (tgt, mask, cache)

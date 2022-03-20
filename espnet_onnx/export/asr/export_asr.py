@@ -12,6 +12,7 @@ import torch
 from onnxruntime.quantization import quantize_dynamic
 
 from espnet2.bin.asr_inference import Speech2Text
+from espnet2.text.sentencepiece_tokenizer import SentencepiecesTokenizer
 from .models import (
     Encoder,
     Decoder,
@@ -43,13 +44,12 @@ class ModelExport:
         if tag_name is None:
             tag_name = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-        base_dir = self.cache_dir / tag_name
+        base_dir = self.cache_dir / tag_name.replace(' ', '-')
         export_dir = base_dir / 'full'
         export_dir.mkdir(parents=True, exist_ok=True)
 
-        # copy stats file
-        if model.asr_model.normalize is not None:
-            self._copy_stats(model.asr_model.normalize, base_dir)
+        # copy model files
+        self._copy_files(model, base_dir)
 
         model_config = self._create_config(model, export_dir)
 
@@ -73,7 +73,7 @@ class ModelExport:
         # export lm
         if 'lm' in model.beam_search.full_scorers.keys():
             lm_model = LanguageModel(model.beam_search.full_scorers['lm'])
-            self._export_lm(lm_model, enc_out_size, export_dir)
+            self._export_lm(lm_model, export_dir)
             model_config.update(lm=lm_model.get_model_config(export_dir))
         else:
             model_config.update(lm=dict(use_lm=False))
@@ -92,7 +92,7 @@ class ModelExport:
     def export_from_pretrained(self, tag_name: str, quantize: bool = False):
         assert check_argument_types()
         model = Speech2Text.from_pretrained(tag_name)
-        self.export(model, tag_name.replace(' ', '-'), quantize)
+        self.export(model, tag_name, quantize)
 
     def _create_config(self, model, path):
         ret = {}
@@ -108,7 +108,7 @@ class ModelExport:
         ret.update(beam_search=get_beam_config(
             model.beam_search, model.minlenratio, model.maxlenratio))
         ret.update(token=get_token_config(model.asr_model))
-        ret.update(tokenizer=get_tokenizer_config(model.tokenizer))
+        ret.update(tokenizer=get_tokenizer_config(model.tokenizer, path))
         return ret
 
     def _export_encoder(self, model, path):
@@ -150,12 +150,12 @@ class ModelExport:
             dynamic_axes=ctc_model.get_dynamic_axes()
         )
 
-    def _export_lm(self, lm_model, enc_size, path):
+    def _export_lm(self, lm_model, path):
         file_name = os.path.join(path, 'lm.onnx')
         # export encoder
         torch.onnx.export(
             lm_model,
-            lm_model.get_dummy_inputs(enc_size),
+            lm_model.get_dummy_inputs(),
             file_name,
             verbose=True,
             opset_version=11,
@@ -164,9 +164,17 @@ class ModelExport:
             dynamic_axes=lm_model.get_dynamic_axes()
         )
 
-    def _copy_stats(self, model, path):
-        stats_file = model.stats_file
-        shutil.copyfile(stats_file, path / 'feats_stats.npz')
+    def _copy_files(self, model, path):
+        # copy stats file
+        if model.asr_model.normalize is not None \
+            and hasattr(model.asr_model.normalize, 'stats_file'):
+            stats_file = model.asr_model.normalize.stats_file
+            shutil.copy(stats_file, path)
+        
+        # copy bpemodel
+        if isinstance(model.tokenizer, SentencepiecesTokenizer):
+            bpemodel_file = model.tokenizer.model
+            shutil.copy(bpemodel_file, path)
 
     def _quantize_model(self, model_from, model_to):
         ret = {}
