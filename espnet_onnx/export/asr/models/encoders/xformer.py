@@ -13,14 +13,14 @@ from espnet2.layers.global_mvn import GlobalMVN
 from espnet2.layers.utterance_mvn import UtteranceMVN
 
 from espnet_onnx.utils.function import make_pad_mask
-from .language_models.lm import Embedding
-from .abs_model import AbsModel
+from ..language_models.lm import Embedding
+from ..abs_model import AbsModel
 
 
-class Encoder(nn.Module, AbsModel):
+class XformerEncoder(nn.Module, AbsModel):
     def __init__(self, model):
         super().__init__()
-        self.embed = Embedding(model.embed)
+        self.embed = model.embed
         self.model = model
 
     def forward(self, speech, mask):
@@ -43,6 +43,9 @@ class Encoder(nn.Module, AbsModel):
 
         olens = masks.squeeze(1).sum(1)
         return xs_pad, olens, None
+
+    def get_output_size(self):
+        return self.model.encoders[0].size
 
     def get_dummy_inputs(self):
         feats = torch.randn(1, 100, 80)
@@ -69,6 +72,7 @@ class Encoder(nn.Module, AbsModel):
     def get_model_config(self, asr_model=None, path=None):
         ret = {}
         ret.update(
+            enc_type='XformerEncoder',
             model_path=os.path.join(path, 'encoder.onnx'),
             frontend=self.get_frontend_config(asr_model.frontend),
             do_normalize=asr_model.normalize is not None,
@@ -76,7 +80,8 @@ class Encoder(nn.Module, AbsModel):
             do_postencoder=asr_model.postencoder is not None
         )
         if ret['do_normalize']:
-            ret.update(normalize=self.get_norm_config(asr_model.normalize, path))
+            ret.update(normalize=self.get_norm_config(
+                asr_model.normalize, path))
         # Currently preencoder, postencoder is not supported.
         # if ret['do_preencoder']:
         #     ret.update(preencoder=get_preenc_config(self.model.preencoder))
@@ -108,7 +113,7 @@ class Encoder(nn.Module, AbsModel):
     def get_norm_config(self, normalize, path):
         if isinstance(normalize, GlobalMVN):
             return {
-                "type":"gmvn",
+                "type": "gmvn",
                 "norm_means": normalize.norm_means,
                 "norm_vars": normalize.norm_vars,
                 "eps": normalize.eps,

@@ -61,6 +61,11 @@ class Config(object):
             for j, k in dic.items():
                 if isinstance(k, dict):
                     setattr(self, j, Config(k))
+                elif isinstance(k, list):
+                    if isinstance(k[0], dict):
+                        setattr(self, j, [Config(el) for el in k])
+                    else:
+                        setattr(self, j, k)
                 else:
                     if k is not None:
                         setattr(self, j, k)

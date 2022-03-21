@@ -1,15 +1,18 @@
-
 import numpy as np
 
 
 def subsequent_mask(size):
     """Create mask for subsequent steps (size, size).
     Modified from the original mask function to apply for fix-length mask.
-    :param int size: size of mask
-    >>> subsequent_mask(3)
-    [[1, 0, 0],
-     [1, 1, 0],
-     [1, 1, 1]]
+    
+    Args:
+        size(int) : size of mask
+    
+    Examples:
+        >>> subsequent_mask(3)
+        [[1, 0, 0],
+        [1, 1, 0],
+        [1, 1, 1]]
     """
     return np.tril(np.ones((size, size)))
 
@@ -25,13 +28,13 @@ def mask_fill(arr, mask, mask_value):
     Returns:
         np.ndarray: Masked array
     """
-    # assert arr.shape == mask.shape, f'array shape ${arr.shape} must match the mask shape ${mask.shape}.'
     arr[mask.astype(np.bool) == True] = mask_value
     return arr
 
 
 def make_pad_mask(lengths, xs=None, dim=-1, xs_shape=None):
     """Make mask tensor containing indices of padded part.
+    
     Args:
         lengths (np.ndarray or List): Batch of lengths (B,).
         xs (np.ndarray, optional): The reference tensor.
@@ -49,6 +52,7 @@ def make_pad_mask(lengths, xs=None, dim=-1, xs_shape=None):
         masks = [[0, 0, 0, 0 ,0],
                  [0, 0, 0, 1, 1],
                  [0, 0, 1, 1, 1]]
+                 
         With the reference tensor.
         >>> xs = np.zeros((3, 2, 4))
         >>> make_pad_mask(lengths, xs)
@@ -58,6 +62,7 @@ def make_pad_mask(lengths, xs=None, dim=-1, xs_shape=None):
                  [0, 0, 0, 1]],
                 [[0, 0, 1, 1],
                  [0, 0, 1, 1]]])
+                 
         >>> xs = np.zeros((3, 2, 6))
         >>> make_pad_mask(lengths, xs)
         array([[[0, 0, 0, 0, 0, 1],
@@ -66,6 +71,7 @@ def make_pad_mask(lengths, xs=None, dim=-1, xs_shape=None):
                  [0, 0, 0, 1, 1, 1]],
                 [[0, 0, 1, 1, 1, 1],
                  [0, 0, 1, 1, 1, 1]]])
+                 
         With the reference tensor and dimension indicator.
         >>> xs = np.zeros((3, 6, 6))
         >>> make_pad_mask(lengths, xs, 1)
@@ -87,6 +93,7 @@ def make_pad_mask(lengths, xs=None, dim=-1, xs_shape=None):
                  [1, 1, 1, 1, 1, 1],
                  [1, 1, 1, 1, 1, 1],
                  [1, 1, 1, 1, 1, 1]]])
+                 
         >>> make_pad_mask(lengths, xs, 2)
         array([[[0, 0, 0, 0, 0, 1],
                  [0, 0, 0, 0, 0, 1],
@@ -139,6 +146,7 @@ def topk(x: np.ndarray, k: int):
         >>> b = np.array([[3,6,2,7],
                           [6,2,4,8],
                           [1,1,7,3]])
+                          
         >>> topk(b, 2)
         array([[3,1],
                [3,0],
@@ -164,6 +172,7 @@ def pad_sequence(yseqs, batch_first=False, padding_value=0):
         >>> c = np.ones(15, 300)
         >>> pad_sequence([a, b, c]).size()
         (25, 3, 300)
+        
         >>> pad_sequence([a, b, c], batch_first=True).size()
         (3, 25, 300)
     """
@@ -183,9 +192,11 @@ def pad_sequence(yseqs, batch_first=False, padding_value=0):
 
 def is_prefix(x, pref) -> bool:
     """Check if pref is a prefix of x.
+    
     Args:
         x: Label ID sequence.
         pref: Prefix label ID sequence.
+        
     Returns:
         : Whether pref is a prefix of x.
     """
@@ -201,8 +212,10 @@ def is_prefix(x, pref) -> bool:
 
 def recombine_hyps(hyps):
     """Recombine hypotheses with same label ID sequence.
+    
     Args:
         hyps: Hypotheses.
+        
     Returns:
        final: Recombined hypotheses.
     """
@@ -232,12 +245,14 @@ def select_k_expansions(
     """Return K hypotheses candidates for expansion from a list of hypothesis.
     K candidates are selected according to the extended hypotheses probabilities
     and a prune-by-value method. Where K is equal to beam_size + beta.
+    
     Args:
         hyps: Hypotheses.
         beam_logp: Log-probabilities for hypotheses expansions.
         beam_size: Beam size.
         gamma: Allowed logp difference for prune-by-value method.
         beta: Number of additional candidates to store.
+        
     Return:
         k_expansions: Best K expansion hypotheses candidates.
     """
@@ -259,13 +274,13 @@ def select_k_expansions(
     return k_expansions
 
 
-def subtract(
-    x, subset
-):
+def subtract(x, subset):
     """Remove elements of subset if corresponding label ID sequence already exist in x.
+    
     Args:
         x: Set of hypotheses.
         subset: Subset of x.
+        
     Returns:
        final: New set of hypotheses.
     """

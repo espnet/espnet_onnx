@@ -14,8 +14,10 @@ from onnxruntime.quantization import quantize_dynamic
 from espnet2.bin.asr_inference import Speech2Text
 from espnet2.text.sentencepiece_tokenizer import SentencepiecesTokenizer
 from .models import (
-    Encoder,
-    Decoder,
+    get_encoder,
+    get_decoder,
+    RNNDecoder,
+    PreDecoder,
     CTC,
     LanguageModel
 )
@@ -54,14 +56,14 @@ class ModelExport:
         model_config = self._create_config(model, export_dir)
 
         # export encoder
-        enc_model = Encoder(model.asr_model.encoder)
-        enc_out_size = model.asr_model.encoder.encoders[0].size
+        enc_model = get_encoder(model.asr_model.encoder)
+        enc_out_size = enc_model.get_output_size()
         self._export_encoder(enc_model, export_dir)
         model_config.update(encoder=enc_model.get_model_config(
             model.asr_model, export_dir))
 
         # export decoder
-        dec_model = Decoder(model.asr_model.decoder)
+        dec_model = get_decoder(model.asr_model.decoder)
         self._export_decoder(dec_model, enc_out_size, export_dir)
         model_config.update(decoder=dec_model.get_model_config(export_dir))
 
@@ -83,7 +85,12 @@ class ModelExport:
             quantize_dir.mkdir(exist_ok=True)
             qt_config = self._quantize_model(export_dir, quantize_dir)
             for m in qt_config.keys():
-                model_config[m].update(quantized_model_path=qt_config[m])
+                if 'predecoder' in m:
+                    model_idx = int(m.split('_')[1])
+                    model_config['decoder']['predecoder'][model_idx].update(
+                        quantized_model_path=qt_config[m])
+                else:
+                    model_config[m].update(quantized_model_path=qt_config[m])
 
         config_name = base_dir / 'config.yaml'
         save_config(model_config, config_name)
@@ -136,6 +143,24 @@ class ModelExport:
             output_names=dec_model.get_output_names(),
             dynamic_axes=dec_model.get_dynamic_axes()
         )
+        # if decoder is RNNDecoder, then export predecoders
+        if isinstance(dec_model, RNNDecoder):
+            self._export_predecoder(dec_model, path)
+
+    def _export_predecoder(self, dec_model, path):
+        for i, att in enumerate(dec_model.model.att_list):
+            att_model = PreDecoder(att)
+            file_name = os.path.join(path, 'predecoder_%d.onnx' % i)
+            torch.onnx.export(
+                att_model,
+                att_model.get_dummy_inputs(),
+                file_name,
+                verbose=True,
+                opset_version=11,
+                input_names=att_model.get_input_names(),
+                output_names=att_model.get_output_names(),
+                dynamic_axes=att_model.get_dynamic_axes()
+            )
 
     def _export_ctc(self, ctc_model, enc_size, path):
         file_name = os.path.join(path, 'ctc.onnx')
@@ -167,10 +192,10 @@ class ModelExport:
     def _copy_files(self, model, path):
         # copy stats file
         if model.asr_model.normalize is not None \
-            and hasattr(model.asr_model.normalize, 'stats_file'):
+                and hasattr(model.asr_model.normalize, 'stats_file'):
             stats_file = model.asr_model.normalize.stats_file
             shutil.copy(stats_file, path)
-        
+
         # copy bpemodel
         if isinstance(model.tokenizer, SentencepiecesTokenizer):
             bpemodel_file = model.tokenizer.model

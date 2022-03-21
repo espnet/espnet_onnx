@@ -9,7 +9,8 @@ from espnet_onnx.asr.frontend.utterance_mvn import UtteranceMVN
 from espnet_onnx.asr.scorer.interface import BatchScorerInterface
 from espnet_onnx.utils.function import (
     subsequent_mask,
-    make_pad_mask
+    make_pad_mask,
+    mask_fill
 )
 from espnet_onnx.utils.config import Config
 
@@ -56,22 +57,37 @@ class Encoder:
         if self.config.do_normalize:
             feats, feat_length = self.normalize(feats, feat_length)
 
-        mask = (make_pad_mask(feat_length)[
-                :, None, :] == False).astype(np.float64)
-
         # if self.config.do_preencoder:
         #     feats, feats_lengths = self.preencoder(feats, feats_lengths)
 
         # 3. forward encoder
         encoder_out, encoder_out_lens = \
-            self.encoder.run(["encoder_out", "encoder_out_lens"], {
-                "feats": feats,
-                "mask": mask
-            })
+            self.forward_encoder(feats, feat_length)
 
         # if self.config.do_postencoder:
         #     encoder_out, encoder_out_lens = self.postencoder(
         #         encoder_out, encoder_out_lens
         #     )
 
+        return encoder_out, encoder_out_lens
+
+    def forward_encoder(self, feats, feat_length):
+        if self.config.enc_type == 'RNNEncoder':
+            encoder_out, encoder_out_lens = \
+                self.encoder.run(["encoder_out", "encoder_out_lens"], {
+                    "feats": feats,
+                    "feats_length": feat_length
+                })
+            encoder_out = mask_fill(encoder_out, make_pad_mask(
+                feat_length, encoder_out, 1), 0.0)
+
+        elif self.config.enc_type == 'XformerEncoder':
+            mask = (make_pad_mask(feat_length)[
+                :, None, :] == False).astype(np.float64)
+            # 3. forward encoder
+            encoder_out, encoder_out_lens = \
+                self.encoder.run(["encoder_out", "encoder_out_lens"], {
+                    "feats": feats,
+                    "mask": mask
+                })
         return encoder_out, encoder_out_lens
