@@ -42,7 +42,7 @@ class PreDecoder(nn.Module, AbsModel):
         return self.model(enc_h)
     
     def get_dummy_inputs(self):
-        di = torch.randn(100, self.model.in_features)
+        di = torch.randn(1, 100, self.model.in_features)
         return (di,)
     
     def get_input_names(self):
@@ -74,7 +74,6 @@ class onnxAttLoc(nn.Module):
     
     def forward(
         self,
-        enc_hs_pad,
         dec_z,
         att_prev,
         pre_compute_enc_h,
@@ -89,7 +88,8 @@ class onnxAttLoc(nn.Module):
         dec_z = dec_z.view(batch, self.dunits)
         # att_prev: utt x frame -> utt x 1 x 1 x frame
         # -> utt x att_conv_chans x 1 x frame
-        att_conv = self.model.loc_conv(att_prev.view(batch, 1, 1, -1))
+        frame_length = att_prev.size(1)
+        att_conv = self.model.loc_conv(att_prev.view(batch, 1, 1, frame_length))
         # att_conv: utt x att_conv_chans x 1 x frame -> utt x frame x att_conv_chans
         att_conv = att_conv.squeeze(2).transpose(1, 2)
         # att_conv: utt x frame x att_conv_chans -> utt x frame x att_dim
@@ -117,7 +117,7 @@ class onnxAttLoc(nn.Module):
 
         # weighted sum over flames
         # utt x hdim
-        c = torch.sum(enc_h * w.view(batch, -1, 1), dim=1)
+        c = torch.sum(enc_h * w.view(batch, frame_length, 1), dim=1)
 
         return c, w
 
@@ -128,6 +128,7 @@ class RNNDecoder(nn.Module, AbsModel):
         self.embed = model.embed
         self.model = model
         self.num_encs = model.num_encs
+        self.decoder_length = len(model.decoder)
         
         if not isinstance(self.model.att_list[0], AttLoc):
             raise ValueError('Currently only espnet.asr.pytorch_backend.rnn.attention.AttLoc is supported.')
@@ -136,12 +137,10 @@ class RNNDecoder(nn.Module, AbsModel):
         for a in model.att_list:
             self.att_list.append(onnxAttLoc(a))
 
-    def forward(self, vy, x, z_prev, a_prev, c_prev, z_list,
-            c_list, pre_compute_enc_h, enc_h, mask):
+    def forward(self, vy, x, z_prev, c_prev, a_prev, pre_compute_enc_h, enc_h, mask):
         ey = self.embed(vy)  # utt list (1) x zdim
         if self.num_encs == 1:
             att_c, att_w = self.att_list[0](
-                x[0].unsqueeze(0),
                 z_prev[0],
                 a_prev[0],
                 pre_compute_enc_h[0],
@@ -150,10 +149,8 @@ class RNNDecoder(nn.Module, AbsModel):
             )
         else:
             att_w = []
-            att_c_list = []
             for idx in range(self.num_encs):
                 _att_c_list, _att_w = self.att_list[idx](
-                    x[idx].unsqueeze(0),
                     z_prev[0],
                     a_prev[idx],
                     pre_compute_enc_h[idx],
@@ -161,11 +158,8 @@ class RNNDecoder(nn.Module, AbsModel):
                     mask[idx]
                 )
                 att_w.append(_att_w)
-                att_c_list.append(_att_c_list)
                 
-            h_han = torch.stack(att_c_list, dim=1)
             att_c, _att_w = self.att_list[self.num_encs](
-                h_han,
                 z_prev[0],
                 a_prev[self.num_encs],
                 pre_compute_enc_h[self.num_encs],
@@ -175,7 +169,7 @@ class RNNDecoder(nn.Module, AbsModel):
             att_w.append(_att_w)
         ey = torch.cat((ey, att_c), dim=1)  # utt(1) x (zdim + hdim)
         z_list, c_list = self.rnn_forward(
-            ey, z_list, c_list, z_prev, c_prev
+            ey, z_prev, c_prev
         )
         if self.model.context_residual:
             logits = self.model.output(
@@ -191,7 +185,7 @@ class RNNDecoder(nn.Module, AbsModel):
             att_w,
         )
     
-    def rnn_forward(self, ey, z_list, c_list, z_prev, c_prev):
+    def rnn_forward(self, ey, z_prev, c_prev):
         ret_z_list = []
         ret_c_list = []
         if self.model.dtype == "lstm":
@@ -200,7 +194,7 @@ class RNNDecoder(nn.Module, AbsModel):
             ret_c_list.append(_c_list)
             for i in range(1, self.model.dlayers):
                 _z_list, _c_list = self.model.decoder[i](
-                    z_list[i - 1],
+                    _z_list,
                     (z_prev[i], c_prev[i]),
                 )
                 ret_z_list.append(_z_list)
@@ -210,32 +204,32 @@ class RNNDecoder(nn.Module, AbsModel):
             ret_z_list.append(_z_list)
             for i in range(1, self.model.dlayers):
                 _z_list = self.model.decoder[i](
-                    z_list[i - 1], z_prev[i]
+                    _z_list, z_prev[i]
                 )
                 ret_z_list.append(_z_list)
-            ret_c_list = c_list
         return ret_z_list, ret_c_list
 
     def get_dummy_inputs(self, enc_size):
         feat_length = 50
         vy = torch.LongTensor([1])
         x = torch.randn(feat_length, enc_size)
-        z_prev = [torch.randn(1, self.model.dunits)]
+        z_prev = [torch.randn(1, self.model.dunits) for _ in range(self.decoder_length)]
         a_prev = [torch.randn(1, feat_length) for _ in range(self.num_encs)]
-        c_prev = [torch.randn(1, self.model.dunits)]
-        pre_compute_enc_h = [torch.randn(1, self.model.att_list[i].mlp_enc.out_features) for i in range(self.num_encs)]
-        enc_h = [torch.randn(1, enc_size) for _ in range(self.num_encs)]
+        c_prev = [torch.randn(1, self.model.dunits) for _ in range(self.decoder_length)]
+        pre_compute_enc_h = [torch.randn(1, feat_length, self.model.att_list[i].mlp_enc.out_features) for i in range(self.num_encs)]
+        enc_h = [torch.randn(1, feat_length, enc_size) for _ in range(self.num_encs)]
         _m = torch.from_numpy(np.where(make_pad_mask([feat_length])==1, -float('inf'), 0)).type(torch.float32)
         mask = [_m for _ in range(self.num_encs)]
         return (
-            vy, x, z_prev, a_prev, c_prev,
-            z_prev, c_prev, pre_compute_enc_h,
+            vy, x, z_prev, c_prev,
+            a_prev, pre_compute_enc_h,
             enc_h, mask
         )
 
     def get_input_names(self):
-        ret = ['vy', 'x', 'z_prev', 'c_prev',
-               'z_list', 'c_list']
+        ret = ['vy', 'x']
+        ret += ['z_prev_%d' % i for i in range(self.decoder_length)]
+        ret += ['c_prev_%d' % i for i in range(self.decoder_length)]
         ret += ['a_prev_%d' % i for i in range(self.num_encs)]
         ret += ['pceh_%d' % i for i in range(self.num_encs)]
         ret += ['enc_h_%d' % i for i in range(self.num_encs)]
@@ -243,7 +237,9 @@ class RNNDecoder(nn.Module, AbsModel):
         return ret
 
     def get_output_names(self):
-        ret = ['logp', 'c_list', 'z_list']
+        ret = ['logp']
+        ret += ['c_list_%d' % i for i in range(self.decoder_length)]
+        ret += ['z_list_%d' % i for i in range(self.decoder_length)]
         if self.num_encs == 1:
             ret += ['att_w']
         else:
@@ -260,6 +256,18 @@ class RNNDecoder(nn.Module, AbsModel):
         ret.update({
             'a_prev_%d' % d: {
                 1: 'a_prev_%d_length' % d,
+            }
+            for d in range(self.num_encs)
+        })
+        ret.update({
+            'pceh_%d' % d: {
+                1: 'pceh_%d_length' % d,
+            }
+            for d in range(self.num_encs)
+        })
+        ret.update({
+            'enc_h_%d' % d: {
+                1: 'enc_h_%d_length' % d,
             }
             for d in range(self.num_encs)
         })
@@ -284,8 +292,11 @@ class RNNDecoder(nn.Module, AbsModel):
         return {
             "dec_type": "RNNDecoder",
             "model_path": file_name,
-            "n_layers": self.model.dlayers,
+            "dlayers": self.model.dlayers,
             "odim": self.model.odim,
+            "dunits": self.model.dunits,
+            "decoder_length": self.decoder_length,
+            "rnn_type": self.model.dtype,
             "predecoder": [
                 {
                     "model_path": os.path.join(path, 'predecoder_%d.onnx' % d)
