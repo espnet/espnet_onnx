@@ -116,7 +116,7 @@ And I removed `extend_pe()` from positional encoding module. The length of `pe` 
 
 | arch name                                  | supported  |
 | ------------------------------------------ | ---------- |
-| RNNDecoder                                 | ×          |
+| RNNDecoder                                 | ◯          |
 | TransformerDecoder                         | ◯          |
 | LightweightConvolutionTransformerDecoder   | not tested |
 | LightweightConvolution2DTransformerDecoder | not tested |
