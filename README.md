@@ -1,6 +1,7 @@
 # espnet_onnx
 **ESPNet without PyTorch!**  
-Users can easily export espnet models to onnx format.  
+
+Utility library to easily export espnet models to onnx format. 
 There is no need to install PyTorch or ESPNet on your machine if you already have exported files!
 
 **Note**: This repository is not registered on pypi yet, so please clone and place the scripts in some directory.
@@ -97,51 +98,7 @@ And I removed `extend_pe()` from positional encoding module. The length of `pe` 
 
 ## Supported Archs
 
-**Encoder**
-
-| arch name                         | supported  |
-| --------------------------------- | ---------- |
-| ConformerEncoder                  | ◯          |
-| ContextualBlockConformerEncoder   | not tested |
-| ContextualBlockTransformerEncoder | not tested |
-| FairseqHubertEncoder              | not tested |
-| RNNEncoder                        | ◯         |
-| TransformerEncoder                | ◯          |
-| VGGRNNEncoder                     | not tested |
-| FairSeqWav2Vec2Encoder            | not tested |
-
-
-
-**Decoder**
-
-| arch name                                  | supported  |
-| ------------------------------------------ | ---------- |
-| RNNDecoder                                 | ◯          |
-| TransformerDecoder                         | ◯          |
-| LightweightConvolutionTransformerDecoder   | not tested |
-| LightweightConvolution2DTransformerDecoder | not tested |
-| DynamicConvolutionTransformerDecoder       | not tested |
-| DynamicConvolution2DTransformerDecoder     | not tested |
-
-
-
-**Language Model**
-
-| arch name       | supported |
-| --------------- | --------- |
-| SequentialRNNLM | ◯         |
-| TransformerLM   | ◯         |
-
-
-
-**pre encoder**  
-not supported.
-
-**post encoder**  
-not supported.
-
-**transducer**  
-not supported.
+ASR: [Supported architecture for ASR](./doc/ASRSupported.md)
 
 
 
