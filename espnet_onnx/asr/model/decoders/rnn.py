@@ -38,38 +38,38 @@ class RNNDecoder(BatchScorerInterface):
             self.predecoders.append(
                 onnxruntime.InferenceSession(model_path)
             )
-            
+
         # decoder
         if use_quantized:
             self.decoder = onnxruntime.InferenceSession(
                 config.quantized_model_path)
         else:
             self.decoder = onnxruntime.InferenceSession(config.model_path)
-        
+
         # HP
         self.num_encs = len(self.predecoders)
         self.dunits = config.dunits
         self.dlayers = config.dlayers
         self.rnn_type = config.rnn_type
         self.decoder_length = config.decoder_length
-        
+
         # predecoder
         self.decoder_output_names = self.get_decoder_output_names()
-        
+
         # cache pre_computed features
         self.pre_compute_enc_h = []
         self.enc_h = []
         self.mask = []
-    
+
     def get_decoder_output_names(self):
         ret = []
         for d in self.decoder.get_outputs():
             ret.append(d.name)
         return ret
-    
+
     def zero_state(self, hs_pad):
         return np.zeros((hs_pad.shape[0], self.dunits), dtype=np.float32)
-    
+
     def init_state(self, x):
         # to support mutiple encoder asr mode, in single encoder mode,
         # convert torch.Tensor to List of torch.Tensor
@@ -85,7 +85,8 @@ class RNNDecoder(BatchScorerInterface):
         strm_index = 0
         att_idx = min(strm_index, len(self.predecoders) - 1)
         att_prev = 1.0 - make_pad_mask([x[0].shape[0]])
-        att_prev = (att_prev / np.array([x[0].shape[0]])[..., None]).astype(np.float32)
+        att_prev = (
+            att_prev / np.array([x[0].shape[0]])[..., None]).astype(np.float32)
         if self.num_encs == 1:
             a = [att_prev]
         else:
@@ -100,10 +101,10 @@ class RNNDecoder(BatchScorerInterface):
     def score(self, yseq, state, x):
         att_idx, z_list, c_list = state["workspace"]
         vy = np.array([yseq[-1]])
-        
+
         if self.num_encs == 1:
             x = [x]
-            
+
         # pre compute states of attention.
         if len(self.pre_compute_enc_h) == 0:
             for idx in range(self.num_encs):
@@ -114,10 +115,11 @@ class RNNDecoder(BatchScorerInterface):
                 )[0]
                 self.pre_compute_enc_h.append(_pceh)
                 self.enc_h.append(x[idx][None, :])
-                self.mask.append(np.where(make_pad_mask([x[idx].shape[0]])==1, -float('inf'), 0).astype(np.float32))
+                self.mask.append(np.where(make_pad_mask(
+                    [x[idx].shape[0]]) == 1, -float('inf'), 0).astype(np.float32))
 
         input_dict = self.create_input_dic(vy, x, state)
-        
+
         logp, *status_lists = self.decoder.run(
             self.decoder_output_names,
             input_dict
@@ -132,7 +134,7 @@ class RNNDecoder(BatchScorerInterface):
                 workspace=(att_idx, z_list, c_list),
             ),
         )
-    
+
     def create_input_dic(self, vy, x, state):
         if self.rnn_type == 'lstm':
             ret = {
@@ -168,10 +170,9 @@ class RNNDecoder(BatchScorerInterface):
             for d in range(self.num_encs)
         })
         return ret
-        
+
     def separate(self, status_lists):
         c_list = status_lists[:self.decoder_length]
-        z_list = status_lists[self.decoder_length : 2*self.num_encs]
+        z_list = status_lists[self.decoder_length: 2*self.num_encs]
         att_w = status_lists[2*self.decoder_length:]
         return c_list, z_list, att_w
-

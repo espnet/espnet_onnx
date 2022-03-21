@@ -56,7 +56,7 @@ class Encoder:
         # 2. normalize with global MVN
         if self.config.do_normalize:
             feats, feat_length = self.normalize(feats, feat_length)
-            
+
         # if self.config.do_preencoder:
         #     feats, feats_lengths = self.preencoder(feats, feats_lengths)
 
@@ -78,8 +78,9 @@ class Encoder:
                     "feats": feats,
                     "feats_length": feat_length
                 })
-            encoder_out = mask_fill(encoder_out, make_pad_mask(feat_length, encoder_out, 1), 0.0)
-            
+            encoder_out = mask_fill(encoder_out, make_pad_mask(
+                feat_length, encoder_out, 1), 0.0)
+
         elif self.config.enc_type == 'XformerEncoder':
             mask = (make_pad_mask(feat_length)[
                 :, None, :] == False).astype(np.float64)
