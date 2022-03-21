@@ -1,29 +1,22 @@
 from typing import List
-from typing import Any
-from typing import Tuple
-from typing import Optional
 from typing import Dict
-from typing import Union
 
 import numpy as np
 import onnxruntime
 
 from espnet_onnx.asr.scorer.interface import BatchScorerInterface
-from espnet_onnx.asr.beam_search.hyps import TransducerHypothesis
-from espnet_onnx.utils.function import (
-    subsequent_mask,
-    make_pad_mask
-)
+from espnet_onnx.utils.function import make_pad_mask
 from espnet_onnx.utils.config import Config
 
 
 class RNNDecoder(BatchScorerInterface):
     def __init__(
         self,
-        config,
-        use_quantized
+        config: Config,
+        use_quantized: bool = False
     ):
-        """
+        """Onnx support for espnet2.asr.decoder.rnn_decoder.RNNDecoder
+
         Args:
             config (Config):
             use_quantized (bool): Flag to use quantized model
@@ -81,16 +74,18 @@ class RNNDecoder(BatchScorerInterface):
         for _ in range(1, self.dlayers):
             c_list.append(self.zero_state(x[0][None, :]))
             z_list.append(self.zero_state(x[0][None, :]))
-        # TODO(karita): support strm_index for `asr_mix`
+
         strm_index = 0
         att_idx = min(strm_index, len(self.predecoders) - 1)
         att_prev = 1.0 - make_pad_mask([x[0].shape[0]])
         att_prev = (
             att_prev / np.array([x[0].shape[0]])[..., None]).astype(np.float32)
+
         if self.num_encs == 1:
             a = [att_prev]
         else:
             a = [att_prev] * (self.num_encs + 1)  # atts + han
+
         return dict(
             c_prev=c_list[:],
             z_prev=z_list[:],

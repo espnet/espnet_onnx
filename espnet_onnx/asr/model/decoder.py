@@ -1,4 +1,3 @@
-
 from espnet_onnx.utils.config import Config
 from .decoders.rnn import RNNDecoder
 from .decoders.xformer import XformerDecoder
@@ -6,7 +5,6 @@ from .decoders.xformer import XformerDecoder
 
 def get_decoder(config, token_config: Config, td_config: Config, use_quantized: bool = False):
     if td_config.use_transducer_decoder:
-        # return TransducerDecoder(config, token_config)
         raise ValueError('Transducer is currently not supported.')
     else:
         if config.dec_type == 'RNNDecoder':

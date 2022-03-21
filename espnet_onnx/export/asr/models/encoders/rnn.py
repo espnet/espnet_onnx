@@ -23,7 +23,7 @@ from espnet_onnx.utils.function import make_pad_mask
 from ..abs_model import AbsModel
 
 
-class onnxRNNP(nn.Module):
+class OnnxRNNP(nn.Module):
     def __init__(self, model):
         super().__init__()
         self.model = model
@@ -38,13 +38,11 @@ class onnxRNNP(nn.Module):
         """
         elayer_states = []
         for layer in six.moves.range(self.model.elayers):
-            # xs_pack = pack_padded_sequence(xs_pad, ilens.cpu(), batch_first=True)
             rnn = getattr(
                 self.model, ("birnn" if self.model.bidir else "rnn") + str(layer))
             ys, states = rnn(xs_pad, hx=self.initial_state)
             elayer_states.append(states)
             # ys: utt list of frame x cdim x 2 (2: means bidirectional)
-            # ys_pad, ilens = pad_packed_sequence(ys, batch_first=True)
             sub = self.subsample[layer + 1]
             if sub > 1:
                 ys = ys[:, ::sub]
@@ -63,9 +61,9 @@ class RNNEncoderLayer(nn.Module):
     def __init__(self, layer):
         super().__init__()
         if isinstance(layer, RNNP):
-            self.layer = onnxRNNP(layer)
+            self.layer = OnnxRNNP(layer)
         elif isinstance(layer, RNN):
-            self.layer = onnxRNN(layer)
+            raise ValueError('Currently only RNNP class is supported.')
 
     def forward(self, *args, **kwargs):
         return self.layer(*args, **kwargs)
