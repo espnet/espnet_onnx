@@ -87,7 +87,8 @@ class ModelExport:
             for m in qt_config.keys():
                 if 'predecoder' in m:
                     model_idx = int(m.split('_')[1])
-                    model_config['decoder']['predecoder'][model_idx].update(quantized_model_path=qt_config[m])
+                    model_config['decoder']['predecoder'][model_idx].update(
+                        quantized_model_path=qt_config[m])
                 else:
                     model_config[m].update(quantized_model_path=qt_config[m])
 
@@ -145,7 +146,7 @@ class ModelExport:
         # if decoder is RNNDecoder, then export predecoders
         if isinstance(dec_model, RNNDecoder):
             self._export_predecoder(dec_model, path)
-    
+
     def _export_predecoder(self, dec_model, path):
         for i, att in enumerate(dec_model.model.att_list):
             att_model = PreDecoder(att)
@@ -191,10 +192,10 @@ class ModelExport:
     def _copy_files(self, model, path):
         # copy stats file
         if model.asr_model.normalize is not None \
-            and hasattr(model.asr_model.normalize, 'stats_file'):
+                and hasattr(model.asr_model.normalize, 'stats_file'):
             stats_file = model.asr_model.normalize.stats_file
             shutil.copy(stats_file, path)
-        
+
         # copy bpemodel
         if isinstance(model.tokenizer, SentencepiecesTokenizer):
             bpemodel_file = model.tokenizer.model

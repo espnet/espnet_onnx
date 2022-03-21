@@ -23,7 +23,8 @@ def _apply_attention_constraint(
     **Note** This function is copied from espnet.nets.pytorch_backend.rnn.attention.py
     """
     if e.size(0) != 1:
-        raise NotImplementedError("Batch attention constraining is not yet supported.")
+        raise NotImplementedError(
+            "Batch attention constraining is not yet supported.")
     backward_idx = last_attended_idx - backward_window
     forward_idx = last_attended_idx + forward_window
     if backward_idx > 0:
@@ -37,27 +38,27 @@ class PreDecoder(nn.Module, AbsModel):
     def __init__(self, model):
         super().__init__()
         self.model = model.mlp_enc
-    
+
     def forward(self, enc_h):
         return self.model(enc_h)
-    
+
     def get_dummy_inputs(self):
         di = torch.randn(1, 100, self.model.in_features)
         return (di,)
-    
+
     def get_input_names(self):
         return ['enc_h']
-    
+
     def get_output_names(self):
         return ['pre_compute_enc_h']
-    
+
     def get_dynamic_axes(self):
         return {
             'enc_h': {
                 1: 'enc_h_length'
             }
         }
-    
+
     def get_model_config(self, path, idx):
         file_name = os.path.join(path, 'pre-decoder_%d.onnx' % idx)
         return {
@@ -71,7 +72,7 @@ class onnxAttLoc(nn.Module):
         self.model = model
         self.dunits = model.dunits
         self.att_dim = model.att_dim
-    
+
     def forward(
         self,
         dec_z,
@@ -89,7 +90,8 @@ class onnxAttLoc(nn.Module):
         # att_prev: utt x frame -> utt x 1 x 1 x frame
         # -> utt x att_conv_chans x 1 x frame
         frame_length = att_prev.size(1)
-        att_conv = self.model.loc_conv(att_prev.view(batch, 1, 1, frame_length))
+        att_conv = self.model.loc_conv(
+            att_prev.view(batch, 1, 1, frame_length))
         # att_conv: utt x att_conv_chans x 1 x frame -> utt x frame x att_conv_chans
         att_conv = att_conv.squeeze(2).transpose(1, 2)
         # att_conv: utt x frame x att_conv_chans -> utt x frame x att_dim
@@ -103,7 +105,7 @@ class onnxAttLoc(nn.Module):
         e = self.model.gvec(
             torch.tanh(att_conv + pre_compute_enc_h + dec_z_tiled)
         ).squeeze(2)
-        
+
         # mask is an array with -inf
         e = e + mask
 
@@ -129,10 +131,11 @@ class RNNDecoder(nn.Module, AbsModel):
         self.model = model
         self.num_encs = model.num_encs
         self.decoder_length = len(model.decoder)
-        
+
         if not isinstance(self.model.att_list[0], AttLoc):
-            raise ValueError('Currently only espnet.asr.pytorch_backend.rnn.attention.AttLoc is supported.')
-        
+            raise ValueError(
+                'Currently only espnet.asr.pytorch_backend.rnn.attention.AttLoc is supported.')
+
         self.att_list = nn.ModuleList()
         for a in model.att_list:
             self.att_list.append(onnxAttLoc(a))
@@ -158,7 +161,7 @@ class RNNDecoder(nn.Module, AbsModel):
                     mask[idx]
                 )
                 att_w.append(_att_w)
-                
+
             att_c, _att_w = self.att_list[self.num_encs](
                 z_prev[0],
                 a_prev[self.num_encs],
@@ -184,12 +187,13 @@ class RNNDecoder(nn.Module, AbsModel):
             z_list,
             att_w,
         )
-    
+
     def rnn_forward(self, ey, z_prev, c_prev):
         ret_z_list = []
         ret_c_list = []
         if self.model.dtype == "lstm":
-            _z_list, _c_list = self.model.decoder[0](ey, (z_prev[0], c_prev[0]))
+            _z_list, _c_list = self.model.decoder[0](
+                ey, (z_prev[0], c_prev[0]))
             ret_z_list.append(_z_list)
             ret_c_list.append(_c_list)
             for i in range(1, self.model.dlayers):
@@ -213,12 +217,17 @@ class RNNDecoder(nn.Module, AbsModel):
         feat_length = 50
         vy = torch.LongTensor([1])
         x = torch.randn(feat_length, enc_size)
-        z_prev = [torch.randn(1, self.model.dunits) for _ in range(self.decoder_length)]
+        z_prev = [torch.randn(1, self.model.dunits)
+                  for _ in range(self.decoder_length)]
         a_prev = [torch.randn(1, feat_length) for _ in range(self.num_encs)]
-        c_prev = [torch.randn(1, self.model.dunits) for _ in range(self.decoder_length)]
-        pre_compute_enc_h = [torch.randn(1, feat_length, self.model.att_list[i].mlp_enc.out_features) for i in range(self.num_encs)]
-        enc_h = [torch.randn(1, feat_length, enc_size) for _ in range(self.num_encs)]
-        _m = torch.from_numpy(np.where(make_pad_mask([feat_length])==1, -float('inf'), 0)).type(torch.float32)
+        c_prev = [torch.randn(1, self.model.dunits)
+                  for _ in range(self.decoder_length)]
+        pre_compute_enc_h = [torch.randn(
+            1, feat_length, self.model.att_list[i].mlp_enc.out_features) for i in range(self.num_encs)]
+        enc_h = [torch.randn(1, feat_length, enc_size)
+                 for _ in range(self.num_encs)]
+        _m = torch.from_numpy(np.where(make_pad_mask(
+            [feat_length]) == 1, -float('inf'), 0)).type(torch.float32)
         mask = [_m for _ in range(self.num_encs)]
         return (
             vy, x, z_prev, c_prev,
@@ -272,15 +281,15 @@ class RNNDecoder(nn.Module, AbsModel):
             for d in range(self.num_encs)
         })
         ret.update({
-            'mask_%d' % d:{
+            'mask_%d' % d: {
                 0: 'mask_%d_length' % d,
                 1: 'mask_%d_height' % d
             }
             for d in range(self.num_encs)
         })
-        #output
+        # output
         ret.update({
-            'att_w_%d' % d:{
+            'att_w_%d' % d: {
                 1: 'att_w_%d_length' % d
             }
             for d in range(self.num_encs)
@@ -304,5 +313,3 @@ class RNNDecoder(nn.Module, AbsModel):
                 for d in range(self.num_encs)
             ]
         }
-        
-

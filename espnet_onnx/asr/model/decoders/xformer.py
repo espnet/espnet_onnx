@@ -89,4 +89,3 @@ class XformerDecoder(BatchScorerInterface):
         state_list = [[states[i][b]
                        for i in range(self.n_layers)] for b in range(n_batch)]
         return logp, state_list
-

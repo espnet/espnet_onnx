@@ -43,7 +43,7 @@ class XformerEncoder(nn.Module, AbsModel):
 
         olens = masks.squeeze(1).sum(1)
         return xs_pad, olens, None
-    
+
     def get_output_size(self):
         return self.model.encoders[0].size
 
@@ -80,7 +80,8 @@ class XformerEncoder(nn.Module, AbsModel):
             do_postencoder=asr_model.postencoder is not None
         )
         if ret['do_normalize']:
-            ret.update(normalize=self.get_norm_config(asr_model.normalize, path))
+            ret.update(normalize=self.get_norm_config(
+                asr_model.normalize, path))
         # Currently preencoder, postencoder is not supported.
         # if ret['do_preencoder']:
         #     ret.update(preencoder=get_preenc_config(self.model.preencoder))
@@ -112,7 +113,7 @@ class XformerEncoder(nn.Module, AbsModel):
     def get_norm_config(self, normalize, path):
         if isinstance(normalize, GlobalMVN):
             return {
-                "type":"gmvn",
+                "type": "gmvn",
                 "norm_means": normalize.norm_means,
                 "norm_vars": normalize.norm_vars,
                 "eps": normalize.eps,

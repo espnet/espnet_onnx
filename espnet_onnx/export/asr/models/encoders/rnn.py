@@ -13,7 +13,7 @@ from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsamplin
 from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling2
 from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling6
 from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling8
-from espnet.nets.pytorch_backend.rnn.encoders import ( RNNP, RNN )
+from espnet.nets.pytorch_backend.rnn.encoders import (RNNP, RNN)
 from espnet2.asr.encoder.rnn_encoder import RNNEncoder as espnetRNNEncoder
 from espnet2.asr.frontend.default import DefaultFrontend
 from espnet2.layers.global_mvn import GlobalMVN
@@ -30,7 +30,7 @@ class onnxRNNP(nn.Module):
         self.subsample = model.subsample
         is_bidirectional = 2 if model.bidir else 1
         self.initial_state = torch.zeros(is_bidirectional * 1, 1, model.cdim)
-    
+
     def forward(self, xs_pad: torch.Tensor, ilens: torch.Tensor):
         """Inference version of RNNEncoder.
         Since batch_size is always 1 in inference with onnx, pad_sequence related
@@ -39,7 +39,8 @@ class onnxRNNP(nn.Module):
         elayer_states = []
         for layer in six.moves.range(self.model.elayers):
             # xs_pack = pack_padded_sequence(xs_pad, ilens.cpu(), batch_first=True)
-            rnn = getattr(self.model, ("birnn" if self.model.bidir else "rnn") + str(layer))
+            rnn = getattr(
+                self.model, ("birnn" if self.model.bidir else "rnn") + str(layer))
             ys, states = rnn(xs_pad, hx=self.initial_state)
             elayer_states.append(states)
             # ys: utt list of frame x cdim x 2 (2: means bidirectional)
@@ -65,7 +66,7 @@ class RNNEncoderLayer(nn.Module):
             self.layer = onnxRNNP(layer)
         elif isinstance(layer, RNN):
             self.layer = onnxRNN(layer)
-    
+
     def forward(self, *args, **kwargs):
         return self.layer(*args, **kwargs)
 
@@ -84,7 +85,7 @@ class RNNEncoder(nn.Module, AbsModel):
             feats, ilens, states = module(feats, ilens)
             current_states.append(states)
         return feats, ilens, current_states
-    
+
     def get_output_size(self):
         return self.model._output_size
 
@@ -117,7 +118,8 @@ class RNNEncoder(nn.Module, AbsModel):
             do_postencoder=asr_model.postencoder is not None
         )
         if ret['do_normalize']:
-            ret.update(normalize=self.get_norm_config(asr_model.normalize, path))
+            ret.update(normalize=self.get_norm_config(
+                asr_model.normalize, path))
         # Currently preencoder, postencoder is not supported.
         # if ret['do_preencoder']:
         #     ret.update(preencoder=get_preenc_config(self.model.preencoder))
@@ -149,7 +151,7 @@ class RNNEncoder(nn.Module, AbsModel):
     def get_norm_config(self, normalize, path):
         if isinstance(normalize, GlobalMVN):
             return {
-                "type":"gmvn",
+                "type": "gmvn",
                 "norm_means": normalize.norm_means,
                 "norm_vars": normalize.norm_vars,
                 "eps": normalize.eps,
@@ -162,4 +164,3 @@ class RNNEncoder(nn.Module, AbsModel):
                 "norm_vars": normalize.norm_vars,
                 "eps": normalize.eps,
             }
-
