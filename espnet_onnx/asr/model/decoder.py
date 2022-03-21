@@ -9,7 +9,7 @@ def get_decoder(config, token_config: Config, td_config: Config, use_quantized: 
         # return TransducerDecoder(config, token_config)
         raise ValueError('Transducer is currently not supported.')
     else:
-        if self.config.dec_type == 'RNNDecoder':
+        if config.dec_type == 'RNNDecoder':
             return RNNDecoder(config, use_quantized)
         else:
             return XformerDecoderModel(config, use_quantized)
