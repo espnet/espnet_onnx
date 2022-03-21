@@ -54,11 +54,10 @@ class OnnxPositionalEncoding(torch.nn.Module):
 
     def extend_pe(self, x):
         """Reset the positional encodings."""
-        if self.pe is not None:
-            if self.pe.size(1) >= x.size(1):
-                if self.pe.dtype != x.dtype or self.pe.device != x.device:
-                    self.pe = self.pe.to(dtype=x.dtype, device=x.device)
-                return
+        if self.pe is not None and self.pe.size(1) >= x.size(1):
+            if self.pe.dtype != x.dtype or self.pe.device != x.device:
+                self.pe = self.pe.to(dtype=x.dtype, device=x.device)
+            return
         pe = torch.zeros(x.size(1), self.d_model)
         if self.reverse:
             position = torch.arange(
@@ -185,13 +184,12 @@ class OnnxRelPositionalEncoding(torch.nn.Module):
 
     def extend_pe(self, x):
         """Reset the positional encodings."""
-        if self.pe is not None:
+        if self.pe is not None and self.pe.size(1) >= x.size(1) * 2 - 1:
             # self.pe contains both positive and negative parts
             # the length of self.pe is 2 * input_len - 1
-            if self.pe.size(1) >= x.size(1) * 2 - 1:
-                if self.pe.dtype != x.dtype or self.pe.device != x.device:
-                    self.pe = self.pe.to(dtype=x.dtype, device=x.device)
-                return
+            if self.pe.dtype != x.dtype or self.pe.device != x.device:
+                self.pe = self.pe.to(dtype=x.dtype, device=x.device)
+            return
         # Suppose `i` means to the position of query vecotr and `j` means the
         # position of key vector. We use position relative positions when keys
         # are to the left (i>j) and negative relative positions otherwise (i<j).

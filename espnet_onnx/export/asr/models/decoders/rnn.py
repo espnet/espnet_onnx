@@ -1,18 +1,13 @@
 import os
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
 
 from espnet.nets.pytorch_backend.rnn.attentions import AttLoc
-from espnet2.asr.decoder.transformer_decoder import TransformerDecoder
-from espnet2.asr.transducer.transducer_decoder import TransducerDecoder
 
-from espnet_onnx.utils.function import (
-    subsequent_mask,
-    make_pad_mask
-)
+from espnet_onnx.utils.function import make_pad_mask
 from ..abs_model import AbsModel
 
 
@@ -66,7 +61,7 @@ class PreDecoder(nn.Module, AbsModel):
         }
 
 
-class onnxAttLoc(nn.Module):
+class OnnxAttLoc(nn.Module):
     def __init__(self, model):
         super().__init__()
         self.model = model
@@ -138,7 +133,7 @@ class RNNDecoder(nn.Module, AbsModel):
 
         self.att_list = nn.ModuleList()
         for a in model.att_list:
-            self.att_list.append(onnxAttLoc(a))
+            self.att_list.append(OnnxAttLoc(a))
 
     def forward(self, vy, x, z_prev, c_prev, a_prev, pre_compute_enc_h, enc_h, mask):
         ey = self.embed(vy)  # utt list (1) x zdim

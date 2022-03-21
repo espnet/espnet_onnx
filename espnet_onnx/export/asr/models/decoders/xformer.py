@@ -88,11 +88,4 @@ class XformerDecoder(nn.Module, AbsModel):
                 "odim": self.model.decoders[0].size
             }
         elif isinstance(self.model.decoder, TransducerDecoder):
-            # return {
-            #     "model_path": file_name,
-            #     "rnn_type": model.decoder.dtype,
-            #     "n_layers": model.decoder.dlayers,
-            #     "hidden_size": model.decoder.dunits,
-            #     "odim": decoder_odim
-            # }
             raise ValueError('TransducerDecoder is currently not supported')
