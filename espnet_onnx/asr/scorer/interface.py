@@ -102,7 +102,7 @@ class BatchScorerInterface(ScorerInterface):
             score, outstate = self.score(y, state, x)
             outstates.append(outstate)
             scores.append(score)
-        scores = np.concatenate([scores, [0]]).reshape(ys.shape[0], -1)
+        scores = np.concatenate(scores, axis=0).reshape(ys.shape[0], -1)
         return scores, outstates
 
 
