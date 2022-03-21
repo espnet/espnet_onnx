@@ -30,7 +30,7 @@ class RNNDecoder(BatchScorerInterface):
         """
         # predecoder
         self.predecoders = []
-        for p in range(config.predecoder):
+        for p in config.predecoder:
             if use_quantized:
                 model_path = p.quantized_model_path
             else:
@@ -48,53 +48,79 @@ class RNNDecoder(BatchScorerInterface):
         
         # HP
         self.num_encs = len(self.predecoders)
+        self.dunits = config.dunits
+        self.dlayers = config.dlayers
+        self.rnn_type = config.rnn_type
+        self.decoder_length = config.decoder_length
         
         # predecoder
         self.decoder_output_names = self.get_decoder_output_names()
         
-        
+        # cache pre_computed features
+        self.pre_compute_enc_h = []
+        self.enc_h = []
+        self.mask = []
     
     def get_decoder_output_names(self):
         ret = []
-        for d in self.decoder.get_inputs():
+        for d in self.decoder.get_outputs():
             ret.append(d.name)
         return ret
+    
+    def zero_state(self, hs_pad):
+        return np.zeros((hs_pad.shape[0], self.dunits), dtype=np.float32)
+    
+    def init_state(self, x):
+        # to support mutiple encoder asr mode, in single encoder mode,
+        # convert torch.Tensor to List of torch.Tensor
+        if self.num_encs == 1:
+            x = [x]
+
+        c_list = [self.zero_state(x[0][None, :])]
+        z_list = [self.zero_state(x[0][None, :])]
+        for _ in range(1, self.dlayers):
+            c_list.append(self.zero_state(x[0][None, :]))
+            z_list.append(self.zero_state(x[0][None, :]))
+        # TODO(karita): support strm_index for `asr_mix`
+        strm_index = 0
+        att_idx = min(strm_index, len(self.predecoders) - 1)
+        att_prev = 1.0 - make_pad_mask([x[0].shape[0]])
+        att_prev = (att_prev / np.array([x[0].shape[0]])[..., None]).astype(np.float32)
+        if self.num_encs == 1:
+            a = [att_prev]
+        else:
+            a = [att_prev] * (self.num_encs + 1)  # atts + han
+        return dict(
+            c_prev=c_list[:],
+            z_prev=z_list[:],
+            a_prev=a,
+            workspace=(att_idx, z_list, c_list),
+        )
 
     def score(self, yseq, state, x):
         att_idx, z_list, c_list = state["workspace"]
-        vy = yseq[-1][None, :]
+        vy = np.array([yseq[-1]])
         
         if self.num_encs == 1:
             x = [x]
             
         # pre compute states of attention.
-        pre_compute_enc_h = []
-        enc_h = []
-        mask = []
-        for idx in range(len(self.num_encs)):
-            _pceh = self.predecoders[idx].run(
-                ['pre_compute_enc_h'], {
-                    'enc_h': x[idx]
-                }
-            )
-            pre_compute_enc_h.append(_pceh)
-            enc_h.append(x[idx])
-            mask.append(np.where(make_pad_mask([x[idx].shape[0]])==1, -float('inf'), 0))
+        if len(self.pre_compute_enc_h) == 0:
+            for idx in range(self.num_encs):
+                _pceh = self.predecoders[idx].run(
+                    ['pre_compute_enc_h'], {
+                        'enc_h': x[idx][None, :]
+                    }
+                )[0]
+                self.pre_compute_enc_h.append(_pceh)
+                self.enc_h.append(x[idx][None, :])
+                self.mask.append(np.where(make_pad_mask([x[idx].shape[0]])==1, -float('inf'), 0).astype(np.float32))
+
+        input_dict = self.create_input_dic(vy, x, state)
         
-        logp, *status_lists = self.decoder(
+        logp, *status_lists = self.decoder.run(
             self.decoder_output_names,
-            {
-                'vy': vy,
-                'x': x,
-                'z_prev': state['z_prev'][0],
-                'a_prev': state['a_prev'],
-                'c_prev': state['c_prev'],
-                'z_list': z_list,
-                'c_list': c_list,
-                'pre_compute_enc_h': pre_compute_enc_h,
-                'enc_h': enc_h,
-                'mask': mask,
-            }
+            input_dict
         )
         c_list, z_list, att_w = self.separate(status_lists)
         return (
@@ -106,8 +132,46 @@ class RNNDecoder(BatchScorerInterface):
                 workspace=(att_idx, z_list, c_list),
             ),
         )
+    
+    def create_input_dic(self, vy, x, state):
+        if self.rnn_type == 'lstm':
+            ret = {
+                'vy': vy.astype(np.int64),
+            }
+        else:
+            ret = {
+                'vy': vy.astype(np.int64),
+                'x': x,
+            }
+        ret.update({
+            'z_prev_%d' % d: state['z_prev'][d]
+            for d in range(self.decoder_length)
+        })
+        ret.update({
+            'c_prev_%d' % d: state['c_prev'][d]
+            for d in range(self.decoder_length)
+        })
+        ret.update({
+            'a_prev_%d' % d: state['a_prev'][d]
+            for d in range(self.num_encs)
+        })
+        ret.update({
+            'pceh_%d' % d: self.pre_compute_enc_h[d]
+            for d in range(self.num_encs)
+        })
+        ret.update({
+            'enc_h_%d' % d: self.enc_h[d]
+            for d in range(self.num_encs)
+        })
+        ret.update({
+            'mask_%d' % d: self.mask[d]
+            for d in range(self.num_encs)
+        })
+        return ret
         
-        
-        
-        
-        
+    def separate(self, status_lists):
+        c_list = status_lists[:self.decoder_length]
+        z_list = status_lists[self.decoder_length : 2*self.num_encs]
+        att_w = status_lists[2*self.decoder_length:]
+        return c_list, z_list, att_w
+
