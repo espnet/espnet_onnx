@@ -76,7 +76,7 @@ class Encoder:
             encoder_out, encoder_out_lens = \
                 self.encoder.run(["encoder_out", "encoder_out_lens"], {
                     "feats": feats,
-                    "feat_length": feat_length
+                    "feats_length": feat_length
                 })
             encoder_out = mask_fill(encoder_out, make_pad_mask(feat_length, encoder_out, 1), 0.0)
             
