@@ -10,4 +10,4 @@ def get_decoder(config, token_config: Config, td_config: Config, use_quantized: 
         if config.dec_type == 'RNNDecoder':
             return RNNDecoder(config, use_quantized)
         else:
-            return XformerDecoderModel(config, use_quantized)
+            return XformerDecoder(config, use_quantized)
