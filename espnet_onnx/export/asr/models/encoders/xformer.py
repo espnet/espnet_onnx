@@ -20,7 +20,7 @@ from ..abs_model import AbsModel
 class XformerEncoder(nn.Module, AbsModel):
     def __init__(self, model):
         super().__init__()
-        self.embed = model.embed
+        self.embed = Embedding(model.embed)
         self.model = model
 
     def forward(self, speech, mask):
