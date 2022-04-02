@@ -71,6 +71,7 @@ class Config(object):
                         setattr(self, j, k)
                     else:
                         setattr(self, j, None)
+        self.dic = dic
 
     def __len__(self):
         return len(self.__dict__.keys())
@@ -89,4 +90,3 @@ class Config(object):
 
     def values(self):
         return self.__dict__.values()
-
