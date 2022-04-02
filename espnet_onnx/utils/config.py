@@ -36,7 +36,7 @@ def save_config(config, path):
 
 def update_model_path(tag_name, model_path):
     # get configuration of the tag name.
-    tag_config_path = Path(__file__).parent.parent.parent / 'tag_config.yaml'
+    tag_config_path = Path.home() / ".cache" / "espnet_onnx" / 'tag_config.yaml'
     if os.path.exists(tag_config_path):
         config = get_config(tag_config_path)
     else:
@@ -48,7 +48,7 @@ def update_model_path(tag_name, model_path):
     save_config(config, tag_config_path)
 
 def get_tag_config():
-    tag_config_path = Path(__file__).parent.parent.parent / 'tag_config.yaml'
+    tag_config_path = Path.home() / ".cache" / "espnet_onnx" / 'tag_config.yaml'
     if os.path.exists(tag_config_path):
         config = get_config(tag_config_path)
     else:
@@ -71,6 +71,7 @@ class Config(object):
                         setattr(self, j, k)
                     else:
                         setattr(self, j, None)
+        self.dic = dic
 
     def __len__(self):
         return len(self.__dict__.keys())
@@ -89,4 +90,3 @@ class Config(object):
 
     def values(self):
         return self.__dict__.values()
-

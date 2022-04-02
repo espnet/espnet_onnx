@@ -1,6 +1,6 @@
 from espnet_onnx.utils.config import Config
-from .decoders.rnn import RNNDecoder
-from .decoders.xformer import XformerDecoder
+from espnet_onnx.asr.model.decoders.rnn import RNNDecoder
+from espnet_onnx.asr.model.decoders.xformer import XformerDecoder
 
 
 def get_decoder(config, token_config: Config, td_config: Config, use_quantized: bool = False):
