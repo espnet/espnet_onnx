@@ -11,20 +11,18 @@ requirements = {
         "PyYAML>=5.1.2",
         "g2p-en",
         "jamo==0.4.1",  # For kss
+        "numpy<=1.21.3",
     ],
     "test": [
         "torch>=1.3.0",
         "espnet",
         "pytest"
-    ],
-    "setup": [
-        "numpy<1.22,>=1.18",
     ]
 }
 
 setup(
     name="espnet_onnx",
-    version="0.1.0",
+    version="0.1.2",
     url="https://github.com/Masao-Someki/espnet_onnx",
     author="Masao Someki",
     author_email="masao.someki@gmail.com",
@@ -36,7 +34,6 @@ setup(
     packages=find_packages(include=["espnet_onnx*"]),
     install_requires=requirements["install"],
     tests_require=requirements["test"],
-    setup_requires=requirements["setup"],
     python_requires=">=3.7.0",
     classifiers=[
         "Programming Language :: Python",
