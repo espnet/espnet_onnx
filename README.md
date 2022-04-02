@@ -1,30 +1,33 @@
 # espnet_onnx
+![](https://circleci.com/gh/Masao-Someki/espnet_onnx.svg?style=shield)
+![](https://img.shields.io/badge/licence-MIT-blue)
+[![](https://img.shields.io/badge/pypi-0.1.0-brightgreen)](https://pypi.org/project/espnet-onnx/)
+
 **ESPNet without PyTorch!**  
 
 Utility library to easily export espnet models to onnx format. 
 There is no need to install PyTorch or ESPNet on your machine if you already have exported files!
 
-**Note**: This repository is not registered on pypi yet, so please clone and place the scripts in some directory.
+**Note**
+
+Currently TTS is not supported.
 
 
+## Install
+
+1. `espnet_onnx` can be installed with pip
+
+```shell
+pip install espnet_onnx
+```
+
+2. If you want to export pretrained model, you need to install `torch`, `espnet`, `espnet_model_zoo` additionally.
 
 ## Usage
 
-1. Run the following command to setup environment
+1. `espnet_onnx` can export pretrained model published on `espnet_model_zoo`.
 
-```shell
-cd tools
-
-# setup environment for only inference
-make
-
-# setup environment for model exportation
-make venv onnx_export
-```
-
-2. For model export, you can export pretrained model from  `espnet_model_zoo`.
-
-   By default, exported onnx files will be stored in `${HOME}/.cache/espnet_onnx/<tag_name>`. 
+   By default, exported files will be stored in `${HOME}/.cache/espnet_onnx/<tag_name>`. 
 
 ```python
 from espnet2.bin.asr_inference import Speech2Text
