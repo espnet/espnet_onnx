@@ -1,0 +1,12 @@
+encoder: transformer
+encoder_conf:
+  attention_dropout_rate: 0.0
+  attention_heads: 4
+  dropout_rate: 0.1
+  input_layer: conv2d
+  linear_units: 2048
+  num_blocks: 12
+  output_size: 256
+frontend: default
+frontend_conf:
+  fs: 16k

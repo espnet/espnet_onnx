@@ -1,0 +1,11 @@
+lm: transformer
+lm_conf:
+  att_unit: 512
+  dropout_rate: 0.1
+  embed_unit: 128
+  head: 8
+  layer: 16
+  pos_enc: null
+  unit: 2048
+model_conf:
+  ignore_id: 0
