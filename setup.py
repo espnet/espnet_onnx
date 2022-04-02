@@ -1,13 +1,11 @@
-import os
-from pathlib import Path
-
 from setuptools import find_packages, setup
 
 
 requirements = {
     "install": [
-        "onnxruntime>=1.4.0",
+        "numpy<1.22,>=1.18",
         "librosa>=0.8.0",
+        "onnxruntime>=1.4.0",
         "sentencepiece>=0.1.91,!=0.1.92",
         "typeguard>=2.7.0",
         "PyYAML>=5.1.2",
@@ -32,7 +30,7 @@ setup(
     long_description_content_type="text/markdown",
     keywords="espnet onnxruntime",
     license="MIT",
-    packages=["espnet_onnx", "espnet_onnx.export"],
+    packages=find_packages(include=["espnet_onnx*"]),
     # #448: "scripts" is inconvenient for developping because they are copied
     # scripts=get_all_scripts('espnet/bin'),
     install_requires=requirements["install"],
