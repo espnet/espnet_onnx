@@ -9,11 +9,11 @@ jobs:
       - image: circleci/python:3.7
     steps:
       - checkout
-      - run: sudo apt-get -y update
+      - run: sudo apt-get -y update; sudo apt-get install libsndfile1
       - run: pip install --upgrade pip
       - run: pip install -r tools/requirements_export.txt
       - run: pip install pytest
-      # - run: pytest tests/test_export.py --config_dir tests/test_config
+      - run: pytest tests --config_dir tests/test_config
 
 workflows:
   build_and_test:
