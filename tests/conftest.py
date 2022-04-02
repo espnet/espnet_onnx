@@ -54,8 +54,8 @@ def pytest_addoption(parser):
 def load_config(request):
     config_dir = request.config.getoption('--config_dir')
 
-    def _method(config_name, model_type='encoder'):
-        return get_config(os.path.join(config_dir, model_type, config_name + '.yml'))
+    def _method(test_type, config_name, model_type='encoder'):
+        return get_config(os.path.join(config_dir, test_type, model_type, config_name + '.yml'))
     return _method
 
 

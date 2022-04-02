@@ -25,7 +25,7 @@ from espnet2.lm.espnet_model import ESPnetLanguageModel
 ])
 def test_export_encoder(enc_type, load_config, model_export,
                         frontend_choices, encoder_choices):
-    model_config = load_config(enc_type, model_type='encoder')
+    model_config = load_config('export', enc_type, model_type='encoder')
     # prepare input_dim from frontend
     frontend_class = frontend_choices.get_class(model_config.frontend)
     frontend = frontend_class(**model_config.frontend_conf.dic)
@@ -47,7 +47,7 @@ def test_export_encoder(enc_type, load_config, model_export,
     'transformer', 'rnn'
 ])
 def test_export_decoder(dec_type, load_config, model_export, decoder_choices):
-    model_config = load_config(dec_type, model_type='decoder')
+    model_config = load_config('export', dec_type, model_type='decoder')
     # prepare encoder model
     decoder_class = decoder_choices.get_class(model_config.decoder)
     decoder = decoder_class(
@@ -66,7 +66,7 @@ def test_export_decoder(dec_type, load_config, model_export, decoder_choices):
 
 @pytest.mark.parametrize('dec_type', ['rnn'])
 def test_export_predec(dec_type, load_config, model_export, decoder_choices):
-    model_config = load_config(dec_type, model_type='decoder')
+    model_config = load_config('export', dec_type, model_type='decoder')
     # prepare encoder model
     decoder_class = decoder_choices.get_class(model_config.decoder)
     decoder = decoder_class(
@@ -87,7 +87,7 @@ def test_export_predec(dec_type, load_config, model_export, decoder_choices):
     'transformer', 'rnn', 'transformer_pe'
 ])
 def test_export_lm(lm_type, load_config, model_export, lm_choices):
-    model_config = load_config(lm_type, model_type='lm')
+    model_config = load_config('export', lm_type, model_type='lm')
     # prepare language model
     lm_class = lm_choices.get_class(model_config.lm)
     lm = lm_class(vocab_size=32000, **model_config.lm_conf.dic)
