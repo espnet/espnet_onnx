@@ -1,0 +1,12 @@
+encoder: rnn
+encoder_conf:
+  bidirectional: true
+  dropout: 0.2
+  hidden_size: 320
+  num_layers: 4
+  output_size: 320
+  rnn_type: gru
+  use_projection: false
+frontend: default
+frontend_conf:
+  fs: 16k
