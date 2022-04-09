@@ -13,7 +13,7 @@ from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsamplin
 from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling2
 from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling6
 from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling8
-from espnet.nets.pytorch_backend.rnn.encoders import (RNNP, RNN)
+from espnet.nets.pytorch_backend.rnn.encoders import (RNNP, RNN, VGG2L)
 from espnet2.asr.encoder.rnn_encoder import RNNEncoder as espnetRNNEncoder
 from espnet2.asr.frontend.default import DefaultFrontend
 from espnet2.layers.global_mvn import GlobalMVN
@@ -57,13 +57,74 @@ class OnnxRNNP(nn.Module):
         return xs_pad, ilens, elayer_states  # x: utt list of frame x dim
 
 
+class OnnxRNN(nn.Module):
+    def __init__(self, model):
+        super().__init__()
+        self.nbrnn = model.nbrnn
+        self.l_last = model.l_last
+        is_bidirectional = 2 if model.nbrnn.bidirectional else 1
+        num_layers = model.nbrnn.num_layers
+        self.initial_state = torch.zeros(
+            is_bidirectional * num_layers,
+            1,
+            model.nbrnn.hidden_size
+        )
+
+    def forward(self, xs_pad: torch.Tensor, ilens: torch.Tensor):
+        if not isinstance(ilens, torch.Tensor):
+            ilens = torch.tensor(ilens)
+
+        ys, states = self.nbrnn(xs_pad, hx=self.initial_state)
+        # ys: utt list of frame x cdim x 2 (2: means bidirectional)
+        # (sum _utt frame_utt) x dim
+        projected = torch.tanh(
+            self.l_last(ys.contiguous().view(-1, ys.size(2)))
+        )
+        xs_pad = projected.view(ys.size(0), ys.size(1), -1)
+        return xs_pad, ilens, states  # x: utt list of frame x dim
+
+
+class VGG2l(nn.Module):
+    def __init__(self, model):
+        self.model = model
+    
+    def forward(self, xs_pad, ilens, **kwargs):
+        if not isinstance(ilens, torch.Tensor):
+            ilens = torch.tensor(ilens)
+        # x: utt x frame x dim
+        # x: utt x 1 (input channel num) x frame x dim
+        xs_pad = xs_pad.view(
+            xs_pad.size(0),
+            xs_pad.size(1),
+            self.in_channel,
+            xs_pad.size(2) // self.in_channel,
+        ).transpose(1, 2)
+        # NOTE: max_pool1d ?
+        xs_pad = F.relu(self.conv1_1(xs_pad))
+        xs_pad = F.relu(self.conv1_2(xs_pad))
+        xs_pad = F.max_pool2d(xs_pad, 2, stride=2, ceil_mode=True)
+        xs_pad = F.relu(self.conv2_1(xs_pad))
+        xs_pad = F.relu(self.conv2_2(xs_pad))
+        xs_pad = F.max_pool2d(xs_pad, 2, stride=2, ceil_mode=True)
+        # x: utt_list of frame (remove zeropaded frames) x (input channel num x dim)
+        xs_pad = xs_pad.transpose(1, 2)
+        xs_pad = xs_pad.contiguous().view(
+            xs_pad.size(0), xs_pad.size(1), xs_pad.size(2) * xs_pad.size(3)
+        )
+        
+        ilens = torch.ceil(ilens / 4).type(torch.long)
+        return xs_pad, ilens, None  # no state in this layer
+
+
 class RNNEncoderLayer(nn.Module):
     def __init__(self, layer):
         super().__init__()
         if isinstance(layer, RNNP):
             self.layer = OnnxRNNP(layer)
         elif isinstance(layer, RNN):
-            raise ValueError('Currently only RNNP class is supported.')
+            self.layer = OnnxRNN(layer)
+        elif isinstance(layer, VGG2L):
+            self.layer = OnnxVGG2L(layer)
 
     def forward(self, *args, **kwargs):
         return self.layer(*args, **kwargs)
