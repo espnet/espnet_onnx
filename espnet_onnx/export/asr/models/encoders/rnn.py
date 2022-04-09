@@ -4,10 +4,7 @@ import six
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.nn.utils.rnn import (
-    pack_padded_sequence,
-    pad_packed_sequence
-)
+import torch.nn.functional as F
 
 from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling
 from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling2
@@ -15,11 +12,11 @@ from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsamplin
 from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling8
 from espnet.nets.pytorch_backend.rnn.encoders import (RNNP, RNN, VGG2L)
 from espnet2.asr.encoder.rnn_encoder import RNNEncoder as espnetRNNEncoder
+from espnet2.asr.encoder.vgg_rnn_encoder import VGGRNNEncoder as espnetVGGRNNEncoder
 from espnet2.asr.frontend.default import DefaultFrontend
 from espnet2.layers.global_mvn import GlobalMVN
 from espnet2.layers.utterance_mvn import UtteranceMVN
 
-from espnet_onnx.utils.function import make_pad_mask
 from ..abs_model import AbsModel
 
 
@@ -84,9 +81,11 @@ class OnnxRNN(nn.Module):
         return xs_pad, ilens, states  # x: utt list of frame x dim
 
 
-class VGG2l(nn.Module):
+class OnnxVGG2l(nn.Module):
     def __init__(self, model):
+        super().__init__()
         self.model = model
+        self.in_channel = model.in_channel
     
     def forward(self, xs_pad, ilens, **kwargs):
         if not isinstance(ilens, torch.Tensor):
@@ -100,11 +99,11 @@ class VGG2l(nn.Module):
             xs_pad.size(2) // self.in_channel,
         ).transpose(1, 2)
         # NOTE: max_pool1d ?
-        xs_pad = F.relu(self.conv1_1(xs_pad))
-        xs_pad = F.relu(self.conv1_2(xs_pad))
+        xs_pad = F.relu(self.model.conv1_1(xs_pad))
+        xs_pad = F.relu(self.model.conv1_2(xs_pad))
         xs_pad = F.max_pool2d(xs_pad, 2, stride=2, ceil_mode=True)
-        xs_pad = F.relu(self.conv2_1(xs_pad))
-        xs_pad = F.relu(self.conv2_2(xs_pad))
+        xs_pad = F.relu(self.model.conv2_1(xs_pad))
+        xs_pad = F.relu(self.model.conv2_2(xs_pad))
         xs_pad = F.max_pool2d(xs_pad, 2, stride=2, ceil_mode=True)
         # x: utt_list of frame (remove zeropaded frames) x (input channel num x dim)
         xs_pad = xs_pad.transpose(1, 2)
@@ -124,7 +123,7 @@ class RNNEncoderLayer(nn.Module):
         elif isinstance(layer, RNN):
             self.layer = OnnxRNN(layer)
         elif isinstance(layer, VGG2L):
-            self.layer = OnnxVGG2L(layer)
+            self.layer = OnnxVGG2l(layer)
 
     def forward(self, *args, **kwargs):
         return self.layer(*args, **kwargs)
@@ -171,6 +170,7 @@ class RNNEncoder(nn.Module, AbsModel):
         ret.update(
             enc_type='RNNEncoder',
             model_path=os.path.join(path, 'encoder.onnx'),
+            is_vggrnn=isinstance(self.model, espnetVGGRNNEncoder),
             frontend=self.get_frontend_config(asr_model.frontend),
             do_normalize=asr_model.normalize is not None,
             do_preencoder=asr_model.preencoder is not None,
