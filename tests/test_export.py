@@ -21,7 +21,7 @@ from espnet2.lm.espnet_model import ESPnetLanguageModel
 @pytest.mark.parametrize('enc_type', [
     'conformer_abs_pos', 'conformer_rel_pos',
     'conformer_rpe_latest', 'conformer_scaled',
-    'transformer', 'rnn_rnn', 'rnn_rnnp'
+    'transformer', 'rnn_rnn', 'rnn_rnnp', 'rnn_vggrnn'
 ])
 def test_export_encoder(enc_type, load_config, model_export,
                         frontend_choices, encoder_choices):
