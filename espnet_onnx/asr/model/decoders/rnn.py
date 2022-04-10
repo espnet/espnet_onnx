@@ -38,7 +38,7 @@ class RNNDecoder(BatchScorerInterface):
                 config.quantized_model_path)
         else:
             self.decoder = onnxruntime.InferenceSession(config.model_path)
-
+            
         # HP
         self.num_encs = len(self.predecoders)
         self.dunits = config.dunits
@@ -66,7 +66,7 @@ class RNNDecoder(BatchScorerInterface):
     def init_state(self, x):
         # to support mutiple encoder asr mode, in single encoder mode,
         # convert torch.Tensor to List of torch.Tensor
-        if self.num_encs == 1:
+        if self.num_encs <= 1:
             x = [x]
 
         c_list = [self.zero_state(x[0][None, :])]
@@ -101,8 +101,15 @@ class RNNDecoder(BatchScorerInterface):
         att_idx, z_list, c_list = state["workspace"]
         vy = np.array([yseq[-1]])
 
-        if self.num_encs == 1:
+        if self.num_encs <= 1:
             x = [x]
+        
+        # set initial state if attention type is NoAtt
+        if self.num_encs == 0:
+            # we d
+            self.enc_h.append(x[0][None, :])
+            self.mask.append(np.where(make_pad_mask(
+                [x[0].shape[0]]) == 1, -float('inf'), 0).astype(np.float32))
 
         # pre compute states of attention.
         if len(self.pre_compute_enc_h) == 0:
@@ -118,7 +125,6 @@ class RNNDecoder(BatchScorerInterface):
                     [x[idx].shape[0]]) == 1, -float('inf'), 0).astype(np.float32))
 
         input_dict = self.create_input_dic(vy, x, state)
-
         logp, *status_lists = self.decoder.run(
             self.decoder_output_names,
             input_dict
@@ -152,16 +158,17 @@ class RNNDecoder(BatchScorerInterface):
             'c_prev_%d' % d: state['c_prev'][d]
             for d in range(self.decoder_length)
         })
+        necs = max(1, self.num_encs)
         ret.update({
             'a_prev_%d' % d: state['a_prev'][d]
-            for d in range(self.num_encs)
-        })
-        ret.update({
-            'pceh_%d' % d: self.pre_compute_enc_h[d]
-            for d in range(self.num_encs)
+            for d in range(necs)
         })
         ret.update({
             'enc_h_%d' % d: self.enc_h[d]
+            for d in range(necs)
+        })
+        ret.update({
+            'pceh_%d' % d: self.pre_compute_enc_h[d]
             for d in range(self.num_encs)
         })
         ret.update({

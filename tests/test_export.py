@@ -16,20 +16,43 @@ from espnet_onnx.export.asr.models import (
     CTC,
     LanguageModel
 )
+from espnet_onnx.export.asr.models.decoders.attention import OnnxNoAtt
 from espnet_onnx.utils.config import save_config
 from espnet2.lm.espnet_model import ESPnetLanguageModel
 
 
 def export_predec(dec_wrapper, model_export, export_dir):
     model_export._export_predecoder(dec_wrapper, export_dir)
-    assert os.path.isfile(os.path.join(export_dir, 'predecoder_0.onnx'))
+    for i,a in enumerate(dec_wrapper.att_list):
+        if not isinstance(a, OnnxNoAtt):
+            assert os.path.isfile(os.path.join(export_dir, f'predecoder_{i}.onnx'))
 
 
-@pytest.mark.parametrize('enc_type', [
-    'conformer_abs_pos', 'conformer_rel_pos', 'conformer_rpe_latest', 'conformer_scaled',
+encoder_cases = [
+    'conformer_abs_pos',
+    'conformer_rel_pos',
+    'conformer_rpe_latest',
+    'conformer_scaled',
     'transformer',
-    'rnn_rnn', 'rnn_rnnp', 'rnn_vggrnn'
-])
+    'rnn_rnn',
+    'rnn_rnnp',
+    'rnn_vggrnn'
+]
+
+decoder_cases = [
+    'transformer',
+    'rnn_noatt',
+    'rnn_attloc'
+]
+
+lm_cases = [
+    'transformer',
+    'seqrnn',
+    'transformer_pe'
+]
+
+
+@pytest.mark.parametrize('enc_type', encoder_cases)
 def test_export_encoder(enc_type, load_config, model_export,
                         frontend_choices, encoder_choices):
     model_config = load_config(enc_type, model_type='encoder')
@@ -51,9 +74,7 @@ def test_export_encoder(enc_type, load_config, model_export,
     assert os.path.isfile(os.path.join(export_dir, 'encoder.onnx'))
 
 
-@pytest.mark.parametrize('dec_type', [
-    'transformer', 'rnn'
-])
+@pytest.mark.parametrize('dec_type', decoder_cases)
 def test_export_decoder(dec_type, load_config, model_export, decoder_choices):
     model_config = load_config(dec_type, model_type='decoder')
     # prepare encoder model
@@ -77,9 +98,7 @@ def test_export_decoder(dec_type, load_config, model_export, decoder_choices):
     assert os.path.isfile(os.path.join(export_dir, 'decoder.onnx'))
 
 
-@pytest.mark.parametrize('lm_type', [
-    'transformer', 'seqrnn', 'transformer_pe'
-])
+@pytest.mark.parametrize('lm_type', lm_cases)
 def test_export_lm(lm_type, load_config, model_export, lm_choices):
     model_config = load_config(lm_type, model_type='lm')
     # prepare language model
