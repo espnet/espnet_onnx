@@ -61,7 +61,7 @@ class Config(object):
             for j, k in dic.items():
                 if isinstance(k, dict):
                     setattr(self, j, Config(k))
-                elif isinstance(k, list):
+                elif isinstance(k, list) and len(k) > 0:
                     if isinstance(k[0], dict):
                         setattr(self, j, [Config(el) for el in k])
                     else:

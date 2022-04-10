@@ -10,7 +10,7 @@
 | FairseqHubertEncoder               | not tested |
 | RNNEncoder                         | ◯          |
 | TransformerEncoder                 | ◯          |
-| VGGRNNEncoderx                     | x          |
+| VGGRNNEncoderx                     | ◯          |
 | FairSeqWav2Vec2Encoder             | not tested |
 
 
@@ -44,7 +44,7 @@
 | PositionalEncoding          | ◯          |
 | ScaledPositionalEncoding    | ◯          |
 | LegacyRelPositionalEncoding | ◯          |
-| RelPositionalEncoding       | not tested |
+| RelPositionalEncoding       | ◯         |
 | StreamPositionalEncoding    | x          |
 
 

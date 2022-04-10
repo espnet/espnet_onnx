@@ -21,6 +21,7 @@ class RNNDecoder(BatchScorerInterface):
             config (Config):
             use_quantized (bool): Flag to use quantized model
         """
+        self.config = config
         # predecoder
         self.predecoders = []
         for p in config.predecoder:
@@ -38,7 +39,7 @@ class RNNDecoder(BatchScorerInterface):
                 config.quantized_model_path)
         else:
             self.decoder = onnxruntime.InferenceSession(config.model_path)
-
+            
         # HP
         self.num_encs = len(self.predecoders)
         self.dunits = config.dunits
@@ -53,20 +54,43 @@ class RNNDecoder(BatchScorerInterface):
         self.pre_compute_enc_h = []
         self.enc_h = []
         self.mask = []
+        
+        self.init_input_names()
+        
+    def init_input_names(self):
+        # a_prev, enc_h, pceh, mask is not required
+        # with some attention type.
+        self.required_input_names = {}
+        input_names = [d.name for d in self.decoder.get_inputs()]
+        self.required_input_names['a_prev'] = True \
+            if "a_prev" in str(input_names) else False
+        self.required_input_names['enc_h'] = True \
+            if "enc_h" in str(input_names) else False
+        self.required_input_names['pceh'] = True \
+            if "pceh" in str(input_names) else False
+        self.required_input_names['mask'] = True \
+            if "mask" in str(input_names) else False
 
     def get_decoder_output_names(self):
-        ret = []
-        for d in self.decoder.get_outputs():
-            ret.append(d.name)
-        return ret
+        return [d.name for d in self.decoder.get_outputs()]
 
     def zero_state(self, hs_pad):
         return np.zeros((hs_pad.shape[0], self.dunits), dtype=np.float32)
 
+    def get_att_prev(self, x, att_type=None):
+        att_prev = 1.0 - make_pad_mask([x[0].shape[0]])
+        att_prev = (
+            att_prev / np.array([x[0].shape[0]])[..., None]).astype(np.float32)
+        if att_type == 'location2d':
+            att_prev = att_prev[..., None].reshape(-1, self.config.att_win, -1)
+        if att_type in ('coverage', 'coverage_location'):
+            att_prev = att_prev[:, None, :]
+        return att_prev
+
     def init_state(self, x):
         # to support mutiple encoder asr mode, in single encoder mode,
         # convert torch.Tensor to List of torch.Tensor
-        if self.num_encs == 1:
+        if self.num_encs <= 1:
             x = [x]
 
         c_list = [self.zero_state(x[0][None, :])]
@@ -77,15 +101,18 @@ class RNNDecoder(BatchScorerInterface):
 
         strm_index = 0
         att_idx = min(strm_index, len(self.predecoders) - 1)
-        att_prev = 1.0 - make_pad_mask([x[0].shape[0]])
-        att_prev = (
-            att_prev / np.array([x[0].shape[0]])[..., None]).astype(np.float32)
 
-        if self.num_encs == 1:
-            a = [att_prev]
-        else:
-            a = [att_prev] * (self.num_encs + 1)  # atts + han
+        a = []
+        for att in self.config.predecoder:
+            a += [self.get_att_prev(x, att.att_type)]
+        
+        if self.num_encs != 1:
+            a += [self.get_att_prev(x)]  # atts + han
 
+        # initialize cached parameters
+        self.pre_compute_enc_h = []
+        self.enc_h = []
+        self.mask = []
         return dict(
             c_prev=c_list[:],
             z_prev=z_list[:],
@@ -97,8 +124,15 @@ class RNNDecoder(BatchScorerInterface):
         att_idx, z_list, c_list = state["workspace"]
         vy = np.array([yseq[-1]])
 
-        if self.num_encs == 1:
+        if self.num_encs <= 1:
             x = [x]
+        
+        # set initial state if attention type is NoAtt
+        if self.num_encs == 0:
+            # we d
+            self.enc_h.append(x[0][None, :])
+            self.mask.append(np.where(make_pad_mask(
+                [x[0].shape[0]]) == 1, -float('inf'), 0).astype(np.float32))
 
         # pre compute states of attention.
         if len(self.pre_compute_enc_h) == 0:
@@ -114,7 +148,6 @@ class RNNDecoder(BatchScorerInterface):
                     [x[idx].shape[0]]) == 1, -float('inf'), 0).astype(np.float32))
 
         input_dict = self.create_input_dic(vy, x, state)
-
         logp, *status_lists = self.decoder.run(
             self.decoder_output_names,
             input_dict
@@ -148,22 +181,27 @@ class RNNDecoder(BatchScorerInterface):
             'c_prev_%d' % d: state['c_prev'][d]
             for d in range(self.decoder_length)
         })
-        ret.update({
-            'a_prev_%d' % d: state['a_prev'][d]
-            for d in range(self.num_encs)
-        })
-        ret.update({
-            'pceh_%d' % d: self.pre_compute_enc_h[d]
-            for d in range(self.num_encs)
-        })
-        ret.update({
-            'enc_h_%d' % d: self.enc_h[d]
-            for d in range(self.num_encs)
-        })
-        ret.update({
-            'mask_%d' % d: self.mask[d]
-            for d in range(self.num_encs)
-        })
+        necs = max(1, self.num_encs)
+        if self.required_input_names['a_prev']:
+            ret.update({
+                'a_prev_%d' % d: state['a_prev'][d]
+                for d in range(necs)
+            })
+        if self.required_input_names['enc_h']:
+            ret.update({
+                'enc_h_%d' % d: self.enc_h[d]
+                for d in range(necs)
+            })
+        if self.required_input_names['pceh']:
+            ret.update({
+                'pceh_%d' % d: self.pre_compute_enc_h[d]
+                for d in range(self.num_encs)
+            })
+        if self.required_input_names['mask']:
+            ret.update({
+                'mask_%d' % d: self.mask[d]
+                for d in range(self.num_encs)
+            })
         return ret
 
     def separate(self, status_lists):

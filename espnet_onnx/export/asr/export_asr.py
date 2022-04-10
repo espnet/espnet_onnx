@@ -150,17 +150,18 @@ class ModelExport:
     def _export_predecoder(self, dec_model, path):
         for i, att in enumerate(dec_model.model.att_list):
             att_model = PreDecoder(att)
-            file_name = os.path.join(path, 'predecoder_%d.onnx' % i)
-            torch.onnx.export(
-                att_model,
-                att_model.get_dummy_inputs(),
-                file_name,
-                verbose=True,
-                opset_version=11,
-                input_names=att_model.get_input_names(),
-                output_names=att_model.get_output_names(),
-                dynamic_axes=att_model.get_dynamic_axes()
-            )
+            if att_model.require_onnx():
+                file_name = os.path.join(path, 'predecoder_%d.onnx' % i)
+                torch.onnx.export(
+                    att_model,
+                    att_model.get_dummy_inputs(),
+                    file_name,
+                    verbose=True,
+                    opset_version=11,
+                    input_names=att_model.get_input_names(),
+                    output_names=att_model.get_output_names(),
+                    dynamic_axes=att_model.get_dynamic_axes()
+                )
 
     def _export_ctc(self, ctc_model, enc_size, path):
         file_name = os.path.join(path, 'ctc.onnx')

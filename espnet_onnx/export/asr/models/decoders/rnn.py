@@ -5,9 +5,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from espnet.nets.pytorch_backend.rnn.attentions import AttLoc
+from espnet.nets.pytorch_backend.rnn.attentions import NoAtt
 
 from espnet_onnx.utils.function import make_pad_mask
+from .attention import get_attention, OnnxNoAtt
 from ..abs_model import AbsModel
 
 
@@ -32,7 +33,13 @@ def _apply_attention_constraint(
 class PreDecoder(nn.Module, AbsModel):
     def __init__(self, model):
         super().__init__()
-        self.model = model.mlp_enc
+        if isinstance(model, NoAtt):
+            self.model = None
+        else:
+            self.model = model.mlp_enc
+    
+    def require_onnx(self):
+        return self.model is not None
 
     def forward(self, enc_h):
         return self.model(enc_h)
@@ -61,64 +68,6 @@ class PreDecoder(nn.Module, AbsModel):
         }
 
 
-class OnnxAttLoc(nn.Module):
-    def __init__(self, model):
-        super().__init__()
-        self.model = model
-        self.dunits = model.dunits
-        self.att_dim = model.att_dim
-
-    def forward(
-        self,
-        dec_z,
-        att_prev,
-        pre_compute_enc_h,
-        enc_h,
-        mask,
-        scaling=2.0,
-        last_attended_idx=None,
-        backward_window=1,
-        forward_window=3,
-    ):
-        batch = 1
-        dec_z = dec_z.view(batch, self.dunits)
-        # att_prev: utt x frame -> utt x 1 x 1 x frame
-        # -> utt x att_conv_chans x 1 x frame
-        frame_length = att_prev.size(1)
-        att_conv = self.model.loc_conv(
-            att_prev.view(batch, 1, 1, frame_length))
-        # att_conv: utt x att_conv_chans x 1 x frame -> utt x frame x att_conv_chans
-        att_conv = att_conv.squeeze(2).transpose(1, 2)
-        # att_conv: utt x frame x att_conv_chans -> utt x frame x att_dim
-        att_conv = self.model.mlp_att(att_conv)
-
-        # dec_z_tiled: utt x frame x att_dim
-        dec_z_tiled = self.model.mlp_dec(dec_z).view(batch, 1, self.att_dim)
-
-        # dot with gvec
-        # utt x frame x att_dim -> utt x frame
-        e = self.model.gvec(
-            torch.tanh(att_conv + pre_compute_enc_h + dec_z_tiled)
-        ).squeeze(2)
-
-        # mask is an array with -inf
-        e = e + mask
-
-        # apply monotonic attention constraint (mainly for TTS)
-        if last_attended_idx is not None:
-            e = _apply_attention_constraint(
-                e, last_attended_idx, backward_window, forward_window
-            )
-
-        w = F.softmax(scaling * e, dim=1)
-
-        # weighted sum over flames
-        # utt x hdim
-        c = torch.sum(enc_h * w.view(batch, frame_length, 1), dim=1)
-
-        return c, w
-
-
 class RNNDecoder(nn.Module, AbsModel):
     def __init__(self, model):
         super().__init__()
@@ -127,13 +76,9 @@ class RNNDecoder(nn.Module, AbsModel):
         self.num_encs = model.num_encs
         self.decoder_length = len(model.decoder)
 
-        if not isinstance(self.model.att_list[0], AttLoc):
-            raise ValueError(
-                'Currently only espnet.asr.pytorch_backend.rnn.attention.AttLoc is supported.')
-
         self.att_list = nn.ModuleList()
         for a in model.att_list:
-            self.att_list.append(OnnxAttLoc(a))
+            self.att_list.append(get_attention(a))
 
     def forward(self, vy, x, z_prev, c_prev, a_prev, pre_compute_enc_h, enc_h, mask):
         ey = self.embed(vy)  # utt list (1) x zdim
@@ -207,6 +152,14 @@ class RNNDecoder(nn.Module, AbsModel):
                 )
                 ret_z_list.append(_z_list)
         return ret_z_list, ret_c_list
+    
+    def get_a_prev(self, feat_length, att):
+        ret = torch.randn(1, feat_length)
+        # if att.att_type == 'location2d':
+        #     ret = torch.randn(1, att.att_win, feat_length)
+        if att.att_type in ('coverage', 'coverage_location'):
+            ret = torch.randn(1, 1, feat_length)
+        return ret
 
     def get_dummy_inputs(self, enc_size):
         feat_length = 50
@@ -214,11 +167,13 @@ class RNNDecoder(nn.Module, AbsModel):
         x = torch.randn(feat_length, enc_size)
         z_prev = [torch.randn(1, self.model.dunits)
                   for _ in range(self.decoder_length)]
-        a_prev = [torch.randn(1, feat_length) for _ in range(self.num_encs)]
+        a_prev = [self.get_a_prev(feat_length, att) for att in self.att_list]
         c_prev = [torch.randn(1, self.model.dunits)
                   for _ in range(self.decoder_length)]
-        pre_compute_enc_h = [torch.randn(
-            1, feat_length, self.model.att_list[i].mlp_enc.out_features) for i in range(self.num_encs)]
+        pre_compute_enc_h = [
+            self.get_precompute_enc_h(i, feat_length)
+            for i in range(self.num_encs)
+        ]
         enc_h = [torch.randn(1, feat_length, enc_size)
                  for _ in range(self.num_encs)]
         _m = torch.from_numpy(np.where(make_pad_mask(
@@ -229,6 +184,12 @@ class RNNDecoder(nn.Module, AbsModel):
             a_prev, pre_compute_enc_h,
             enc_h, mask
         )
+    
+    def get_precompute_enc_h(self, idx, feat_length):
+        if isinstance(self.model.att_list[idx], NoAtt):
+            return torch.randn(1, 1, 1)
+        else:
+            return torch.randn(1, feat_length, self.model.att_list[idx].mlp_enc.out_features)
 
     def get_input_names(self):
         ret = ['vy', 'x']
@@ -258,10 +219,10 @@ class RNNDecoder(nn.Module, AbsModel):
             }
         }
         ret.update({
-            'a_prev_%d' % d: {
-                1: 'a_prev_%d_length' % d,
+            'a_prev_%d' % i: {
+                a.get_dynamic_axes(): 'a_prev_%d_length' % i,
             }
-            for d in range(self.num_encs)
+            for i,a in enumerate(self.att_list)
         })
         ret.update({
             'pceh_%d' % d: {
@@ -293,7 +254,7 @@ class RNNDecoder(nn.Module, AbsModel):
 
     def get_model_config(self, path):
         file_name = os.path.join(path, 'decoder.onnx')
-        return {
+        ret = {
             "dec_type": "RNNDecoder",
             "model_path": file_name,
             "dlayers": self.model.dlayers,
@@ -303,8 +264,13 @@ class RNNDecoder(nn.Module, AbsModel):
             "rnn_type": self.model.dtype,
             "predecoder": [
                 {
-                    "model_path": os.path.join(path, 'predecoder_%d.onnx' % d)
+                    "model_path": os.path.join(path, f'predecoder_{i}.onnx'),
+                    "att_type": a.att_type
                 }
-                for d in range(self.num_encs)
+                for i,a in enumerate(self.att_list)
+                if not isinstance(a, OnnxNoAtt)
             ]
         }
+        if hasattr(self.model, 'att_win'):
+            ret.update(att_win=self.model.att_win)
+        return ret

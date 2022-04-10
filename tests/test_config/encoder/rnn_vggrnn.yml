@@ -1,0 +1,11 @@
+encoder: vgg_rnn
+encoder_conf:
+  bidirectional: true
+  hidden_size: 320
+  num_layers: 4
+  output_size: 320
+  rnn_type: gru
+  use_projection: true
+frontend: default
+frontend_conf:
+  fs: 16k

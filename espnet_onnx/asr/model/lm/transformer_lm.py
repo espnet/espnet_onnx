@@ -15,7 +15,7 @@ class TransformerLM(BatchScorerInterface):
     def __init__(
         self,
         config,
-        use_quantized
+        use_quantized=False
     ):
         if use_quantized:
             self.lm_session = onnxruntime.InferenceSession(

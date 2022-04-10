@@ -63,6 +63,7 @@ class Encoder:
         # 3. forward encoder
         encoder_out, encoder_out_lens = \
             self.forward_encoder(feats, feat_length)
+        encoder_out = self.mask_output(encoder_out, encoder_out_lens)
 
         # if self.config.do_postencoder:
         #     encoder_out, encoder_out_lens = self.postencoder(
@@ -70,6 +71,11 @@ class Encoder:
         #     )
 
         return encoder_out, encoder_out_lens
+
+    def mask_output(self, feats, feat_length):
+        if self.config.is_vggrnn:
+            feats = mask_fill(feats, make_pad_mask(feat_length, feats, 1), 0.0)
+        return feats, feat_length
 
     def forward_encoder(self, feats, feat_length):
         if self.config.enc_type == 'RNNEncoder':
