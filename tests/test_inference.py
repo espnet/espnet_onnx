@@ -54,6 +54,7 @@ decoder_cases = [
     ('transformer', [50, 100]),
     ('rnn_noatt', [50, 100]),
     ('rnn_dot', [50, 100]),
+    ('rnn_add', [50, 100]),
     ('rnn_loc', [50, 100]),
 ]
 

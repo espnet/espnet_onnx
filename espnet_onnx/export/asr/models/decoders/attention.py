@@ -25,7 +25,7 @@ def get_attention(model):
     elif isinstance(model, AttDot):
         return OnnxAttDot(model)
     elif isinstance(model, AttAdd):
-        raise ValueError('not supported.')
+        return OnnxAttAdd(model)
     elif isinstance(model, AttLoc):
         return OnnxAttLoc(model)
     elif isinstance(model, AttLoc2D):
@@ -100,6 +100,48 @@ class OnnxAttDot(torch.nn.Module):
             * torch.tanh(self.model.mlp_dec(dec_z)).view(batch, 1, self.att_dim),
             dim=2,
         )  # utt x frame
+
+        # NOTE consider zero padding when compute w.
+        e = e + mask
+        w = F.softmax(scaling * e, dim=1)
+
+        # weighted sum over flames
+        # utt x hdim
+        # NOTE use bmm instead of sum(*)
+        c = torch.sum(enc_h * w.view(batch, h_length, 1), dim=1)
+        return c, w
+
+
+class OnnxAttAdd(torch.nn.Module):
+    """Additive attention
+    """
+    def __init__(self, model):
+        super().__init__()
+        self.model = model
+        self.dunits = model.dunits
+        self.att_dim = model.att_dim
+
+    def forward(
+        self,
+        dec_z,
+        att_prev,
+        pre_compute_enc_h,
+        enc_h,
+        mask,
+        scaling=2.0
+    ):
+        """AttAdd forward
+        """
+        batch = 1
+        h_length = enc_h.size(1)
+        dec_z = dec_z.view(batch, self.dunits)
+
+        # dec_z_tiled: utt x frame x att_dim
+        dec_z_tiled = self.model.mlp_dec(dec_z).view(batch, 1, self.att_dim)
+
+        # dot with gvec
+        # utt x frame x att_dim -> utt x frame
+        e = self.model.gvec(torch.tanh(pre_compute_enc_h + dec_z_tiled)).squeeze(2)
 
         # NOTE consider zero padding when compute w.
         e = e + mask

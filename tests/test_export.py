@@ -43,6 +43,7 @@ decoder_cases = [
     'transformer',
     'rnn_noatt',
     'rnn_dot',
+    'rnn_add',
     'rnn_loc',
 ]
 
