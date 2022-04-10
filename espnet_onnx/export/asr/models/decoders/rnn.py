@@ -157,6 +157,8 @@ class RNNDecoder(nn.Module, AbsModel):
         ret = torch.randn(1, feat_length)
         # if att.att_type == 'location2d':
         #     ret = torch.randn(1, att.att_win, feat_length)
+        if att.att_type == 'coverage':
+            ret = torch.randn(1, 1, feat_length)
         return ret
 
     def get_dummy_inputs(self, enc_size):
@@ -217,10 +219,10 @@ class RNNDecoder(nn.Module, AbsModel):
             }
         }
         ret.update({
-            'a_prev_%d' % d: {
-                1: 'a_prev_%d_length' % d,
+            'a_prev_%d' % i: {
+                a.get_dynamic_axes(): 'a_prev_%d_length' % i,
             }
-            for d in range(self.num_encs)
+            for i,a in enumerate(self.att_list)
         })
         ret.update({
             'pceh_%d' % d: {

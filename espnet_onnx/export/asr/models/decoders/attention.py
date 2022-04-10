@@ -33,7 +33,7 @@ def get_attention(model):
     elif isinstance(model, AttLocRec):
         raise ValueError('not supported.')
     elif isinstance(model, AttCov):
-        raise ValueError('not supported.')
+        return OnnxAttCov(model)
     elif isinstance(model, AttCovLoc):
         raise ValueError('not supported.')
     elif isinstance(model, AttMultiHeadDot):
@@ -53,6 +53,9 @@ class OnnxNoAtt(torch.nn.Module):
         super().__init__()
         self.model = model
         self.att_type = "noatt"
+    
+    def get_dynamic_axes(self):
+        return 1
 
     def forward(
         self,
@@ -83,6 +86,9 @@ class OnnxAttDot(torch.nn.Module):
         self.dunits = model.dunits
         self.att_dim = model.att_dim
         self.att_type = "dot"
+    
+    def get_dynamic_axes(self):
+        return 1
 
     def forward(
         self,
@@ -123,6 +129,9 @@ class OnnxAttAdd(torch.nn.Module):
         self.dunits = model.dunits
         self.att_dim = model.att_dim
         self.att_type = "add"
+    
+    def get_dynamic_axes(self):
+        return 1
 
     def forward(
         self,
@@ -164,6 +173,9 @@ class OnnxAttLoc(nn.Module):
         self.dunits = model.dunits
         self.att_dim = model.att_dim
         self.att_type = "location"
+    
+    def get_dynamic_axes(self):
+        return 1
 
     def forward(
         self,
@@ -274,5 +286,72 @@ class OnnxAttLoc(nn.Module):
 #         att_prev = att_prev[:, 1:]
 
 #         return c, att_prev
+
+
+class OnnxAttCov(torch.nn.Module):
+    """Coverage mechanism attention
+    Reference: Get To The Point: Summarization with Pointer-Generator Network
+       (https://arxiv.org/abs/1704.04368)
+    """
+
+    def __init__(self, model):
+        super().__init__()
+        self.model = model
+
+        self.dunits = model.dunits
+        self.att_dim = model.att_dim
+        self.att_type = 'coverage'
+    
+    def get_dynamic_axes(self):
+        return 2
+
+    def forward(
+        self,
+        dec_z,
+        att_prev,
+        pre_compute_enc_h,
+        enc_h,
+        mask,
+        scaling=2.0
+    ):
+        """AttCov forward
+        """
+        batch = 1
+        h_length = enc_h.size(1)
+        dec_z = dec_z.view(batch, self.dunits)
+
+        # att_prev_list: L' * [B x T] => cov_vec B x T
+        cov_vec = torch.sum(att_prev, dim=0)
+        # cov_vec: B x T => B x T x 1 => B x T x att_dim
+        cov_vec = self.model.wvec(cov_vec.unsqueeze(-1))
+
+        # dec_z_tiled: utt x frame x att_dim
+        dec_z_tiled = self.model.mlp_dec(dec_z).view(batch, 1, self.att_dim)
+
+        # dot with gvec
+        # utt x frame x att_dim -> utt x frame
+        e = self.model.gvec(
+            torch.tanh(cov_vec + pre_compute_enc_h + dec_z_tiled)
+        ).squeeze(2)
+
+        # NOTE consider zero padding when compute w.
+        e = e + mask
+        w = F.softmax(scaling * e, dim=1)
+        att_prev = torch.cat([att_prev, w.unsqueeze(0)], dim=0)
+
+        # weighted sum over flames
+        # utt x hdim
+        # NOTE use bmm instead of sum(*)
+        c = torch.sum(enc_h * w.view(batch, h_length, 1), dim=1)
+
+        return c, att_prev
+
+
+
+
+
+
+
+
 
 

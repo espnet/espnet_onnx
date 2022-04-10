@@ -83,6 +83,8 @@ class RNNDecoder(BatchScorerInterface):
             att_prev / np.array([x[0].shape[0]])[..., None]).astype(np.float32)
         if att_type == 'location2d':
             att_prev = att_prev[..., None].reshape(-1, self.config.att_win, -1)
+        if att_type == 'coverage':
+            att_prev = att_prev[:, None, :]
         return att_prev
 
     def init_state(self, x):
@@ -99,9 +101,6 @@ class RNNDecoder(BatchScorerInterface):
 
         strm_index = 0
         att_idx = min(strm_index, len(self.predecoders) - 1)
-        att_prev = 1.0 - make_pad_mask([x[0].shape[0]])
-        att_prev = (
-            att_prev / np.array([x[0].shape[0]])[..., None]).astype(np.float32)
 
         a = []
         for att in self.config.predecoder:
