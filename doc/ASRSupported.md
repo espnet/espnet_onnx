@@ -53,14 +53,14 @@
 
 | arch name               | supported |
 | ----------------------- | --------- |
-| NoAtt                   | x         |
-| AttDot                  | x         |
-| AttAdd                  | x         |
+| NoAtt                   | ◯         |
+| AttDot                  | ◯         |
+| AttAdd                  | ◯         |
 | AttLoc                  | ◯         |
-| AttCov                  | x         |
+| AttCov                  | ◯         |
 | AttLoc2D                | x         |
 | AttLocRec               | x         |
-| AttCovLoc               | x         |
+| AttCovLoc               | ◯         |
 | AttMultiHeadDot         | x         |
 | AttMultiHeadAdd         | x         |
 | AttMultiHeadLoc         | x         |
