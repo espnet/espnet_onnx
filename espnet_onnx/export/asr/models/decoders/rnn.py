@@ -152,6 +152,12 @@ class RNNDecoder(nn.Module, AbsModel):
                 )
                 ret_z_list.append(_z_list)
         return ret_z_list, ret_c_list
+    
+    def get_a_prev(self, feat_length, att):
+        ret = torch.randn(1, feat_length)
+        # if att.att_type == 'location2d':
+        #     ret = torch.randn(1, att.att_win, feat_length)
+        return ret
 
     def get_dummy_inputs(self, enc_size):
         feat_length = 50
@@ -159,7 +165,7 @@ class RNNDecoder(nn.Module, AbsModel):
         x = torch.randn(feat_length, enc_size)
         z_prev = [torch.randn(1, self.model.dunits)
                   for _ in range(self.decoder_length)]
-        a_prev = [torch.randn(1, feat_length) for _ in range(self.num_encs)]
+        a_prev = [self.get_a_prev(feat_length, att) for att in self.att_list]
         c_prev = [torch.randn(1, self.model.dunits)
                   for _ in range(self.decoder_length)]
         pre_compute_enc_h = [
@@ -246,7 +252,7 @@ class RNNDecoder(nn.Module, AbsModel):
 
     def get_model_config(self, path):
         file_name = os.path.join(path, 'decoder.onnx')
-        return {
+        ret = {
             "dec_type": "RNNDecoder",
             "model_path": file_name,
             "dlayers": self.model.dlayers,
@@ -256,9 +262,13 @@ class RNNDecoder(nn.Module, AbsModel):
             "rnn_type": self.model.dtype,
             "predecoder": [
                 {
-                    "model_path": os.path.join(path, f'predecoder_{i}.onnx')
+                    "model_path": os.path.join(path, f'predecoder_{i}.onnx'),
+                    "att_type": a.att_type
                 }
                 for i,a in enumerate(self.att_list)
                 if not isinstance(a, OnnxNoAtt)
             ]
         }
+        if hasattr(self.model, 'att_win'):
+            ret.update(att_win=self.model.att_win)
+        return ret

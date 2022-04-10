@@ -21,6 +21,7 @@ class RNNDecoder(BatchScorerInterface):
             config (Config):
             use_quantized (bool): Flag to use quantized model
         """
+        self.config = config
         # predecoder
         self.predecoders = []
         for p in config.predecoder:
@@ -76,6 +77,14 @@ class RNNDecoder(BatchScorerInterface):
     def zero_state(self, hs_pad):
         return np.zeros((hs_pad.shape[0], self.dunits), dtype=np.float32)
 
+    def get_att_prev(self, x, att_type=None):
+        att_prev = 1.0 - make_pad_mask([x[0].shape[0]])
+        att_prev = (
+            att_prev / np.array([x[0].shape[0]])[..., None]).astype(np.float32)
+        if att_type == 'location2d':
+            att_prev = att_prev[..., None].reshape(-1, self.config.att_win, -1)
+        return att_prev
+
     def init_state(self, x):
         # to support mutiple encoder asr mode, in single encoder mode,
         # convert torch.Tensor to List of torch.Tensor
@@ -94,10 +103,12 @@ class RNNDecoder(BatchScorerInterface):
         att_prev = (
             att_prev / np.array([x[0].shape[0]])[..., None]).astype(np.float32)
 
-        if self.num_encs == 1:
-            a = [att_prev]
-        else:
-            a = [att_prev] * (self.num_encs + 1)  # atts + han
+        a = []
+        for att in self.config.predecoder:
+            a += [self.get_att_prev(x, att.att_type)]
+        
+        if self.num_encs != 1:
+            a += [self.get_att_prev(x)]  # atts + han
 
         # initialize cached parameters
         self.pre_compute_enc_h = []

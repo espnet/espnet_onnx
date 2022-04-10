@@ -29,7 +29,7 @@ def get_attention(model):
     elif isinstance(model, AttLoc):
         return OnnxAttLoc(model)
     elif isinstance(model, AttLoc2D):
-        raise ValueError('not supported.')
+        raise ValueError('Currently AttLoc2D is not supported.')
     elif isinstance(model, AttLocRec):
         raise ValueError('not supported.')
     elif isinstance(model, AttCov):
@@ -52,6 +52,7 @@ class OnnxNoAtt(torch.nn.Module):
     def __init__(self, model):
         super().__init__()
         self.model = model
+        self.att_type = "noatt"
 
     def forward(
         self,
@@ -81,6 +82,7 @@ class OnnxAttDot(torch.nn.Module):
 
         self.dunits = model.dunits
         self.att_dim = model.att_dim
+        self.att_type = "dot"
 
     def forward(
         self,
@@ -120,6 +122,7 @@ class OnnxAttAdd(torch.nn.Module):
         self.model = model
         self.dunits = model.dunits
         self.att_dim = model.att_dim
+        self.att_type = "add"
 
     def forward(
         self,
@@ -160,6 +163,7 @@ class OnnxAttLoc(nn.Module):
         self.model = model
         self.dunits = model.dunits
         self.att_dim = model.att_dim
+        self.att_type = "location"
 
     def forward(
         self,
@@ -210,3 +214,65 @@ class OnnxAttLoc(nn.Module):
         c = torch.sum(enc_h * w.view(batch, frame_length, 1), dim=1)
 
         return c, w
+
+
+# class OnnxAttLoc2D(torch.nn.Module):
+#     """2D location-aware attention
+#     """
+#     def __init__(self, model):
+#         super().__init__()
+#         self.model = model
+
+#         self.dunits = model.dunits
+#         self.att_dim = model.att_dim
+#         self.att_win = model.att_win
+#         self.att_type = "location2d"
+
+#     def forward(
+#         self,
+#         dec_z,
+#         att_prev,
+#         pre_compute_enc_h,
+#         enc_h,
+#         mask,
+#         scaling=2.0
+#     ):
+#         """AttLoc2D forward
+#         """
+#         batch = 1
+#         h_length = enc_h.size(1)
+#         dec_z = dec_z.view(batch, self.dunits)
+
+#         # att_prev: B x att_win x Tmax -> B x 1 x att_win x Tmax -> B x C x 1 x Tmax
+#         att_conv = self.model.loc_conv(att_prev.unsqueeze(1))
+#         # att_conv: B x C x 1 x Tmax -> B x Tmax x C
+#         att_conv = att_conv.squeeze(2).transpose(1, 2)
+#         # att_conv: utt x frame x att_conv_chans -> utt x frame x att_dim
+#         att_conv = self.model.mlp_att(att_conv)
+
+#         # dec_z_tiled: utt x frame x att_dim
+#         dec_z_tiled = self.model.mlp_dec(dec_z).view(batch, 1, self.att_dim)
+
+#         # dot with gvec
+#         # utt x frame x att_dim -> utt x frame
+#         e = self.model.gvec(
+#             torch.tanh(att_conv + pre_compute_enc_h + dec_z_tiled)
+#         ).squeeze(2)
+
+#         # NOTE consider zero padding when compute w.
+#         e = e + mask
+#         w = F.softmax(scaling * e, dim=1)
+
+#         # weighted sum over flames
+#         # utt x hdim
+#         # NOTE use bmm instead of sum(*)
+#         c = torch.sum(enc_h * w.view(batch, h_length, 1), dim=1)
+
+#         # update att_prev: B x att_win x Tmax -> B x att_win+1 x Tmax
+#         # -> B x att_win x Tmax
+#         att_prev = torch.cat([att_prev, w.unsqueeze(1)], dim=1)
+#         att_prev = att_prev[:, 1:]
+
+#         return c, att_prev
+
+

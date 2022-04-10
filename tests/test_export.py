@@ -45,6 +45,7 @@ decoder_cases = [
     'rnn_dot',
     'rnn_add',
     'rnn_loc',
+    # 'rnn_loc2d'
 ]
 
 lm_cases = [
