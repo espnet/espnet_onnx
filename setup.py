@@ -14,7 +14,7 @@ requirements = {
         "numpy<=1.21.3",
     ],
     "test": [
-        "torch>=1.3.0",
+        "torch>=1.11.0",
         "espnet",
         "pytest"
     ]
@@ -22,7 +22,7 @@ requirements = {
 
 setup(
     name="espnet_onnx",
-    version="0.1.2",
+    version="0.1.3",
     url="https://github.com/Masao-Someki/espnet_onnx",
     author="Masao Someki",
     author_email="masao.someki@gmail.com",

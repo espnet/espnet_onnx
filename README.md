@@ -1,7 +1,7 @@
 # espnet_onnx
 ![](https://circleci.com/gh/Masao-Someki/espnet_onnx.svg?style=shield)
 ![](https://img.shields.io/badge/licence-MIT-blue)
-[![](https://img.shields.io/badge/pypi-0.1.2-brightgreen)](https://pypi.org/project/espnet-onnx/)
+[![](https://img.shields.io/badge/pypi-0.1.3-brightgreen)](https://pypi.org/project/espnet-onnx/)
 
 **ESPNet without PyTorch!**  
 
@@ -21,7 +21,7 @@ Currently TTS is not supported.
 pip install espnet_onnx
 ```
 
-2. If you want to export pretrained model, you need to install `torch`, `espnet`, `espnet_model_zoo` additionally.
+2. If you want to export pretrained model, you need to install `torch>=1.11.0`, `espnet`, `espnet_model_zoo` additionally.
 
 ## Usage
 
