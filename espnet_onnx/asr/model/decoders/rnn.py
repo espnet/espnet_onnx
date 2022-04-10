@@ -86,6 +86,10 @@ class RNNDecoder(BatchScorerInterface):
         else:
             a = [att_prev] * (self.num_encs + 1)  # atts + han
 
+        # initialize cached parameters
+        self.pre_compute_enc_h = []
+        self.enc_h = []
+        self.mask = []
         return dict(
             c_prev=c_list[:],
             z_prev=z_list[:],
