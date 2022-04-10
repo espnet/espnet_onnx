@@ -53,7 +53,8 @@ encoder_cases = [
 decoder_cases = [
     ('transformer', [50, 100]),
     ('rnn_noatt', [50, 100]),
-    ('rnn_attloc', [50, 100]),
+    ('rnn_dot', [50, 100]),
+    ('rnn_loc', [50, 100]),
 ]
 
 lm_cases = [

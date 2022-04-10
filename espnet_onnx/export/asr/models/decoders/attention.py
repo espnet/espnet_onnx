@@ -23,7 +23,7 @@ def get_attention(model):
     if isinstance(model, NoAtt):
         return OnnxNoAtt(model)
     elif isinstance(model, AttDot):
-        raise ValueError('not supported.')
+        return OnnxAttDot(model)
     elif isinstance(model, AttAdd):
         raise ValueError('not supported.')
     elif isinstance(model, AttLoc):
@@ -72,6 +72,44 @@ class OnnxNoAtt(torch.nn.Module):
             )
 
         return c, att_prev
+
+
+class OnnxAttDot(torch.nn.Module):
+    def __init__(self, model):
+        super().__init__()
+        self.model = model
+
+        self.dunits = model.dunits
+        self.att_dim = model.att_dim
+
+    def forward(
+        self,
+        dec_z,
+        att_prev,
+        pre_compute_enc_h,
+        enc_h,
+        mask,
+        scaling=2.0
+    ):
+        batch = 1
+        dec_z = dec_z.view(batch, self.dunits)
+        h_length = enc_h.size(1)
+
+        e = torch.sum(
+            pre_compute_enc_h
+            * torch.tanh(self.model.mlp_dec(dec_z)).view(batch, 1, self.att_dim),
+            dim=2,
+        )  # utt x frame
+
+        # NOTE consider zero padding when compute w.
+        e = e + mask
+        w = F.softmax(scaling * e, dim=1)
+
+        # weighted sum over flames
+        # utt x hdim
+        # NOTE use bmm instead of sum(*)
+        c = torch.sum(enc_h * w.view(batch, h_length, 1), dim=1)
+        return c, w
 
 
 class OnnxAttLoc(nn.Module):

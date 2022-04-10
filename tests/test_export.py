@@ -42,7 +42,8 @@ encoder_cases = [
 decoder_cases = [
     'transformer',
     'rnn_noatt',
-    'rnn_attloc'
+    'rnn_dot',
+    'rnn_loc',
 ]
 
 lm_cases = [

@@ -53,12 +53,25 @@ class RNNDecoder(BatchScorerInterface):
         self.pre_compute_enc_h = []
         self.enc_h = []
         self.mask = []
+        
+        self.init_input_names()
+        
+    def init_input_names(self):
+        # a_prev, enc_h, pceh, mask is not required
+        # with some attention type.
+        self.required_input_names = {}
+        input_names = [d.name for d in self.decoder.get_inputs()]
+        self.required_input_names['a_prev'] = True \
+            if "a_prev" in str(input_names) else False
+        self.required_input_names['enc_h'] = True \
+            if "enc_h" in str(input_names) else False
+        self.required_input_names['pceh'] = True \
+            if "pceh" in str(input_names) else False
+        self.required_input_names['mask'] = True \
+            if "mask" in str(input_names) else False
 
     def get_decoder_output_names(self):
-        ret = []
-        for d in self.decoder.get_outputs():
-            ret.append(d.name)
-        return ret
+        return [d.name for d in self.decoder.get_outputs()]
 
     def zero_state(self, hs_pad):
         return np.zeros((hs_pad.shape[0], self.dunits), dtype=np.float32)
@@ -159,22 +172,26 @@ class RNNDecoder(BatchScorerInterface):
             for d in range(self.decoder_length)
         })
         necs = max(1, self.num_encs)
-        ret.update({
-            'a_prev_%d' % d: state['a_prev'][d]
-            for d in range(necs)
-        })
-        ret.update({
-            'enc_h_%d' % d: self.enc_h[d]
-            for d in range(necs)
-        })
-        ret.update({
-            'pceh_%d' % d: self.pre_compute_enc_h[d]
-            for d in range(self.num_encs)
-        })
-        ret.update({
-            'mask_%d' % d: self.mask[d]
-            for d in range(self.num_encs)
-        })
+        if self.required_input_names['a_prev']:
+            ret.update({
+                'a_prev_%d' % d: state['a_prev'][d]
+                for d in range(necs)
+            })
+        if self.required_input_names['enc_h']:
+            ret.update({
+                'enc_h_%d' % d: self.enc_h[d]
+                for d in range(necs)
+            })
+        if self.required_input_names['pceh']:
+            ret.update({
+                'pceh_%d' % d: self.pre_compute_enc_h[d]
+                for d in range(self.num_encs)
+            })
+        if self.required_input_names['mask']:
+            ret.update({
+                'mask_%d' % d: self.mask[d]
+                for d in range(self.num_encs)
+            })
         return ret
 
     def separate(self, status_lists):
