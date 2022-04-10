@@ -38,7 +38,7 @@ def update_model_path(tag_name, model_path):
     # get configuration of the tag name.
     tag_config_path = Path.home() / ".cache" / "espnet_onnx" / 'tag_config.yaml'
     if os.path.exists(tag_config_path):
-        config = get_config(tag_config_path)
+        config = get_config(tag_config_path).dic
     else:
         config = {}
     if tag_name in config.keys():
