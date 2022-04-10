@@ -157,7 +157,7 @@ class RNNDecoder(nn.Module, AbsModel):
         ret = torch.randn(1, feat_length)
         # if att.att_type == 'location2d':
         #     ret = torch.randn(1, att.att_win, feat_length)
-        if att.att_type == 'coverage':
+        if att.att_type in ('coverage', 'coverage_location'):
             ret = torch.randn(1, 1, feat_length)
         return ret
 

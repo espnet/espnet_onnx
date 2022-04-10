@@ -35,7 +35,7 @@ def get_attention(model):
     elif isinstance(model, AttCov):
         return OnnxAttCov(model)
     elif isinstance(model, AttCovLoc):
-        raise ValueError('not supported.')
+        return OnnxAttCovLoc(model)
     elif isinstance(model, AttMultiHeadDot):
         raise ValueError('not supported.')
     elif isinstance(model, AttMultiHeadAdd):
@@ -347,7 +347,68 @@ class OnnxAttCov(torch.nn.Module):
         return c, att_prev
 
 
+class OnnxAttCovLoc(torch.nn.Module):
+    """Coverage mechanism location aware attention
 
+    This attention is a combination of coverage and location-aware attentions.
+    """
+    def __init__(self, model):
+        super().__init__()
+        self.model = model
+
+        self.dunits = model.dunits
+        self.att_dim = model.att_dim
+        self.att_type = 'coverage_location'
+    
+    def get_dynamic_axes(self):
+        return 2
+
+    def forward(
+        self,
+        dec_z,
+        att_prev,
+        pre_compute_enc_h,
+        enc_h,
+        mask,
+        scaling=2.0
+    ):
+        """AttCovLoc forward
+        """
+
+        batch = 1
+        h_length = enc_h.size(1)
+        dec_z = dec_z.view(batch, self.dunits)
+
+        # att_prev_list: L' * [B x T] => cov_vec B x T
+        cov_vec = torch.sum(att_prev, dim=0)
+
+        # cov_vec: B x T -> B x 1 x 1 x T -> B x C x 1 x T
+        att_conv = self.model.loc_conv(cov_vec.view(batch, 1, 1, h_length))
+        # att_conv: utt x att_conv_chans x 1 x frame -> utt x frame x att_conv_chans
+        att_conv = att_conv.squeeze(2).transpose(1, 2)
+        # att_conv: utt x frame x att_conv_chans -> utt x frame x att_dim
+        att_conv = self.model.mlp_att(att_conv)
+
+        # dec_z_tiled: utt x frame x att_dim
+        dec_z_tiled = self.model.mlp_dec(dec_z).view(batch, 1, self.att_dim)
+
+        # dot with gvec
+        # utt x frame x att_dim -> utt x frame
+        e = self.model.gvec(
+            torch.tanh(att_conv + pre_compute_enc_h + dec_z_tiled)
+        ).squeeze(2)
+
+        # NOTE consider zero padding when compute w.
+        e = e + mask
+        w = F.softmax(scaling * e, dim=1)
+        att_prev = torch.cat([att_prev, w.unsqueeze(0)], dim=0)
+
+        # weighted sum over flames
+        # utt x hdim
+        # NOTE use bmm instead of sum(*)
+        c = torch.sum(enc_h * w.view(batch, h_length, 1), dim=1)
+
+        return c, att_prev
 
 
 

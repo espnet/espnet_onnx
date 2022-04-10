@@ -1,0 +1,9 @@
+decoder: rnn
+decoder_conf:
+  att_conf:
+    adim: 320
+    atype: coverage_location
+  dropout: 0.0
+  hidden_size: 320
+  num_layers: 1
+  rnn_type: lstm

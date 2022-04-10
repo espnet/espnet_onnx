@@ -83,7 +83,7 @@ class RNNDecoder(BatchScorerInterface):
             att_prev / np.array([x[0].shape[0]])[..., None]).astype(np.float32)
         if att_type == 'location2d':
             att_prev = att_prev[..., None].reshape(-1, self.config.att_win, -1)
-        if att_type == 'coverage':
+        if att_type in ('coverage', 'coverage_location'):
             att_prev = att_prev[:, None, :]
         return att_prev
 
