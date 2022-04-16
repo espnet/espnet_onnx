@@ -15,9 +15,11 @@ from espnet_onnx.asr.scorer.interface import (
     PartialScorerInterface,
     ScorerInterface,
 )
-from espnet_onnx.utils.function import topk
+from espnet_onnx.utils.function import (
+    topk,
+    end_detect
+)
 from espnet_onnx.utils.config import Config
-from .utils import end_detect
 from .hyps import Hypothesis
 
 
