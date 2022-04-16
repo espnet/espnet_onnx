@@ -8,10 +8,11 @@ from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsamplin
 from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling6
 from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling8
 from espnet.nets.pytorch_backend.transformer.embedding import (
-    PositionalEncoding,  # noqa: H301
-    ScaledPositionalEncoding,  # noqa: H301
-    RelPositionalEncoding,  # noqa: H301
-    LegacyRelPositionalEncoding,  # noqa: H301
+    PositionalEncoding,
+    ScaledPositionalEncoding,
+    RelPositionalEncoding,
+    LegacyRelPositionalEncoding,
+    StreamPositionalEncoding,
 )
 
 from espnet_onnx.utils.function import subsequent_mask
@@ -20,7 +21,8 @@ from .embed import (
     OnnxPositionalEncoding,
     OnnxScaledPositionalEncoding,
     OnnxRelPositionalEncoding,
-    OnnxLegacyRelPositionalEncoding
+    OnnxLegacyRelPositionalEncoding,
+    OnnxStreamPositionalEncoding,
 )
 
 
@@ -33,6 +35,8 @@ def get_pos_emb(pos_emb):
         return OnnxRelPositionalEncoding(pos_emb)
     elif isinstance(pos_emb, PositionalEncoding):
         return OnnxPositionalEncoding(pos_emb)
+    elif isinstance(pos_emb, StreamPositionalEncoding):
+        return OnnxStreamPositionalEncoding(pos_emb)
     elif isinstance(pos_emb, nn.Sequential) and len(pos_emb) == 0:
         return pos_emb
     else:

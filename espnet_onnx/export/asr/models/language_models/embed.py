@@ -72,8 +72,7 @@ class OnnxPositionalEncoding(torch.nn.Module):
         )
         pe[:, 0::2] = torch.sin(position * div_term)
         pe[:, 1::2] = torch.cos(position * div_term)
-        pe = pe.unsqueeze(0)
-        self.pe = pe.to(device=x.device, dtype=x.dtype)
+        self.pe = pe.unsqueeze(0)
 
     def forward(self, x: torch.Tensor):
         """Add positional encoding.
@@ -231,55 +230,45 @@ class OnnxRelPositionalEncoding(torch.nn.Module):
         return x, pos_emb
 
 
-# class StreamPositionalEncoding(torch.nn.Module):
-#     """Streaming Positional encoding.
+class OnnxStreamPositionalEncoding(torch.nn.Module):
+    """Streaming Positional encoding.
 
-#     Args:
-#         d_model (int): Embedding dimension.
-#         dropout_rate (float): Dropout rate.
-#         max_len (int): Maximum input length.
+    """
+    def __init__(self, model, max_len=5000):
+        """Construct an PositionalEncoding object."""
+        super(StreamPositionalEncoding, self).__init__()
+        
+        self.d_model = model.d_model
+        self.xscale = model.xscale
+        self.pe = None
+        # Hold as attribute to export as config parameter,
+        # in order to raise an error when start_idx + x.size(1)
+        # exceeds the max_len
+        self.max_len = max_len
+        tmp = torch.tensor(0.0).expand(1, max_len)
+        self.extend_pe(tmp.size(1), tmp.device, tmp.dtype)
+        self._register_load_state_dict_pre_hook(_pre_hook)
 
-#     """
+    def extend_pe(self, length, device, dtype):
+        """Reset the positional encodings."""
+        pe = torch.zeros(length, self.d_model)
+        position = torch.arange(0, length, dtype=torch.float32).unsqueeze(1)
+        div_term = torch.exp(
+            torch.arange(0, self.d_model, 2, dtype=torch.float32)
+            * -(math.log(10000.0) / self.d_model)
+        )
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+        self.pe = pe.unsqueeze(0)
 
-#     def __init__(self, d_model, dropout_rate, max_len=5000):
-#         """Construct an PositionalEncoding object."""
-#         super(StreamPositionalEncoding, self).__init__()
-#         self.d_model = d_model
-#         self.xscale = math.sqrt(self.d_model)
-#         self.dropout = torch.nn.Dropout(p=dropout_rate)
-#         self.pe = None
-#         self.tmp = torch.tensor(0.0).expand(1, max_len)
-#         self.extend_pe(self.tmp.size(1), self.tmp.device, self.tmp.dtype)
-#         self._register_load_state_dict_pre_hook(_pre_hook)
+    def forward(self, x: torch.Tensor, start_idx: int = 0):
+        """Add positional encoding.
 
-#     def extend_pe(self, length, device, dtype):
-#         """Reset the positional encodings."""
-#         if self.pe is not None:
-#             if self.pe.size(1) >= length:
-#                 if self.pe.dtype != dtype or self.pe.device != device:
-#                     self.pe = self.pe.to(dtype=dtype, device=device)
-#                 return
-#         pe = torch.zeros(length, self.d_model)
-#         position = torch.arange(0, length, dtype=torch.float32).unsqueeze(1)
-#         div_term = torch.exp(
-#             torch.arange(0, self.d_model, 2, dtype=torch.float32)
-#             * -(math.log(10000.0) / self.d_model)
-#         )
-#         pe[:, 0::2] = torch.sin(position * div_term)
-#         pe[:, 1::2] = torch.cos(position * div_term)
-#         pe = pe.unsqueeze(0)
-#         self.pe = pe.to(device=device, dtype=dtype)
+        Args:
+            x (torch.Tensor): Input tensor (batch, time, `*`).
 
-#     def forward(self, x: torch.Tensor, start_idx: int = 0):
-#         """Add positional encoding.
+        Returns:
+            torch.Tensor: Encoded tensor (batch, time, `*`).
 
-#         Args:
-#             x (torch.Tensor): Input tensor (batch, time, `*`).
-
-#         Returns:
-#             torch.Tensor: Encoded tensor (batch, time, `*`).
-
-#         """
-#         self.extend_pe(x.size(1) + start_idx, x.device, x.dtype)
-#         x = x * self.xscale + self.pe[:, start_idx : start_idx + x.size(1)]
-#         return self.dropout(x)
+        """
+        return x * self.xscale + self.pe[:, start_idx : start_idx + x.size(1)]
