@@ -1,0 +1,21 @@
+encoder: contextual_block_transformer
+encoder_conf:
+  output_size: 512
+  attention_heads: 8
+  linear_units: 2048
+  num_blocks: 18
+  dropout_rate: 0.1
+  positional_dropout_rate: 0.1
+  attention_dropout_rate: 0.1
+  input_layer: conv2d6
+  normalize_before: true
+  block_size: 40
+  hop_size: 16
+  look_ahead: 16
+  init_average: true
+  ctx_pos_enc: true
+frontend: default
+frontend_conf:
+  fs: 16k
+  hop_length: 256
+  n_fft: 512

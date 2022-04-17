@@ -36,7 +36,9 @@ encoder_cases = [
     'transformer',
     'rnn_rnn',
     'rnn_rnnp',
-    'rnn_vggrnn'
+    'rnn_vggrnn',
+    'contextual_block_conformer',
+    'contextual_block_transformer'
 ]
 
 decoder_cases = [
