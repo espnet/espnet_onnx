@@ -56,7 +56,37 @@ y, sr = librosa.load('sample.wav', sr=16000)
 nbest = speech2text(y)
 ```
 
+4. For streaming asr, you can use `StreamingSpeech2Text` class. The speech length should be the same as `StreamingSpeech2Text.hop_size`
 
+```python
+from espnet_onnx import StreamingSpeech2Text
+
+stream_asr = StreamingSpeech2Text(tag_name)
+
+# start streaming asr
+stream_asr.start()
+while streaming:
+  wav = <some code to get wav>
+  assert len(wav) == stream_asr.hop_size
+  stream_text = stream_asr(wav)[0][0]
+
+# You can get non-streaming asr result with end function
+nbest = stream_asr.end()
+```
+
+You can also simulate streaming model with your wav file with `simulate` function. Passing `True` as the second argument will show the streaming text as the following code. 
+
+```python
+import librosa
+from espnet_onnx import StreamingSpeech2Text
+
+stream_asr = StreamingSpeech2Text(tag_name)
+y, sr = librosa.load('path/to/wav', sr=16000)
+nbest = stream_asr.simulate(y, True)
+nbest = st.simulate(y, True)
+print(st.end()[0][0])
+
+```
 
 ## API Reference
 

@@ -5,13 +5,13 @@
 | arch name                          | supported  |
 | ---------------------------------- | ---------- |
 | ConformerEncoder                   | ◯          |
-| ContextualBlockConformerEncoder    | x          |
-| ContextualBlockTransformerEncoderx | x          |
-| FairseqHubertEncoder               | not tested |
+| ContextualBlockConformerEncoder    | ◯          |
+| ContextualBlockTransformerEncoderx | ◯          |
+| FairseqHubertEncoder               | x           |
 | RNNEncoder                         | ◯          |
 | TransformerEncoder                 | ◯          |
 | VGGRNNEncoderx                     | ◯          |
-| FairSeqWav2Vec2Encoder             | not tested |
+| FairSeqWav2Vec2Encoder             | x           |
 
 
 
@@ -21,10 +21,10 @@
 | ------------------------------------------ | ---------- |
 | RNNDecoder                                 | ◯          |
 | TransformerDecoder                         | ◯          |
-| LightweightConvolutionTransformerDecoder   | not tested |
-| LightweightConvolution2DTransformerDecoder | not tested |
-| DynamicConvolutionTransformerDecoder       | not tested |
-| DynamicConvolution2DTransformerDecoder     | not tested |
+| LightweightConvolutionTransformerDecoder   | ◯         |
+| LightweightConvolution2DTransformerDecoder | ◯         |
+| DynamicConvolutionTransformerDecoder       | x          |
+| DynamicConvolution2DTransformerDecoder     | x          |
 
 
 
@@ -45,7 +45,7 @@
 | ScaledPositionalEncoding    | ◯          |
 | LegacyRelPositionalEncoding | ◯          |
 | RelPositionalEncoding       | ◯         |
-| StreamPositionalEncoding    | x          |
+| StreamPositionalEncoding    | ◯          |
 
 
 
