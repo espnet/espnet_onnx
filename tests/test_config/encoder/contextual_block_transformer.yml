@@ -1,6 +1,6 @@
 encoder: contextual_block_transformer
 encoder_conf:
-  output_size: 512
+  output_size: 256
   attention_heads: 8
   linear_units: 2048
   num_blocks: 18

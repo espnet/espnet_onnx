@@ -9,7 +9,10 @@ from typeguard import check_argument_types
 
 import numpy as np
 import onnxruntime
-from scipy.special import logsumexp
+from scipy.special import (
+    logsumexp,
+    log_softmax
+)
 
 from espnet_onnx.utils.config import Config
 from .interface import (
@@ -212,6 +215,38 @@ class CTCPrefixScorer(BatchPartialScorerInterface):
         else:
             batch_state = None
         return self.impl(y, batch_state, ids)
+    
+    def extend_prob(self, x: np.ndarray):
+        """Extend probs for decoding.
+
+        This extension is for streaming decoding
+        as in Eq (14) in https://arxiv.org/abs/2006.14941
+
+        Args:
+            x (np.ndarray): The encoded feature tensor
+
+        """
+        x = self.ctc.run(["ctc_out"], {"x": x[None, :]})[0]
+        logp = log_softmax(x, axis=-1)
+        self.impl.extend_prob(logp)
+
+    def extend_state(self, state):
+        """Extend state for decoding.
+
+        This extension is for streaming decoding
+        as in Eq (14) in https://arxiv.org/abs/2006.14941
+
+        Args:
+            state: The states of hyps
+
+        Returns: exteded state
+
+        """
+        new_state = []
+        for s in state:
+            new_state.append(self.impl.extend_state(s))
+
+        return new_state
 
 
 class CTCPrefixScoreTH:
@@ -426,11 +461,10 @@ class CTCPrefixScoreTH:
         """Extend CTC prob.
         :param np.ndarray x: input label posterior sequences (B, T, O)
         """
-
         if self.x.shape[1] < x.shape[1]:  # self.x (2,T,B,O); x (B,T,O)
             # Pad the rest of posteriors in the batch
             # TODO(takaaki-hori): need a better way without for-loops
-            xlens = np.array([x.size(1)])
+            xlens = np.array([x.shape[1]])
             for i, l in enumerate(xlens):
                 if l < self.input_length:
                     x[i, l:, :] = self.logzero

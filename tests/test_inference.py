@@ -37,6 +37,7 @@ from .forward_utils import (
     xformer_onnx_enc,
     xformer_onnx_dec,
     xformer_torch_dec,
+    context_onnx_enc,
 )
 
 encoder_cases = [
@@ -48,6 +49,11 @@ encoder_cases = [
     ('rnn_rnn', [50, 100]),
     ('rnn_rnnp', [50, 100]),
     ('rnn_vggrnn', [50, 100]),
+]
+
+context_cases = [
+    ('contextual_block_conformer', [0, 16, 24, 40, 0]),
+    ('contextual_block_transformer', [0, 16, 24, 40, 0]),
 ]
 
 decoder_cases = [
@@ -123,6 +129,54 @@ def test_infer_encoder(enc_type, feat_lens, load_config,
         else:
             onnx_out = xformer_onnx_enc(encoder_onnx, dummy_input.numpy())
         check_output(torch_out, onnx_out)
+
+
+@pytest.mark.parametrize('enc_type, context_config', context_cases)
+def test_infer_contextual_encoder(enc_type, context_config, load_config,
+                       model_export, frontend_choices, encoder_choices):
+    model_dir = CACHE_DIR / 'encoder' / f'./cache_{enc_type}'
+    model_config = load_config(enc_type, model_type='encoder')
+    # prepare input_dim from frontend
+    frontend_class = frontend_choices.get_class(model_config.frontend)
+    frontend = frontend_class(**model_config.frontend_conf.dic)
+    input_size = frontend.output_size()
+    # prepare encoder model
+    encoder_class = encoder_choices.get_class(model_config.encoder)
+    encoder_espnet = encoder_class(input_size=input_size, **
+                                   model_config.encoder_conf.dic)
+    encoder_espnet.load_state_dict(torch.load(str(model_dir / 'encoder.pth')))
+    encoder_espnet.eval()
+    encoder_onnx = ort.InferenceSession(str(model_dir / 'encoder.onnx'))
+    # prepare pe model
+    pe_path = model_dir / 'pe.npy'
+    pos_enc = np.load(pe_path)
+    # prepare hp
+    hop_length = context_config[1] - context_config[0]
+    L = hop_length*encoder_espnet.subsample
+    # test output
+    dummy_input = torch.randn(1, L, input_size)  # (B, L, D)
+    prev_states = {
+        'prev_addin': torch.randn((1, 1, pos_enc.shape[-1])),
+        'buffer_before_downsampling': torch.randn((1, encoder_espnet.subsample*2, input_size)),
+        'buffer_after_downsampling': torch.randn((1, context_config[3] - hop_length, pos_enc.shape[-1])),
+        'ilens_buffer': 0,
+        'n_processed_blocks': 0,
+        'past_encoder_ctx': torch.randn((1, len(encoder_espnet.encoders), pos_enc.shape[-1])),
+    }
+    # compute torch model
+    with torch.no_grad():
+        torch_out = encoder_espnet.forward_infer(
+            dummy_input,
+            torch.Tensor([dummy_input.size(1)]),
+            prev_states=prev_states,
+            is_final=False
+        )
+    if type(torch_out) == tuple:
+        torch_out = torch_out[0]
+    # compute onnx model
+    onnx_out = context_onnx_enc(encoder_onnx, dummy_input.numpy(), 
+        pos_enc, len(encoder_espnet.encoders), encoder_espnet.subsample, context_config, prev_states)
+    check_output(torch_out, onnx_out)
 
 
 @pytest.mark.parametrize('dec_type, feat_lens', decoder_cases)

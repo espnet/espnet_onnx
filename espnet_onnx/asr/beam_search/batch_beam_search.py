@@ -278,7 +278,7 @@ class BatchBeamSearch(BeamSearch):
             )
         # add eos in the final loop to avoid that there are no ended hyps
         if i == maxlen - 1:
-            logging.debug("adding <eos> in the last position in the loop")
+            print("adding <eos> in the last position in the loop")
             yseq_eos = np.hstack(
                 (
                     running_hyps.yseq,
@@ -290,7 +290,7 @@ class BatchBeamSearch(BeamSearch):
                 )
             )
             
-            running_hyps.yseq.resize(yseq_eos.shape)
+            running_hyps.yseq.resize(yseq_eos.shape, refcheck=False)
             running_hyps.yseq[:] = yseq_eos
             running_hyps.length[:] = yseq_eos.shape[1]
 

@@ -11,7 +11,7 @@ import numpy as np
 import librosa
 import glob
 
-from espnet_onnx.asr.model.encoder import Encoder
+from espnet_onnx.asr.model.encoder import get_encoder
 from espnet_onnx.asr.model.decoder import get_decoder
 from espnet_onnx.asr.model.lm.seqrnn_lm import SequentialRNNLM
 from espnet_onnx.asr.model.lm.transformer_lm import TransformerLM
@@ -53,6 +53,10 @@ class Speech2Text:
         # 1. Build asr model
         config_file = glob.glob(os.path.join(model_dir, 'config.*'))[0]
         config = get_config(config_file)
+        
+        # check if model is exported for streaming.
+        if config.encoder.enc_type == 'ContextualXformerEncoder':
+            raise RuntimeError('Onnx model is built for streaming. Use StreamingSpeech2Text instead.')
 
         if use_quantized and 'quantized_model_path' not in config.encoder.keys():
             # check if quantized model config is defined.
@@ -60,7 +64,7 @@ class Speech2Text:
                 'Configuration for quantized model is not defined.')
 
         # 2.
-        self.encoder = Encoder(config.encoder, use_quantized)
+        self.encoder = get_encoder(config.encoder, use_quantized)
         decoder = get_decoder(config.decoder, config.token,
                               config.transducer, use_quantized)
         ctc = CTCPrefixScorer(config.ctc, config.token.eos, use_quantized)

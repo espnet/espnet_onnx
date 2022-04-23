@@ -1,5 +1,5 @@
 import numpy as np
-
+import six
 
 def subsequent_mask(size):
     """Create mask for subsequent steps (size, size).

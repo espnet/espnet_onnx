@@ -201,6 +201,12 @@ class ModelExport:
         if isinstance(model.tokenizer, SentencepiecesTokenizer):
             bpemodel_file = model.tokenizer.model
             shutil.copy(bpemodel_file, path)
+            
+        # save position encoder parameters.
+        np.save(
+            path / 'pe',
+            model.asr_model.encoder.pos_enc.pe.numpy()
+        )
 
     def _quantize_model(self, model_from, model_to):
         ret = {}

@@ -20,7 +20,6 @@ from .decoders.xformer import XformerDecoder
 
 
 def get_encoder(model):
-    print(type(model))
     if isinstance(model, espnetRNNEncoder) or isinstance(model, espnetVGGRNNEncoder):
         return RNNEncoder(model)
     elif isinstance(model, espnetContextualTransformer) or isinstance(model, espnetContextualConformer):
