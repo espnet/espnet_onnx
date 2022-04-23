@@ -80,12 +80,12 @@ class XformerDecoder(nn.Module, AbsModel):
 
     def get_model_config(self, path):
         file_name = os.path.join(path, 'decoder.onnx')
-        if isinstance(self.model, TransformerDecoder):
+        if isinstance(self.model, TransducerDecoder):
+            raise ValueError('TransducerDecoder is currently not supported')
+        else:
             return {
                 "dec_type": "XformerDecoder",
                 "model_path": file_name,
                 "n_layers": len(self.model.decoders),
                 "odim": self.model.decoders[0].size
             }
-        elif isinstance(self.model.decoder, TransducerDecoder):
-            raise ValueError('TransducerDecoder is currently not supported')

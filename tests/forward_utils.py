@@ -66,23 +66,3 @@ def rnn_onnx_dec(onnx_model, dummy_input):
     logp, state = onnx_model.score(yseq, state, dummy_input)
     return logp
 
-def context_onnx_enc(model, dummy_input, pos_enc, n_layers, subsample, context_config, prev_states):
-    mask = np.zeros((1, 1, context_config[3]+2, context_config[3]+2), dtype=np.float32)
-    mask[..., 1:, :-1] = 1
-    hop_size = context_config[1] - context_config[0]
-    start = hop_size * context_config[4]
-    indicies = np.array([context_config[0], context_config[3]-hop_size+context_config[0], context_config[2]], dtype=np.int64)
-    input_dict = {
-        'xs_pad': dummy_input[:, subsample:],
-        'mask': mask,
-        'buffer_before_downsampling': prev_states['buffer_before_downsampling'].numpy(),
-        'buffer_after_downsampling': prev_states['buffer_after_downsampling'].numpy(),
-        'prev_addin': prev_states['prev_addin'].numpy(),
-        'pos_enc_xs': pos_enc[:, start : start + context_config[3]],
-        'pos_enc_addin': pos_enc[:, context_config[4] : context_config[4]+1],
-        'past_encoder_ctx': prev_states['past_encoder_ctx'].numpy(),
-        'indicies': indicies,
-    }
-    out_names = ['ys_pad']
-    encoder_out = model.run(out_names, input_dict)[0]
-    return encoder_out

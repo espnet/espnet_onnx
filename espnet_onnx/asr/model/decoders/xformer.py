@@ -71,14 +71,7 @@ class XformerDecoder(BatchScorerInterface):
 
         # batch decoding
         ys_mask = subsequent_mask(ys.shape[-1])[None, :]
-
-        input_dict = {
-            'tgt': ys.astype(np.int64),
-            'tgt_mask': ys_mask,
-            'memory': xs
-        }
-        input_dict.update(
-            {k: v for (k, v) in zip(self.in_caches, batch_state)})
+        input_dict = self.get_input_dict(ys, ys_mask, xs, batch_state)
 
         logp, *states = self.decoder.run(
             ['y'] + self.out_caches,
@@ -89,3 +82,14 @@ class XformerDecoder(BatchScorerInterface):
         state_list = [[states[i][b]
                        for i in range(self.n_layers)] for b in range(n_batch)]
         return logp, state_list
+
+    def get_input_dict(self, ys, ys_mask, xs, state):
+        in_names = [d.name for d in self.decoder.get_inputs() if 'cache' not in d.name]
+        ret = {}
+        if 'tgt' in in_names: ret.update(tgt=ys.astype(np.int64))
+        if 'tgt_mask' in in_names: ret.update(tgt_mask=ys_mask)
+        if 'memory' in in_names: ret.update(memory=xs)
+        ret.update(
+            {k: v for (k, v) in zip(self.in_caches, state)})
+        return ret
+        

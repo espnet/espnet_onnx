@@ -30,20 +30,24 @@ def export_predec(dec_wrapper, model_export, export_dir):
 
 
 encoder_cases = [
-    # 'conformer_abs_pos',
-    # 'conformer_rel_pos',
-    # 'conformer_rpe_latest',
-    # 'conformer_scaled',
-    # 'transformer',
-    # 'rnn_rnn',
-    # 'rnn_rnnp',
-    # 'rnn_vggrnn',
+    'conformer_abs_pos',
+    'conformer_rel_pos',
+    'conformer_rpe_latest',
+    'conformer_scaled',
+    'transformer',
+    'rnn_rnn',
+    'rnn_rnnp',
+    'rnn_vggrnn',
     'contextual_block_conformer',
     'contextual_block_transformer'
 ]
 
 decoder_cases = [
     'transformer',
+    'lightweight_conv',
+    'lightweight_conv2d',
+    # 'dynamic_conv',
+    # 'dynamic_conv2d',
     'rnn_noatt',
     'rnn_dot',
     'rnn_add',
