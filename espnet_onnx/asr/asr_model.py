@@ -65,8 +65,7 @@ class Speech2Text:
 
         # 2.
         self.encoder = get_encoder(config.encoder, use_quantized)
-        decoder = get_decoder(config.decoder, config.token,
-                              config.transducer, use_quantized)
+        decoder = get_decoder(config.decoder, config.transducer, use_quantized)
         ctc = CTCPrefixScorer(config.ctc, config.token.eos, use_quantized)
 
         scorers = {}

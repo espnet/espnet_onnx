@@ -1,11 +1,12 @@
 """Parallel beam search module."""
 
 import logging
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Tuple
-
+from typing import (
+    Any,
+    Dict,
+    List,
+    Tuple
+)
 import numpy as np
 
 from espnet_onnx.utils.function import (
@@ -278,7 +279,7 @@ class BatchBeamSearch(BeamSearch):
             )
         # add eos in the final loop to avoid that there are no ended hyps
         if i == maxlen - 1:
-            print("adding <eos> in the last position in the loop")
+            logging.debug("adding <eos> in the last position in the loop")
             yseq_eos = np.hstack(
                 (
                     running_hyps.yseq,

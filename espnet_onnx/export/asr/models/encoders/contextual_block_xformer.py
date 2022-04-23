@@ -6,38 +6,20 @@ Created on Sat Aug 21 17:27:16 2021.
 Modified by Masao Someki
 """
 import os
-from espnet.nets.pytorch_backend.conformer.convolution import ConvolutionModule
-from espnet.nets.pytorch_backend.conformer.contextual_block_encoder_layer import (
-    ContextualBlockEncoderLayer,  # noqa: H301
-)
-from espnet.nets.pytorch_backend.nets_utils import (
-    make_pad_mask,  # noqa: H301
-    get_activation,  # noqa: H301
-)
-from espnet.nets.pytorch_backend.transformer.attention import MultiHeadedAttention
-from espnet.nets.pytorch_backend.transformer.embedding import StreamPositionalEncoding
-from espnet.nets.pytorch_backend.transformer.layer_norm import LayerNorm
-from espnet.nets.pytorch_backend.transformer.multi_layer_conv import Conv1dLinear
-from espnet.nets.pytorch_backend.transformer.multi_layer_conv import MultiLayeredConv1d
-from espnet.nets.pytorch_backend.transformer.positionwise_feed_forward import (
-    PositionwiseFeedForward,  # noqa: H301
-)
-from espnet.nets.pytorch_backend.transformer.repeat import repeat
-from espnet.nets.pytorch_backend.transformer.subsampling_without_posenc import (
-    Conv2dSubsamplingWOPosEnc,  # noqa: H301
-)
-from espnet2.asr.encoder.abs_encoder import AbsEncoder
-from espnet2.asr.frontend.default import DefaultFrontend
-from espnet2.layers.global_mvn import GlobalMVN
-from espnet2.layers.utterance_mvn import UtteranceMVN
-import math
-import torch
-import torch.nn as nn
-from typeguard import check_argument_types
 from typing import (
     Optional,  # noqa: H301
     Tuple,  # noqa: H301
 )
+
+import torch
+import torch.nn as nn
+from espnet.nets.pytorch_backend.transformer.subsampling_without_posenc import (
+    Conv2dSubsamplingWOPosEnc,  # noqa: H301
+)
+from espnet2.asr.frontend.default import DefaultFrontend
+from espnet2.layers.global_mvn import GlobalMVN
+from espnet2.layers.utterance_mvn import UtteranceMVN
+
 from ..abs_model import AbsModel
 
 
@@ -70,7 +52,6 @@ class ContextualBlockXformerEncoder(nn.Module, AbsModel):
         self.ctx_pos_enc = model.ctx_pos_enc
         self.overlap_size = self.block_size - self.hop_size
         self.offset = self.block_size - self.look_ahead - self.hop_size
-        
         self.xscale = model.pos_enc.xscale
 
     def output_size(self) -> int:
@@ -80,7 +61,6 @@ class ContextualBlockXformerEncoder(nn.Module, AbsModel):
         self,
         xs_pad: torch.Tensor,
         mask: torch.Tensor,
-        # buffer_before_downsampling: torch.Tensor,
         buffer_after_downsampling: torch.Tensor,
         prev_addin: torch.Tensor,
         pos_enc_xs: torch.Tensor,
@@ -100,27 +80,16 @@ class ContextualBlockXformerEncoder(nn.Module, AbsModel):
             mask: zeros(1, 1, self.block_size + 2, self.block_size + 2)
             pos_enc_xs: (B, L, D) L = block_size
         """
-        # xs_pad = torch.cat([buffer_before_downsampling, xs_pad], dim=1)
-        
-        # note that n_samples is equal to hop_size
-        # n_res_samples = xs_pad.size(1) % self.subsample + self.subsample * 2
-        # buffer_before_downsampling = xs_pad[:, -n_res_samples:]
         xs_pad = self.compute_embed(xs_pad)
-
-        # create empty output container
-        # assume that buffer_after_downsampling.shape = (B, L, D),
-        # where L = overlap_size
         xs_pad = torch.cat([buffer_after_downsampling, xs_pad], dim=1)
-
-        # since xs_pad contains 1 block of frames, block_num should be always 1.
-        # since xs_pad.size(1) = hop_size + overlap_size, and block_num = 1,
-        # buffer_after_downsampling.size(1) = overlap_size
-        buffer_after_downsampling = xs_pad[:, -indicies[2]:]
+        
+        buffer_after_downsampling = xs_pad[:, -indicies[2]:] # (B, L, overlap)
         
         if self.init_average:
             addin = xs_pad.mean(1, keepdim=True)
         else:
             addin = xs_pad.max(1, keepdim=True)
+            
         if self.ctx_pos_enc:
             addin = addin * self.xscale + pos_enc_addin 
         
@@ -138,10 +107,7 @@ class ContextualBlockXformerEncoder(nn.Module, AbsModel):
         if self.normalize_before:
             ys_pad = self.after_norm(ys_pad)
 
-        # return ys_pad, buffer_before_downsampling, buffer_after_downsampling, \
-        #     addin, past_encoder_ctx
-        return ys_pad, buffer_after_downsampling, \
-            addin, past_encoder_ctx
+        return ys_pad, buffer_after_downsampling, addin, past_encoder_ctx
     
     def compute_embed(self, xs_pad):
         if isinstance(self.embed, Conv2dSubsamplingWOPosEnc):
@@ -157,8 +123,6 @@ class ContextualBlockXformerEncoder(nn.Module, AbsModel):
         n_feats = 80
         xs_pad = torch.randn(1, (self.hop_size+1)*self.subsample, n_feats)
         mask = torch.ones(1, 1, self.block_size + 2, self.block_size + 2)
-        # n_res_samples = xs_pad.size(1) % self.subsample + self.subsample * 2
-        # buffer_before_downsampling = torch.randn(1, n_res_samples, n_feats)
         o = self.compute_embed(xs_pad)
         buffer_after_downsampling = torch.randn(1, self.overlap_size, o.shape[-1])
         prev_addin = torch.randn(1, 1, o.shape[-1])
@@ -166,20 +130,14 @@ class ContextualBlockXformerEncoder(nn.Module, AbsModel):
         pos_enc_addin = torch.randn(1, 1, o.shape[-1])
         past_encoder_ctx = torch.randn(1, len(self.encoders), self.encoders[0].size)
         indicies = torch.LongTensor([8, 24, 24])
-        # return (xs_pad, mask, buffer_before_downsampling, buffer_after_downsampling, prev_addin,
-        #         pos_enc_xs, pos_enc_addin, past_encoder_ctx, indicies)
         return (xs_pad, mask, buffer_after_downsampling, prev_addin,
                 pos_enc_xs, pos_enc_addin, past_encoder_ctx, indicies)
 
     def get_input_names(self):
-        # return ['xs_pad', 'mask', 'buffer_before_downsampling', 'buffer_after_downsampling',
-        #         'prev_addin', 'pos_enc_xs', 'pos_enc_addin', 'past_encoder_ctx', 'indicies']
         return ['xs_pad', 'mask', 'buffer_after_downsampling',
                 'prev_addin', 'pos_enc_xs', 'pos_enc_addin', 'past_encoder_ctx', 'indicies']
 
     def get_output_names(self):
-        # return ['ys_pad', 'next_buffer_before_downsampling', 'next_buffer_after_downsampling',
-        #         'next_addin', 'next_encoder_ctx']
         return ['ys_pad', 'next_buffer_after_downsampling',
                 'next_addin', 'next_encoder_ctx']
 
@@ -187,7 +145,6 @@ class ContextualBlockXformerEncoder(nn.Module, AbsModel):
         return {
             'xs_pad': { 1: 'xs_pad_length' },
             'mask': { 2: 'block_height', 3: 'block_width' },
-            # 'buffer_before_downsampling': { 1: 'bbd_length' },
             'buffer_after_downsampling': { 1: 'bad_length' },
             'pos_enc_xs': { 1: 'pex_length' },
             'ys_pad': { 1: 'ys_pad_length' },
@@ -210,11 +167,9 @@ class ContextualBlockXformerEncoder(nn.Module, AbsModel):
                 asr_model.normalize, path))
         # streaming config
         ret.update(
-            # hop_size=self.hop_size,
             pe_path=str(path.parent / 'pe.npy'),
             n_layers=len(asr_model.encoder.encoders),
             subsample=self.subsample,
-            # overlap_size=self.overlap_size,
         )
         # Currently preencoder, postencoder is not supported.
         # if ret['do_preencoder']:
@@ -233,7 +188,7 @@ class ContextualBlockXformerEncoder(nn.Module, AbsModel):
             win_length=frontend.stft.win_length,
             hop_length=frontend.stft.hop_length,
             window=frontend.stft.window,
-            center=frontend.stft.center,
+            center=False, # Set false to compute stft continuously
             onesided=frontend.stft.onesided,
             normalized=frontend.stft.normalized,
         )

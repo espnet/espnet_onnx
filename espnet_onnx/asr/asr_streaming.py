@@ -1,14 +1,15 @@
-from typing import Union
-from typing import List
-from typing import Tuple
-from typing import Optional
+from typing import (
+    Union,
+    List,
+    Tuple,
+    Optional
+)
 from pathlib import Path
 from typeguard import check_argument_types
 
 import os
 import logging
 import numpy as np
-import librosa
 import glob
 import warnings
 
@@ -28,9 +29,7 @@ from espnet_onnx.asr.postprocess.token_id_converter import TokenIDConverter
 
 from espnet_onnx.utils.config import get_config
 from espnet_onnx.utils.config import get_tag_config
-import matplotlib.pyplot as plt
 
-logging.basicConfig(level = logging.INFO)
 
 class StreamingSpeech2Text:
     """Speech2Text class to support streaming asr
@@ -74,8 +73,7 @@ class StreamingSpeech2Text:
         config.encoder.look_ahead = look_ahead
         
         self.encoder = get_encoder(config.encoder, use_quantized)
-        decoder = get_decoder(config.decoder, config.token,
-                              config.transducer, use_quantized)
+        decoder = get_decoder(config.decoder, config.transducer, use_quantized)
         ctc = CTCPrefixScorer(config.ctc, config.token.eos, use_quantized)
 
         scorers = {}
@@ -135,7 +133,6 @@ class StreamingSpeech2Text:
         ]
         if len(non_batch) == 0:
             self.beam_search.__class__ = BatchBeamSearchOnlineSim
-            # self.beam_search.__class__ = BatchBeamSearch
             self.beam_search.set_streaming_config(
                 block_size, hop_size, look_ahead
             )
@@ -164,16 +161,14 @@ class StreamingSpeech2Text:
         # streaming related parameters
         self.enc_feats = []
         self.streaming_states = {
-            # 'buffer_before_downsampling' : None,
             'buffer_after_downsampling' : None,
             'prev_addin' : None,
-            'n_processed_blocks' : None,
             'past_encoder_ctx' : None,
         }
         self.hop_size = self.config.encoder.frontend.stft.hop_length * self.config.encoder.subsample * (hop_size+1)  \
             + (self.config.encoder.frontend.stft.n_fft // self.config.encoder.frontend.stft.hop_length) * self.config.encoder.frontend.stft.hop_length
 
-    def __call__(self, speech: np.ndarray, is_final=False) -> List[
+    def __call__(self, speech: np.ndarray) -> List[
         Tuple[
             Optional[str],
             List[str],
@@ -192,19 +187,6 @@ class StreamingSpeech2Text:
         # check dtype
         if speech.dtype != np.float32:
             speech = speech.astype(np.float32)
-            
-        # check speech length
-        # if len(speech) < self.input_speech_size:
-        #     warnings.warn(f'Length of `speech` {len(speech)} is shorter than one block size {self.input_speech_size}.' +\
-        #         '`speech` will be padded in the length dimension, but it may decrease' +\
-        #         'accuracy of the recognition.')
-        #     speech = self._pad(speech)
-        
-        # if len(speech) > self.input_speech_size:
-        #     warnings.warn(f'Length of `speech` {len(speech)} is longer than one block size {self.input_speech_size}.' +\
-        #         '`speech` will be trimmed in the length dimension. This may decrease' +\
-        #         'accuracy of the recognition.')
-        #     speech = speech[:self.input_speech_size]
 
         # data: (Nsamples,) -> (1, Nsamples)
         speech = speech[np.newaxis, :]
@@ -218,37 +200,15 @@ class StreamingSpeech2Text:
         assert len(enc) == 1, len(enc)
         self.enc_feats += enc[0].tolist()
         best_hyps = self.beam_search(np.array(self.enc_feats, dtype=np.float32))
-        
         self.encoder.increment()
+        
         if best_hyps == []:
             return []
         else:
-            hyp = best_hyps[0]
-            
-        # remove sos/eos and get results
-        last_pos = -1
-        if isinstance(hyp.yseq, list):
-            token_int = hyp.yseq[1:last_pos].astype(np.int64)
-        else:
-            token_int = hyp.yseq[1:last_pos].astype(np.int64).tolist()
+            return self.get_result(best_hyps[0])
 
-        # remove blank symbol id, which is assumed to be 0
-        token_int = list(filter(lambda x: x != 0, token_int))
-
-        # Change integer-ids to tokens
-        token = self.converter.ids2tokens(token_int)
-        # since I add 'blank' before sos for onnx computing
-        token = token[1:]
-
-        if self.tokenizer is not None:
-            text = self.tokenizer.tokens2text(token)
-        else:
-            text = None
-        results = [(text, token, token_int, hyp)]
-        
-        return results
-
-    def simulate(self, speech: np.ndarray, print_every_hypo=False):
+    def simulate(self, speech: np.ndarray, print_every_hypo: bool = False,
+        beam_fixed_len: bool = True):
         # This function will simulate streaming asr with the given audio.
         self.start()
         process_num = len(speech) // self.hop_size + 1
@@ -257,49 +217,39 @@ class StreamingSpeech2Text:
         for i in range(process_num):
             start = self.hop_size * i
             end = self.hop_size * (i + 1)
-            nbest = self(padded_speech[start:end], i==(process_num-1))
+            nbest = self(padded_speech[start:end])
             if print_every_hypo and nbest != []:
                 logging.info(f'Result at position {i} : {nbest[0][0]}')
-        # nbest = self.close()
-        return nbest
         
+        if beam_fixed_len:
+            nbest = self.end()
+        return nbest
 
     def start(self):
         self.encoder.reset()
         self.streaming_states = self.encoder.init_state()
         self.beam_search.start()
         
-    def close(self):
+    def end(self):
         self.beam_search.__class__ = BatchBeamSearch
         best_hyps = self.beam_search(np.array(self.enc_feats, dtype=np.float32))
-        
         self.encoder.increment()
         if best_hyps == []:
             return []
         else:
-            hyp = best_hyps[0]
-            
-        # remove sos/eos and get results
-        last_pos = -1
-        if isinstance(hyp.yseq, list):
-            token_int = hyp.yseq[1:last_pos].astype(np.int64)
-        else:
-            token_int = hyp.yseq[1:last_pos].astype(np.int64).tolist()
+            return self.get_result(best_hyps[0])
 
+    def get_result(self, hyp: Hypothesis):
+        token_int = hyp.yseq[2:-1].astype(np.int64).tolist()
         # remove blank symbol id, which is assumed to be 0
         token_int = list(filter(lambda x: x != 0, token_int))
-
         # Change integer-ids to tokens
         token = self.converter.ids2tokens(token_int)
-        # since I add 'blank' before sos for onnx computing
-        token = token[1:]
-
         if self.tokenizer is not None:
             text = self.tokenizer.tokens2text(token)
         else:
             text = None
         results = [(text, token, token_int, hyp)]
-        
         return results
     
     def _pad(self, x, length=None):

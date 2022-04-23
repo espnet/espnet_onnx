@@ -1,10 +1,9 @@
 import six
 
-from typing import Any
-from typing import Tuple
-from typing import List
-from typing import Union
-from pathlib import Path
+from typing import (
+    Any,
+    Tuple
+)
 from typeguard import check_argument_types
 
 import numpy as np
@@ -15,10 +14,7 @@ from scipy.special import (
 )
 
 from espnet_onnx.utils.config import Config
-from .interface import (
-    BatchScorerInterface,
-    BatchPartialScorerInterface
-)
+from .interface import BatchPartialScorerInterface
 
 
 class CTCPrefixScore:
