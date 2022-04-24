@@ -21,7 +21,7 @@ Currently TTS is not supported.
 pip install espnet_onnx
 ```
 
-2. If you want to export pretrained model, you need to install `torch>=1.11.0`, `espnet`, `espnet_model_zoo` additionally.
+2. If you want to export pretrained model, you need to install `torch>=1.11.0`, `espnet`, `espnet_model_zoo`, `onnx` additionally.
 
 ## Usage
 
