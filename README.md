@@ -83,7 +83,6 @@ from espnet_onnx import StreamingSpeech2Text
 stream_asr = StreamingSpeech2Text(tag_name)
 y, sr = librosa.load('path/to/wav', sr=16000)
 nbest = stream_asr.simulate(y, True)
-nbest = st.simulate(y, True)
 # Processing audio with 6 processes.
 # Result at position 0 : 
 # Result at position 1 : 
@@ -91,7 +90,7 @@ nbest = st.simulate(y, True)
 # Result at position 3 : this is
 # Result at position 4 : this is a
 # Result at position 5 : this is a
-print(st.end()[0][0])
+print(nbest[0][0])
 # 'this is a pen'
 ```
 
