@@ -1,5 +1,8 @@
-from typing import Union
-from typing import Tuple
+from typing import (
+    Union,
+    List,
+    Tuple
+)
 
 import numpy as np
 import onnxruntime
@@ -18,13 +21,19 @@ class SequentialRNNLM(BatchScorerInterface):
     def __init__(
         self,
         config: Config,
+        providers: List[str],
         use_quantized: bool = False
     ):
         if use_quantized:
             self.lm_session = onnxruntime.InferenceSession(
-                config.quantized_model_path)
+                config.quantized_model_path,
+                providers=providers
+            )
         else:
-            self.lm_session = onnxruntime.InferenceSession(config.model_path)
+            self.lm_session = onnxruntime.InferenceSession(
+                config.model_path,
+                providers=providers
+            )
         self.enc_output_names = ['y'] \
             + [d.name for d in self.lm_session.get_outputs() if 'hidden' in d.name]
         self.enc_in_cache_names = [

@@ -2,6 +2,7 @@ import six
 
 from typing import (
     Any,
+    List,
     Tuple
 )
 from typeguard import check_argument_types
@@ -110,7 +111,7 @@ class CTCPrefixScore:
 class CTCPrefixScorer(BatchPartialScorerInterface):
     """Decoder interface wrapper for CTCPrefixScore."""
 
-    def __init__(self, ctc: Config, eos: int, use_quantized: bool = False):
+    def __init__(self, ctc: Config, eos: int, providers: List[str], use_quantized: bool = False):
         """Initialize class.
         Args:
             ctc (np.ndarray): The CTC implementation.
@@ -119,9 +120,15 @@ class CTCPrefixScorer(BatchPartialScorerInterface):
         """
         assert check_argument_types()
         if use_quantized:
-            self.ctc = onnxruntime.InferenceSession(ctc.quantized_model_path)
+            self.ctc = onnxruntime.InferenceSession(
+                ctc.quantized_model_path,
+                providers=providers
+            )
         else:
-            self.ctc = onnxruntime.InferenceSession(ctc.model_path)
+            self.ctc = onnxruntime.InferenceSession(
+                ctc.model_path,
+                providers=providers
+            )
         self.eos = eos
         self.impl = None
 

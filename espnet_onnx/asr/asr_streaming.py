@@ -12,6 +12,7 @@ import logging
 import numpy as np
 import glob
 import warnings
+import onnxruntime
 
 from espnet_onnx.asr.model.encoder import get_encoder
 from espnet_onnx.asr.model.decoder import get_decoder
@@ -37,6 +38,7 @@ class StreamingSpeech2Text:
     def __init__(self,
                  tag_name: str = None,
                  model_dir: Union[Path, str] = None,
+                 providers: List[str] = ['CPUExecutionProvider'],
                  use_quantized: bool = False,
                  block_size: int = 40,
                  hop_size: int = 16,
@@ -54,6 +56,9 @@ class StreamingSpeech2Text:
                                    + 'or have to set exported model path in tag_config.yaml.')
             model_dir = tag_config[tag_name]
 
+        # check onnxruntime version and providers
+        self.check_ort_version(providers)
+        
         # 1. Build asr model
         config_file = glob.glob(os.path.join(model_dir, 'config.*'))[0]
         config = get_config(config_file)
@@ -72,9 +77,9 @@ class StreamingSpeech2Text:
         config.encoder.hop_size = hop_size
         config.encoder.look_ahead = look_ahead
         
-        self.encoder = get_encoder(config.encoder, use_quantized)
-        decoder = get_decoder(config.decoder, config.transducer, use_quantized)
-        ctc = CTCPrefixScorer(config.ctc, config.token.eos, use_quantized)
+        self.encoder = get_encoder(config.encoder, providers, use_quantized)
+        decoder = get_decoder(config.decoder, config.transducer, providers, use_quantized)
+        ctc = CTCPrefixScorer(config.ctc, config.token.eos, providers, use_quantized)
 
         scorers = {}
         scorers.update(
@@ -87,11 +92,11 @@ class StreamingSpeech2Text:
         if config.lm.use_lm:
             if config.lm.lm_type == 'SequentialRNNLM':
                 scorers.update(
-                    lm=SequentialRNNLM(config.lm, use_quantized)
+                    lm=SequentialRNNLM(config.lm, providers, use_quantized)
                 )
             elif config.lm.lm_type == 'TransformerLM':
                 scorers.update(
-                    lm=TransformerLM(config.lm, use_quantized)
+                    lm=TransformerLM(config.lm, providers, use_quantized)
                 )
 
         # 3. Build ngram model
@@ -277,4 +282,14 @@ class StreamingSpeech2Text:
             base = np.zeros((self.config.encoder.block_size * self.config.encoder.frontend.stft.hop_length,))
         base[:len(x)] = x
         return base
+    
+    def check_ort_version(self, providers: List[str]):
+        # check cpu
+        if onnxruntime.get_device() == 'CPU' and 'CPUExecutionProvider' not in providers:
+            raise RuntimeError('If you want to use GPU, then follow `How to use GPU on espnet_onnx` chapter in readme to install onnxruntime-gpu.')
         
+        # check GPU
+        if onnxruntime.get_device() == 'GPU' and providers == ['CPUExecutionProvider']:
+            warnings.warn('Inference will be executed on the CPU. Please provide gpu providers. Read `How to use GPU on espnet_onnx` in readme in detail.')
+        
+        logging.info(f'Providers [{" ,".join(providers)}] detected.')
