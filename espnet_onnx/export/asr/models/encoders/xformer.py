@@ -23,17 +23,17 @@ class XformerEncoder(nn.Module, AbsModel):
         self.embed = Embedding(model.embed)
         self.model = model
 
-    def forward(self, speech, mask):
+    def forward(self, feats, mask):
         if (
             isinstance(self.model.embed, Conv2dSubsampling)
             or isinstance(self.model.embed, Conv2dSubsampling2)
             or isinstance(self.model.embed, Conv2dSubsampling6)
             or isinstance(self.model.embed, Conv2dSubsampling8)
         ):
-            xs_pad, mask = self.embed(speech, mask)
+            xs_pad, mask = self.embed(feats, mask)
             xs_pad = xs_pad[0]
         else:
-            xs_pad = self.embed(speech)
+            xs_pad = self.embed(feats)
 
         xs_pad, masks = self.model.encoders(xs_pad, mask)
         if isinstance(xs_pad, tuple):

@@ -7,6 +7,7 @@ import glob
 import pytest
 from pathlib import Path
 import torch
+import numpy as np
 
 from espnet_onnx.export.asr.models import (
     get_encoder,
@@ -36,11 +37,17 @@ encoder_cases = [
     'transformer',
     'rnn_rnn',
     'rnn_rnnp',
-    'rnn_vggrnn'
+    'rnn_vggrnn',
+    'contextual_block_conformer',
+    'contextual_block_transformer'
 ]
 
 decoder_cases = [
     'transformer',
+    'lightweight_conv',
+    'lightweight_conv2d',
+    # 'dynamic_conv',
+    # 'dynamic_conv2d',
     'rnn_noatt',
     'rnn_dot',
     'rnn_add',
@@ -76,6 +83,12 @@ def test_export_encoder(enc_type, load_config, model_export,
     export_dir.mkdir(parents=True, exist_ok=True)
     model_export._export_encoder(enc_wrapper, export_dir)
     torch.save(encoder.state_dict(), str(export_dir / 'encoder.pth'))
+    if enc_type in ('contextual_block_conformer', 'contextual_block_transformer'):
+        # save position encoder parameters.
+        np.save(
+            export_dir / 'pe',
+            encoder.pos_enc.pe.numpy()
+        )
     assert os.path.isfile(os.path.join(export_dir, 'encoder.onnx'))
 
 

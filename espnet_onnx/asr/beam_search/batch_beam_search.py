@@ -1,12 +1,12 @@
 """Parallel beam search module."""
 
 import logging
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Tuple
-import logging
-
+from typing import (
+    Any,
+    Dict,
+    List,
+    Tuple
+)
 import numpy as np
 
 from espnet_onnx.utils.function import (
@@ -291,7 +291,7 @@ class BatchBeamSearch(BeamSearch):
                 )
             )
             
-            running_hyps.yseq.resize(yseq_eos.shape)
+            running_hyps.yseq.resize(yseq_eos.shape, refcheck=False)
             running_hyps.yseq[:] = yseq_eos
             running_hyps.length[:] = yseq_eos.shape[1]
 

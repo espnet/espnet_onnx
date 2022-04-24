@@ -65,3 +65,4 @@ def rnn_onnx_dec(onnx_model, dummy_input):
     yseq = np.array([0, 1]).astype(np.int64)
     logp, state = onnx_model.score(yseq, state, dummy_input)
     return logp
+

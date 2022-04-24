@@ -8,11 +8,13 @@ from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsamplin
 from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling6
 from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling8
 from espnet.nets.pytorch_backend.transformer.embedding import (
-    PositionalEncoding,  # noqa: H301
-    ScaledPositionalEncoding,  # noqa: H301
-    RelPositionalEncoding,  # noqa: H301
-    LegacyRelPositionalEncoding,  # noqa: H301
+    PositionalEncoding,
+    ScaledPositionalEncoding,
+    RelPositionalEncoding,
+    LegacyRelPositionalEncoding,
+    StreamPositionalEncoding,
 )
+from espnet.nets.pytorch_backend.transformer.subsampling_without_posenc import Conv2dSubsamplingWOPosEnc
 
 from espnet_onnx.utils.function import subsequent_mask
 from ..abs_model import AbsModel
@@ -20,7 +22,8 @@ from .embed import (
     OnnxPositionalEncoding,
     OnnxScaledPositionalEncoding,
     OnnxRelPositionalEncoding,
-    OnnxLegacyRelPositionalEncoding
+    OnnxLegacyRelPositionalEncoding,
+    OnnxStreamPositionalEncoding,
 )
 
 
@@ -33,7 +36,10 @@ def get_pos_emb(pos_emb):
         return OnnxRelPositionalEncoding(pos_emb)
     elif isinstance(pos_emb, PositionalEncoding):
         return OnnxPositionalEncoding(pos_emb)
-    elif isinstance(pos_emb, nn.Sequential) and len(pos_emb) == 0:
+    elif isinstance(pos_emb, StreamPositionalEncoding):
+        return OnnxStreamPositionalEncoding(pos_emb)
+    elif (isinstance(pos_emb, nn.Sequential) and len(pos_emb) == 0) \
+        or (isinstance(pos_emb, Conv2dSubsamplingWOPosEnc)):
         return pos_emb
     else:
         raise ValueError('Embedding model is not supported.')
@@ -43,7 +49,7 @@ class Embedding(nn.Module):
     def __init__(self, model):
         super().__init__()
         self.model = model
-        
+
         if not isinstance(model, nn.Embedding):
             if (
                 isinstance(model, Conv2dSubsampling)
@@ -54,7 +60,7 @@ class Embedding(nn.Module):
                 self.model.out[-1] = get_pos_emb(model.out[-1])
             else:
                 self.model[-1] = get_pos_emb(model[-1])
-    
+
     def forward(self, x, mask=None):
         if mask is None:
             return self.model(x)
@@ -102,7 +108,7 @@ class SequentialRNNLM(nn.Module, AbsModel):
                 decoded.view(output.size(0), output.size(1), decoded.size(1)),
                 hidden1
             )
-    
+
     def get_dummy_inputs(self):
         tgt = torch.LongTensor([0, 1]).unsqueeze(0)
         hidden = torch.randn(self.nlayers, 1, self.nhid)
@@ -110,7 +116,7 @@ class SequentialRNNLM(nn.Module, AbsModel):
             return (tgt, hidden, hidden)
         else:
             return (tgt, hidden)
-    
+
     def get_input_names(self):
         if self.rnn_type == 'LSTM':
             return ['x', 'in_hidden1', 'in_hidden2']
@@ -149,7 +155,7 @@ class SequentialRNNLM(nn.Module, AbsModel):
                 }
             })
         return ret
-    
+
     def get_model_config(self, path):
         return {
             "use_lm": True,
@@ -197,15 +203,15 @@ class TransformerLM(nn.Module):
             for _ in range(len(self.encoder.encoders))
         ]
         return (tgt, mask, cache)
-    
+
     def get_input_names(self):
         return ['tgt', 'tgt_mask'] \
-        + ['cache_%d' % i for i in range(len(self.encoder.encoders))]
-    
+            + ['cache_%d' % i for i in range(len(self.encoder.encoders))]
+
     def get_output_names(self):
         return ['y'] \
-        + ['out_cache_%d' % i for i in range(len(self.encoder.encoders))]
-        
+            + ['out_cache_%d' % i for i in range(len(self.encoder.encoders))]
+
     def get_dynamix_axes(self):
         ret = {
             'tgt': {
@@ -233,7 +239,7 @@ class TransformerLM(nn.Module):
             for d in range(len(self.encoder.encoders))
         })
         return ret
-    
+
     def get_model_config(self, path):
         return {
             "use_lm": True,
@@ -242,4 +248,3 @@ class TransformerLM(nn.Module):
             "odim": self.encoder.encoders[0].size,
             "nlayers": len(self.encoder.encoders)
         }
-    

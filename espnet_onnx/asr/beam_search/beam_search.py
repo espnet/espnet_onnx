@@ -1,23 +1,25 @@
 """Beam search module."""
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Tuple
+from typing import (
+    Any,
+    Dict,
+    List,
+    Tuple
+)
 from typeguard import check_argument_types
 
-import six
 import logging
 from itertools import chain
-
 import numpy as np
 
 from espnet_onnx.asr.scorer.interface import (
     PartialScorerInterface,
     ScorerInterface,
 )
-from espnet_onnx.utils.function import topk
+from espnet_onnx.utils.function import (
+    topk,
+    end_detect
+)
 from espnet_onnx.utils.config import Config
-from .utils import end_detect
 from .hyps import Hypothesis
 
 
