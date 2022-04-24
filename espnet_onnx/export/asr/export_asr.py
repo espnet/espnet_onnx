@@ -14,6 +14,7 @@ from onnxruntime.quantization import quantize_dynamic, QuantType
 
 from espnet2.bin.asr_inference import Speech2Text
 from espnet2.text.sentencepiece_tokenizer import SentencepiecesTokenizer
+from espnet_model_zoo.downloader import ModelDownloader
 from .models import (
     get_encoder,
     get_decoder,
@@ -40,7 +41,7 @@ class ModelExport:
         if cache_dir is None:
             cache_dir = Path.home() / ".cache" / "espnet_onnx"
 
-        self.cache_dir = cache_dir
+        self.cache_dir = Path(cache_dir)
 
     def export(
         self,
@@ -106,6 +107,14 @@ class ModelExport:
     def export_from_pretrained(self, tag_name: str, quantize: bool = False):
         assert check_argument_types()
         model = Speech2Text.from_pretrained(tag_name)
+        self.export(model, tag_name, quantize)
+    
+    def export_from_zip(self, path: Union[Path, str], tag_name: str, quantize: bool = False):
+        assert check_argument_types()
+        cache_dir = Path(path).parent
+        d = ModelDownloader(cache_dir)
+        model_config = d.unpack_local_file(path)
+        model = Speech2Text(**model_config)
         self.export(model, tag_name, quantize)
 
     def _create_config(self, model, path):
