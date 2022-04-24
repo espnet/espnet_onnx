@@ -4,12 +4,14 @@ from typing import Tuple
 from typing import Optional
 from pathlib import Path
 from typeguard import check_argument_types
+import warnings
 
 import os
 import logging
 import numpy as np
 import librosa
 import glob
+import onnxruntime
 
 from espnet_onnx.asr.model.encoder import get_encoder
 from espnet_onnx.asr.model.decoder import get_decoder
@@ -36,6 +38,7 @@ class Speech2Text:
     def __init__(self,
                  tag_name: str = None,
                  model_dir: Union[Path, str] = None,
+                 providers: List[str] = ['CPUExecutionProvider'],
                  use_quantized: bool = False,
                  ):
         assert check_argument_types()
@@ -44,11 +47,14 @@ class Speech2Text:
 
         if tag_name is not None:
             tag_config = get_tag_config()
-            if not tag_name in tag_config.keys():
+            if tag_name not in tag_config.keys():
                 raise RuntimeError(f'Model path for tag_name "{tag_name}" is not set on tag_config.yaml.'
                                    + 'You have to export to onnx format with `espnet_onnx.export.asr.export_asr.ModelExport`,'
                                    + 'or have to set exported model path in tag_config.yaml.')
             model_dir = tag_config[tag_name]
+        
+        # check onnxruntime version and providers
+        self.check_ort_version(providers)
 
         # 1. Build asr model
         config_file = glob.glob(os.path.join(model_dir, 'config.*'))[0]
@@ -64,9 +70,9 @@ class Speech2Text:
                 'Configuration for quantized model is not defined.')
 
         # 2.
-        self.encoder = get_encoder(config.encoder, use_quantized)
-        decoder = get_decoder(config.decoder, config.transducer, use_quantized)
-        ctc = CTCPrefixScorer(config.ctc, config.token.eos, use_quantized)
+        self.encoder = get_encoder(config.encoder, providers, use_quantized)
+        decoder = get_decoder(config.decoder, config.transducer, providers, use_quantized)
+        ctc = CTCPrefixScorer(config.ctc, config.token.eos, providers, use_quantized)
 
         scorers = {}
         scorers.update(
@@ -79,11 +85,11 @@ class Speech2Text:
         if config.lm.use_lm:
             if config.lm.lm_type == 'SequentialRNNLM':
                 scorers.update(
-                    lm=SequentialRNNLM(config.lm, use_quantized)
+                    lm=SequentialRNNLM(config.lm, use_quantized, providers)
                 )
             elif config.lm.lm_type == 'TransformerLM':
                 scorers.update(
-                    lm=TransformerLM(config.lm, use_quantized)
+                    lm=TransformerLM(config.lm, use_quantized, providers)
                 )
 
         # 3. Build ngram model
@@ -213,3 +219,18 @@ class Speech2Text:
             results.append((text, token, token_int, hyp))
 
         return results
+
+    def check_ort_version(self, providers: List[str]):
+        # check cpu
+        if onnxruntime.get_device() == 'CPU' and 'CPUExecutionProvider' not in providers:
+            raise RuntimeError('If you want to use GPU, then follow `How to use GPU on espnet_onnx` chapter in readme to install onnxruntime-gpu.')
+        
+        # check GPU
+        if onnxruntime.get_device() == 'GPU' and providers == ['CPUExecutionProvider']:
+            warnings.warn('Inference will be executed on the CPU. Please provide gpu providers. Read `How to use GPU on espnet_onnx` in readme in detail.')
+        
+        logging.info(f'Providers [{" ,".join(providers)}] detected.')
+        
+        
+        
+        

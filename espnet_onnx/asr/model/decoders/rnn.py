@@ -13,6 +13,7 @@ class RNNDecoder(BatchScorerInterface):
     def __init__(
         self,
         config: Config,
+        providers: List[str],
         use_quantized: bool = False
     ):
         """Onnx support for espnet2.asr.decoder.rnn_decoder.RNNDecoder
@@ -30,15 +31,23 @@ class RNNDecoder(BatchScorerInterface):
             else:
                 model_path = p.model_path
             self.predecoders.append(
-                onnxruntime.InferenceSession(model_path)
+                onnxruntime.InferenceSession(
+                    model_path,
+                    providers=providers
+                )
             )
 
         # decoder
         if use_quantized:
             self.decoder = onnxruntime.InferenceSession(
-                config.quantized_model_path)
+                config.quantized_model_path,
+                providers=providers
+            )
         else:
-            self.decoder = onnxruntime.InferenceSession(config.model_path)
+            self.decoder = onnxruntime.InferenceSession(
+                config.model_path,
+                providers=providers
+            )
             
         # HP
         self.num_encs = len(self.predecoders)

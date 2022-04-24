@@ -1,4 +1,7 @@
-from typing import Tuple
+from typing import (
+    Tuple,
+    List
+)
 
 import onnxruntime
 import numpy as np
@@ -19,15 +22,20 @@ class Encoder:
     def __init__(
         self,
         encoder_config: Config,
-        use_quantized: bool = False
+        providers: List[str],
+        use_quantized: bool = False,
     ):
         self.config = encoder_config
         if use_quantized:
             self.encoder = onnxruntime.InferenceSession(
-                self.config.quantized_model_path)
+                self.config.quantized_model_path,
+                providers=providers
+            )
         else:
             self.encoder = onnxruntime.InferenceSession(
-                self.config.model_path)
+                self.config.model_path,
+                providers=providers
+            )
 
         self.frontend = Frontend(self.config.frontend)
         if self.config.do_normalize:

@@ -74,6 +74,7 @@ class XformerEncoder(nn.Module, AbsModel):
         ret.update(
             enc_type='XformerEncoder',
             model_path=os.path.join(path, 'encoder.onnx'),
+            is_vggrnn=False,
             frontend=self.get_frontend_config(asr_model.frontend),
             do_normalize=asr_model.normalize is not None,
             do_preencoder=asr_model.preencoder is not None,

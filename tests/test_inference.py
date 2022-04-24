@@ -72,6 +72,7 @@ lm_cases = [
 ]
 
 CACHE_DIR = Path.home() / ".cache" / "espnet_onnx" / 'test'
+PROVIDERS = ['CPUExecutionProvider']
 
 
 def check_output(out_t, out_o):
@@ -92,7 +93,7 @@ def get_predec_models(dec_type):
     predecoders = []
     for p in glob.glob(os.path.join(model_dir, '*.onnx')):
         predecoders.append(
-            ort.InferenceSession(p)
+            ort.InferenceSession(p, providers=PROVIDERS)
         )
     return predecoders
 
@@ -112,7 +113,7 @@ def test_infer_encoder(enc_type, feat_lens, load_config,
                                    model_config.encoder_conf.dic)
     encoder_espnet.load_state_dict(torch.load(str(model_dir / 'encoder.pth')))
     encoder_espnet.eval()
-    encoder_onnx = ort.InferenceSession(str(model_dir / 'encoder.onnx'))
+    encoder_onnx = ort.InferenceSession(str(model_dir / 'encoder.onnx'), providers=PROVIDERS)
     # test output
     for fl in feat_lens:
         dummy_input = torch.randn(1, fl, input_size)  # (B, L, D)
@@ -143,9 +144,9 @@ def test_infer_decoder(dec_type, feat_lens, load_config, model_export, decoder_c
     decoder_espnet.load_state_dict(torch.load(str(model_dir / 'decoder.pth')))
     decoder_espnet.eval()
     if dec_type[:3] == 'rnn':
-        decoder_onnx = RNNDecoder(get_config(model_dir / 'config.yaml'))
+        decoder_onnx = RNNDecoder(get_config(model_dir / 'config.yaml'), providers=PROVIDERS)
     else:
-        decoder_onnx = XformerDecoder(get_config(model_dir / 'config.yaml'))
+        decoder_onnx = XformerDecoder(get_config(model_dir / 'config.yaml'), providers=PROVIDERS)
     # test output
     for fl in feat_lens:
         dummy_input = torch.randn(1, fl, 512)
@@ -175,9 +176,9 @@ def test_infer_lm(lm_type, feat_lens, load_config, model_export, lm_choices):
     # create onnx wrapper and export
     lm_config = get_config(model_dir / 'config.yaml')
     if lm_config.lm_type == 'SequentialRNNLM':
-        onnx_model = SequentialRNNLM(lm_config)
+        onnx_model = SequentialRNNLM(lm_config, providers=PROVIDERS)
     else:
-        onnx_model = TransformerLM(lm_config)
+        onnx_model = TransformerLM(lm_config, providers=PROVIDERS)
     # test output
     for fl in feat_lens:
         dummy_input = torch.randn(1, fl, 512)

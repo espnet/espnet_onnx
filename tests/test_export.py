@@ -23,7 +23,7 @@ from espnet2.lm.espnet_model import ESPnetLanguageModel
 
 
 def export_predec(dec_wrapper, model_export, export_dir):
-    model_export._export_predecoder(dec_wrapper, export_dir)
+    model_export._export_predecoder(dec_wrapper, export_dir, verbose=False)
     for i,a in enumerate(dec_wrapper.att_list):
         if not isinstance(a, OnnxNoAtt):
             assert os.path.isfile(os.path.join(export_dir, f'predecoder_{i}.onnx'))
@@ -81,7 +81,7 @@ def test_export_encoder(enc_type, load_config, model_export,
     export_dir = Path(model_export.cache_dir) / 'test' / \
         'encoder' / f'./cache_{enc_type}'
     export_dir.mkdir(parents=True, exist_ok=True)
-    model_export._export_encoder(enc_wrapper, export_dir)
+    model_export._export_encoder(enc_wrapper, export_dir, verbose=False)
     torch.save(encoder.state_dict(), str(export_dir / 'encoder.pth'))
     if enc_type in ('contextual_block_conformer', 'contextual_block_transformer'):
         # save position encoder parameters.
@@ -107,7 +107,7 @@ def test_export_decoder(dec_type, load_config, model_export, decoder_choices):
     export_dir = Path(model_export.cache_dir) / 'test' / \
         'decoder' / f'./cache_{dec_type}'
     export_dir.mkdir(parents=True, exist_ok=True)
-    model_export._export_decoder(dec_wrapper, 512, export_dir)
+    model_export._export_decoder(dec_wrapper, 512, export_dir, verbose=False)
     if dec_type[:3] == 'rnn':
         export_predec(dec_wrapper, model_export, export_dir)
     decoder_config = dec_wrapper.get_model_config(export_dir)
@@ -128,7 +128,7 @@ def test_export_lm(lm_type, load_config, model_export, lm_choices):
     lm_model = LanguageModel(model.lm)
     export_dir = model_export.cache_dir / 'test' / 'lm' / f'./cache_{lm_type}'
     export_dir.mkdir(parents=True, exist_ok=True)
-    model_export._export_lm(lm_model, export_dir)
+    model_export._export_lm(lm_model, export_dir, verbose=False)
     lm_config = lm_model.get_model_config(export_dir)
     save_config(lm_config, export_dir / 'config.yaml')
     torch.save(model.lm.state_dict(), str(export_dir / 'lm.pth'))
