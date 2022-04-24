@@ -43,7 +43,7 @@ speech2text = Speech2Text(args)
 m.export(speech2text, '<tag name>', quantize=True)
 ```
 
-3. For inference, `tag_name` or `model_dir` is used to load onnx file. `tag_name` has to be defined in `tag_config.yaml` 
+2. For inference, `tag_name` or `model_dir` is used to load onnx file. `tag_name` has to be defined in `tag_config.yaml` 
 
 ```python
 import librosa
@@ -56,7 +56,7 @@ y, sr = librosa.load('sample.wav', sr=16000)
 nbest = speech2text(y)
 ```
 
-4. For streaming asr, you can use `StreamingSpeech2Text` class. The speech length should be the same as `StreamingSpeech2Text.hop_size`
+3. For streaming asr, you can use `StreamingSpeech2Text` class. The speech length should be the same as `StreamingSpeech2Text.hop_size`
 
 ```python
 from espnet_onnx import StreamingSpeech2Text
