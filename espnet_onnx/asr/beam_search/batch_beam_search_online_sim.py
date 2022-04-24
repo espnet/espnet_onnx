@@ -69,7 +69,10 @@ class BatchBeamSearchOnlineSim(BatchBeamSearch):
 
     def end(self):
         # main loop of prefix search
+        self.running_hyps = []
+        self.ended_hyps = []
         self.prev_repeat = False
+        self._init_hyp = False
 
 
     def __call__(self, h: np.ndarray) -> List[Hypothesis]:
@@ -82,7 +85,7 @@ class BatchBeamSearchOnlineSim(BatchBeamSearch):
         
         maxlen = h.shape[0] if self.maxlenratio == 0 else max(1, int(maxlenratio * x.shape[0]))
         move_to_next_block = False
-
+        best = None
         # extend states for ctc
         self.extend(h, self.running_hyps)
 
@@ -138,7 +141,10 @@ class BatchBeamSearchOnlineSim(BatchBeamSearch):
             # increment number
             self.process_idx += 1
         
-        return sorted(self.unbatchfy(best), key=lambda x: x.score, reverse=True)
+        if best is not None:
+            return sorted(self.unbatchfy(best), key=lambda x: x.score, reverse=True)
+        else:
+            return []
 
 
     def extend(self, x: np.ndarray, hyps: Hypothesis) -> List[Hypothesis]:

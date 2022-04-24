@@ -61,6 +61,7 @@ class ContextualBlockXformerEncoder(nn.Module, AbsModel):
         self,
         xs_pad: torch.Tensor,
         mask: torch.Tensor,
+        buffer_before_downsampling: torch.Tensor,
         buffer_after_downsampling: torch.Tensor,
         prev_addin: torch.Tensor,
         pos_enc_xs: torch.Tensor,
@@ -80,6 +81,8 @@ class ContextualBlockXformerEncoder(nn.Module, AbsModel):
             mask: zeros(1, 1, self.block_size + 2, self.block_size + 2)
             pos_enc_xs: (B, L, D) L = block_size
         """
+        xs_pad = torch.cat([buffer_before_downsampling, xs_pad], dim=1)
+        buffer_before_downsampling = xs_pad[:, -self.subsample:] # (B, L, overlap)
         xs_pad = self.compute_embed(xs_pad)
         xs_pad = torch.cat([buffer_after_downsampling, xs_pad], dim=1)
         
@@ -107,7 +110,7 @@ class ContextualBlockXformerEncoder(nn.Module, AbsModel):
         if self.normalize_before:
             ys_pad = self.after_norm(ys_pad)
 
-        return ys_pad, buffer_after_downsampling, addin, past_encoder_ctx
+        return ys_pad, buffer_before_downsampling, buffer_after_downsampling, addin, past_encoder_ctx
     
     def compute_embed(self, xs_pad):
         if isinstance(self.embed, Conv2dSubsamplingWOPosEnc):
@@ -121,30 +124,32 @@ class ContextualBlockXformerEncoder(nn.Module, AbsModel):
 
     def get_dummy_inputs(self):
         n_feats = 80
-        xs_pad = torch.randn(1, (self.hop_size+1)*self.subsample, n_feats)
+        xs_pad = torch.randn(1, self.hop_size*self.subsample, n_feats)
         mask = torch.ones(1, 1, self.block_size + 2, self.block_size + 2)
         o = self.compute_embed(xs_pad)
+        buffer_before_downsampling = torch.randn(1, self.subsample, n_feats)
         buffer_after_downsampling = torch.randn(1, self.overlap_size, o.shape[-1])
         prev_addin = torch.randn(1, 1, o.shape[-1])
         pos_enc_xs = torch.randn(1, self.block_size, o.shape[-1])
         pos_enc_addin = torch.randn(1, 1, o.shape[-1])
         past_encoder_ctx = torch.randn(1, len(self.encoders), self.encoders[0].size)
         indicies = torch.LongTensor([8, 24, 24])
-        return (xs_pad, mask, buffer_after_downsampling, prev_addin,
+        return (xs_pad, mask, buffer_before_downsampling, buffer_after_downsampling, prev_addin,
                 pos_enc_xs, pos_enc_addin, past_encoder_ctx, indicies)
 
     def get_input_names(self):
-        return ['xs_pad', 'mask', 'buffer_after_downsampling',
+        return ['xs_pad', 'mask', 'buffer_before_downsampling', 'buffer_after_downsampling',
                 'prev_addin', 'pos_enc_xs', 'pos_enc_addin', 'past_encoder_ctx', 'indicies']
 
     def get_output_names(self):
-        return ['ys_pad', 'next_buffer_after_downsampling',
+        return ['ys_pad', 'next_buffer_before_downsampling', 'next_buffer_after_downsampling',
                 'next_addin', 'next_encoder_ctx']
 
     def get_dynamic_axes(self):
         return {
             'xs_pad': { 1: 'xs_pad_length' },
             'mask': { 2: 'block_height', 3: 'block_width' },
+            'buffer_before_downsampling': { 1: 'bbd_length' },
             'buffer_after_downsampling': { 1: 'bad_length' },
             'pos_enc_xs': { 1: 'pex_length' },
             'ys_pad': { 1: 'ys_pad_length' },

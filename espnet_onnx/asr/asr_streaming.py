@@ -125,6 +125,12 @@ class StreamingSpeech2Text:
             scorers=scorers,
             weights=weights,
         )
+        self.batch_beam_search = BatchBeamSearch(
+            config.beam_search,
+            config.token,
+            scorers=scorers,
+            weights=weights,
+        )
 
         non_batch = [
             k
@@ -161,11 +167,12 @@ class StreamingSpeech2Text:
         # streaming related parameters
         self.enc_feats = []
         self.streaming_states = {
+            'buffer_before_downsampling' : None,
             'buffer_after_downsampling' : None,
             'prev_addin' : None,
             'past_encoder_ctx' : None,
         }
-        self.hop_size = self.config.encoder.frontend.stft.hop_length * self.config.encoder.subsample * (hop_size+1)  \
+        self.hop_size = self.config.encoder.frontend.stft.hop_length * self.config.encoder.subsample * hop_size  \
             + (self.config.encoder.frontend.stft.n_fft // self.config.encoder.frontend.stft.hop_length) * self.config.encoder.frontend.stft.hop_length
 
     def __call__(self, speech: np.ndarray) -> List[
@@ -224,13 +231,27 @@ class StreamingSpeech2Text:
         return nbest
 
     def start(self):
+        self.beam_search.__class__ = BatchBeamSearchOnlineSim
         self.encoder.reset()
         self.streaming_states = self.encoder.init_state()
         self.beam_search.start()
         
     def end(self):
-        self.beam_search.__class__ = BatchBeamSearch
-        best_hyps = self.beam_search(np.array(self.enc_feats, dtype=np.float32))
+        # compute final encoder process
+        enc, *_ = self.encoder.forward_final(self.streaming_states)
+        self.enc_feats += enc[0].tolist()
+        best_hyps = self.batch_beam_search(np.array(self.enc_feats, dtype=np.float32))
+        
+        # initialize beam_search related parameters
+        self.enc_feats = []
+        self.streaming_states = {
+            'buffer_before_downsampling' : None,
+            'buffer_after_downsampling' : None,
+            'prev_addin' : None,
+            'past_encoder_ctx' : None,
+        }
+        self.beam_search.end()
+        
         if best_hyps == []:
             return []
         else:
