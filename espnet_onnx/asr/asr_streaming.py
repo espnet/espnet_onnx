@@ -207,8 +207,7 @@ class StreamingSpeech2Text:
         else:
             return self.get_result(best_hyps[0])
 
-    def simulate(self, speech: np.ndarray, print_every_hypo: bool = False,
-        beam_fixed_len: bool = True):
+    def simulate(self, speech: np.ndarray, print_every_hypo: bool = False):
         # This function will simulate streaming asr with the given audio.
         self.start()
         process_num = len(speech) // self.hop_size + 1
@@ -221,8 +220,7 @@ class StreamingSpeech2Text:
             if print_every_hypo and nbest != []:
                 logging.info(f'Result at position {i} : {nbest[0][0]}')
         
-        if beam_fixed_len:
-            nbest = self.end()
+        nbest = self.end()
         return nbest
 
     def start(self):
@@ -233,7 +231,6 @@ class StreamingSpeech2Text:
     def end(self):
         self.beam_search.__class__ = BatchBeamSearch
         best_hyps = self.beam_search(np.array(self.enc_feats, dtype=np.float32))
-        self.encoder.increment()
         if best_hyps == []:
             return []
         else:
