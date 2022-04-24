@@ -1,5 +1,6 @@
 from typing import (
     Dict,
+    List,
     Tuple
 )
 
@@ -16,7 +17,8 @@ class StreamingEncoder:
     def __init__(
         self,
         encoder_config: Config,
-        use_quantized: bool = False
+        providers: List[str],
+        use_quantized: bool = False,
     ):
         self.config = encoder_config
         if use_quantized:
