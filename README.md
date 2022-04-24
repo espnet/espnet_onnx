@@ -94,6 +94,50 @@ print(nbest[0][0])
 # 'this is a pen'
 ```
 
+4. You can export pretrained model from zipped file. The zipped file should contain `meta.yaml`.
+
+```python
+from espnet_onnx.export import ModelExport
+
+m = ModelExport()
+m.export_from_zip(
+  'path/to/the/zipfile',
+  tag_name='tag_name_for_zipped_model',
+  quantize=True
+)
+```
+
+5. You can use GPU for inference. Please see `How to use GPU on espnet_onnx` in detail.
+
+
+## How to use GPU on espnet_onnx
+
+**Install dependency.**
+
+First, we need `onnxruntime-gpu` library, instead of `onnxruntime`. Please follow [this article](https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html) to select and install the correct version of `onnxruntime-gpu`, depending on your CUDA version.
+
+**Inference on GPU**
+
+Now you can speedup the inference speed with GPU. All you need is to select the correct providers, and give it to the `Speech2Text` or `StreamingSpeech2Text` instance. See [this article](https://onnxruntime.ai/docs/execution-providers/) for more information about providers.
+
+```python
+import librosa
+from espnet_onnx import Speech2Text
+
+PROVIDERS = ['CUDAExecutionProvider']
+tag_name = 'some_tag_name'
+
+speech2text = Speech2Text(
+  tag_name,
+  providers=PROVIDERS
+)
+y, sr = librosa.load('path/to/wav', sr=16000)
+nbest = speech2text(y) # runs on GPU.
+```
+
+Note that some quantized models are not supported for GPU computation. If you got an error with quantized model, please try not-quantized model.
+
+
 ## API Reference
 
 `espnet_onnx.Speech2Text`
@@ -137,7 +181,7 @@ And I removed `extend_pe()` from positional encoding module. The length of `pe` 
 
 ## Supported Archs
 
-ASR: [Supported architecture for ASR](./doc/ASRSupported.md)
+ASR: [Supported architecture for ASR](./docs/ASRSupported.md)
 
 
 
