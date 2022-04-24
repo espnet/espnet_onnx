@@ -9,7 +9,7 @@ import shutil
 
 import numpy as np
 import torch
-from onnxruntime.quantization import quantize_dynamic
+from onnxruntime.quantization import quantize_dynamic, QuantType
 
 from espnet2.bin.asr_inference import Speech2Text
 from espnet2.text.sentencepiece_tokenizer import SentencepiecesTokenizer
@@ -216,7 +216,8 @@ class ModelExport:
             export_file = os.path.join(model_to, basename + '_qt.onnx')
             quantize_dynamic(
                 m,
-                export_file
+                export_file,
+                weight_type=QuantType.QUInt8
             )
             ret[basename] = export_file
             os.remove(os.path.join(model_from, basename + '-opt.onnx'))
