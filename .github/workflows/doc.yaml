@@ -1,0 +1,42 @@
+name: doc
+
+on:
+  push:
+    branches:
+      - feature/sphinx
+  pull_request:
+    branches:
+      - feature/sphinx
+
+jobs:
+  linter_and_test:
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@feature/sphinx
+      - uses: actions/cache@v1
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ hashFiles('**/setup.py') }}
+      - uses: actions/setup-python@v1
+        with:
+          python-version: 3.8
+          architecture: 'x64'
+      - name: check OS
+        run: cat /etc/os-release
+      - name: install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -qq -y cmake python3-dev git g++-7 pandoc ffmpeg bc
+      - name: install espnet_onnx
+        run: pip install .
+      - name: generate doc
+        run: |
+          cd docs
+          sphinx-apidoc -E -M -o . ..
+          make html
+      - name: deploy
+        if: github.ref == 'refs/heads/feature/sphinx'
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: doc/build
