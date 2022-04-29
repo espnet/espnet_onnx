@@ -138,35 +138,6 @@ nbest = speech2text(y) # runs on GPU.
 Note that some quantized models are not supported for GPU computation. If you got an error with quantized model, please try not-quantized model.
 
 
-## API Reference
-
-`espnet_onnx.Speech2Text`
-
-**args**
-
-- `tag_name` : `tag_name` defined in `table.csv` in `espnet_model_zoo`.
-If a user set a custom `model_name` when export model with `export()`, then `tag_name` should be `model_name`. The `tag_name` should be defined in `tag_config.yaml`, which will be created when exporting model.
-  
-- `model_dir`: Path to the model directory. Configuration file should be located in `<model_dir>/config.yaml`
-
-- `use_quantized`: Flag to use quantized model.
-
-
-
-`espnet_onnx.export.ModelExport`
-
-**function**
-
-- `export`
-  - `model`: Instance of `espnet2.bin.asr_inference.Speech2Text`.
-  - `tag_name`: Tag name to identify onnx model.
-  - `quantize`: Flag to create quantized model.
-- `export_from_pretrained`
-  - `tag_name`: Tag name to identify onnx model.
-  - `quantize`: Flag to create quantized model.
-
-
-
 ## Changes from ESPNet
 
 To avoid the cache problem, I modified some scripts from the original espnet implementation.
@@ -181,7 +152,7 @@ And I removed `extend_pe()` from positional encoding module. The length of `pe` 
 
 ## Supported Archs
 
-ASR: [Supported architecture for ASR](./docs/ASRSupported.md)
+ASR: [Supported architecture for ASR](./docs/markdowns/ASRSupported.md)
 
 
 
