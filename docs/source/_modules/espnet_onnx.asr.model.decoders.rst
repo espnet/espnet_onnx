@@ -5,21 +5,22 @@ espnet\_onnx.asr.model.decoders package
    :members:
    :undoc-members:
    :show-inheritance:
-   :private-members:
 
 Submodules
 ----------
 
+espnet\_onnx.asr.model.decoders.rnn module
+------------------------------------------
 
 .. automodule:: espnet_onnx.asr.model.decoders.rnn
    :members:
    :undoc-members:
    :show-inheritance:
-   :private-members:
 
+espnet\_onnx.asr.model.decoders.xformer module
+----------------------------------------------
 
 .. automodule:: espnet_onnx.asr.model.decoders.xformer
    :members:
    :undoc-members:
    :show-inheritance:
-   :private-members:

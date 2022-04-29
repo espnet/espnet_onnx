@@ -5,21 +5,22 @@ espnet\_onnx.utils package
    :members:
    :undoc-members:
    :show-inheritance:
-   :private-members:
 
 Submodules
 ----------
 
+espnet\_onnx.utils.config module
+--------------------------------
 
 .. automodule:: espnet_onnx.utils.config
    :members:
    :undoc-members:
    :show-inheritance:
-   :private-members:
 
+espnet\_onnx.utils.function module
+----------------------------------
 
 .. automodule:: espnet_onnx.utils.function
    :members:
    :undoc-members:
    :show-inheritance:
-   :private-members:

@@ -5,7 +5,6 @@ espnet\_onnx.export.asr.models package
    :members:
    :undoc-members:
    :show-inheritance:
-   :private-members:
 
 Subpackages
 -----------
@@ -20,23 +19,26 @@ Subpackages
 Submodules
 ----------
 
+espnet\_onnx.export.asr.models.abs\_model module
+------------------------------------------------
 
 .. automodule:: espnet_onnx.export.asr.models.abs_model
    :members:
    :undoc-members:
    :show-inheritance:
-   :private-members:
 
+espnet\_onnx.export.asr.models.ctc module
+-----------------------------------------
 
 .. automodule:: espnet_onnx.export.asr.models.ctc
    :members:
    :undoc-members:
    :show-inheritance:
-   :private-members:
 
+espnet\_onnx.export.asr.models.lm module
+----------------------------------------
 
 .. automodule:: espnet_onnx.export.asr.models.lm
    :members:
    :undoc-members:
    :show-inheritance:
-   :private-members:

@@ -5,7 +5,6 @@ espnet\_onnx.asr.model package
    :members:
    :undoc-members:
    :show-inheritance:
-   :private-members:
 
 Subpackages
 -----------
@@ -14,21 +13,24 @@ Subpackages
    :maxdepth: 4
 
    espnet_onnx.asr.model.decoders
+   espnet_onnx.asr.model.encoders
    espnet_onnx.asr.model.lm
 
 Submodules
 ----------
 
+espnet\_onnx.asr.model.decoder module
+-------------------------------------
 
 .. automodule:: espnet_onnx.asr.model.decoder
    :members:
    :undoc-members:
    :show-inheritance:
-   :private-members:
 
+espnet\_onnx.asr.model.encoder module
+-------------------------------------
 
 .. automodule:: espnet_onnx.asr.model.encoder
    :members:
    :undoc-members:
    :show-inheritance:
-   :private-members:

@@ -5,7 +5,6 @@ espnet\_onnx.asr.postprocess package
    :members:
    :undoc-members:
    :show-inheritance:
-   :private-members:
 
 Subpackages
 -----------
@@ -18,16 +17,18 @@ Subpackages
 Submodules
 ----------
 
+espnet\_onnx.asr.postprocess.build\_tokenizer module
+----------------------------------------------------
 
 .. automodule:: espnet_onnx.asr.postprocess.build_tokenizer
    :members:
    :undoc-members:
    :show-inheritance:
-   :private-members:
 
+espnet\_onnx.asr.postprocess.token\_id\_converter module
+--------------------------------------------------------
 
 .. automodule:: espnet_onnx.asr.postprocess.token_id_converter
    :members:
    :undoc-members:
    :show-inheritance:
-   :private-members:

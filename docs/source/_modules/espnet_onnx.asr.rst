@@ -5,7 +5,6 @@ espnet\_onnx.asr package
    :members:
    :undoc-members:
    :show-inheritance:
-   :private-members:
 
 Subpackages
 -----------
@@ -22,16 +21,18 @@ Subpackages
 Submodules
 ----------
 
+espnet\_onnx.asr.asr\_model module
+----------------------------------
 
 .. automodule:: espnet_onnx.asr.asr_model
    :members:
    :undoc-members:
    :show-inheritance:
-   :private-members:
 
+espnet\_onnx.asr.asr\_streaming module
+--------------------------------------
 
 .. automodule:: espnet_onnx.asr.asr_streaming
    :members:
    :undoc-members:
    :show-inheritance:
-   :private-members:
