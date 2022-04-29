@@ -29,6 +29,8 @@ jobs:
           sudo apt-get install -qq -y cmake python3-dev git g++-7 pandoc ffmpeg bc
       - name: install espnet_onnx
         run: pip install .
+      - name: install sphinx
+        run: pip install sphinx sphinx-rtd-theme
       - name: generate doc
         run: |
           cd docs
