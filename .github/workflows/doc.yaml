@@ -34,7 +34,7 @@ jobs:
       - name: generate doc
         run: |
           cd docs
-          sphinx-apidoc -E -M -o . ..
+          sphinx-apidoc -E -M -o build ..
           make html
       - name: deploy
         if: github.ref == 'refs/heads/feature/sphinx'
@@ -42,3 +42,4 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: doc/build
+          enable_jekyll: true
