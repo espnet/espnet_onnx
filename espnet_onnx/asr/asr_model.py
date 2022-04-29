@@ -58,6 +58,9 @@ class Speech2Text:
                                    + 'You have to export to onnx format with `espnet_onnx.export.asr.export_asr.ModelExport`,'
                                    + 'or have to set exported model path in tag_config.yaml.')
             model_dir = tag_config[tag_name]
+        
+        # check onnxruntime version and providers
+        self.check_ort_version(providers)
 
         # check onnxruntime version and providers
         self._check_ort_version(providers)
