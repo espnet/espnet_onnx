@@ -20,6 +20,14 @@ class StreamingEncoder:
         providers: List[str],
         use_quantized: bool = False,
     ):
+        """Onnx support for Encoders for streaming.
+
+        Args:
+            encoder_config (Config): Configuration for Streaming Encoder
+            providers (List[str]): List of providers
+            use_quantized (bool): Flag to use quantized model
+            
+        """
         self.config = encoder_config
         if use_quantized:
             self.encoder = onnxruntime.InferenceSession(
@@ -50,10 +58,12 @@ class StreamingEncoder:
     def __call__(
         self, speech: np.ndarray, speech_length: np.ndarray, states
     ) -> Tuple[np.ndarray, np.ndarray]:
-        """Frontend + Encoder. Note that this method is used by asr_inference.py
+        """Frontend + Encoder.
+        
         Args:
             speech: (Batch, Length, ...)
             speech_lengths: (Batch, )
+            
         """
         # 1. Extract feature
         feats, feat_length = self.frontend(speech, speech_length)
@@ -66,7 +76,7 @@ class StreamingEncoder:
         #     feats, feats_lengths = self.preencoder(feats, feats_lengths)
 
         # 3. forward encoder
-        encoder_out, next_states = self.forward_encoder(feats, states)
+        encoder_out, next_states = self._forward_encoder(feats, states)
 
         # if self.config.do_postencoder:
         #     encoder_out, encoder_out_lens = self.postencoder(
@@ -75,8 +85,8 @@ class StreamingEncoder:
 
         return encoder_out, next_states
 
-    def forward_encoder(self, feats: np.ndarray, states: Dict[str, np.ndarray]):
-        input_dict = self.get_input_dict(feats, states)
+    def _forward_encoder(self, feats: np.ndarray, states: Dict[str, np.ndarray]):
+        input_dict = self._get_input_dict(feats, states)
         ys_pad, nbbd, nbad, naddin, nec = self.encoder.run(self.outputs, input_dict)
         ret = {
             'buffer_before_downsampling' : nbbd,
@@ -91,11 +101,11 @@ class StreamingEncoder:
             (1, self.config.hop_size * self.config.subsample + 1, self.config.frontend.logmel.n_mels),
             dtype=np.float32
         )
-        input_dict = self.get_input_dict(dummy_xs_pad, states)
+        input_dict = self._get_input_dict(dummy_xs_pad, states)
         ys_pad, *_ = self.encoder.run(self.outputs, input_dict)
         return ys_pad, None
 
-    def get_input_dict(self, x: np.ndarray, state: Dict[str, np.ndarray]):
+    def _get_input_dict(self, x: np.ndarray, state: Dict[str, np.ndarray]):
         # x.length : hop_size * subsample + 1
         mask = np.zeros(
             (1, 1, self.config.block_size + 2, self.config.block_size + 2),

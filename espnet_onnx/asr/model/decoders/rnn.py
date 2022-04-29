@@ -19,8 +19,10 @@ class RNNDecoder(BatchScorerInterface):
         """Onnx support for espnet2.asr.decoder.rnn_decoder.RNNDecoder
 
         Args:
-            config (Config):
+            config (Config): Configuration for ENNDecoder.
+            providers (List[str]): List of providers.
             use_quantized (bool): Flag to use quantized model
+            
         """
         self.config = config
         # predecoder
@@ -57,16 +59,16 @@ class RNNDecoder(BatchScorerInterface):
         self.decoder_length = config.decoder_length
 
         # predecoder
-        self.decoder_output_names = self.get_decoder_output_names()
+        self.decoder_output_names = self._get_decoder_output_names()
 
         # cache pre_computed features
         self.pre_compute_enc_h = []
         self.enc_h = []
         self.mask = []
         
-        self.init_input_names()
+        self._init_input_names()
         
-    def init_input_names(self):
+    def _init_input_names(self):
         # a_prev, enc_h, pceh, mask is not required
         # with some attention type.
         self.required_input_names = {}
@@ -80,13 +82,13 @@ class RNNDecoder(BatchScorerInterface):
         self.required_input_names['mask'] = True \
             if "mask" in str(input_names) else False
 
-    def get_decoder_output_names(self):
+    def _get_decoder_output_names(self):
         return [d.name for d in self.decoder.get_outputs()]
 
-    def zero_state(self, hs_pad):
+    def _zero_state(self, hs_pad):
         return np.zeros((hs_pad.shape[0], self.dunits), dtype=np.float32)
 
-    def get_att_prev(self, x, att_type=None):
+    def _get_att_prev(self, x, att_type=None):
         att_prev = 1.0 - make_pad_mask([x[0].shape[0]])
         att_prev = (
             att_prev / np.array([x[0].shape[0]])[..., None]).astype(np.float32)
@@ -102,21 +104,21 @@ class RNNDecoder(BatchScorerInterface):
         if self.num_encs <= 1:
             x = [x]
 
-        c_list = [self.zero_state(x[0][None, :])]
-        z_list = [self.zero_state(x[0][None, :])]
+        c_list = [self._zero_state(x[0][None, :])]
+        z_list = [self._zero_state(x[0][None, :])]
         for _ in range(1, self.dlayers):
-            c_list.append(self.zero_state(x[0][None, :]))
-            z_list.append(self.zero_state(x[0][None, :]))
+            c_list.append(self._zero_state(x[0][None, :]))
+            z_list.append(self._zero_state(x[0][None, :]))
 
         strm_index = 0
         att_idx = min(strm_index, len(self.predecoders) - 1)
 
         a = []
         for att in self.config.predecoder:
-            a += [self.get_att_prev(x, att.att_type)]
+            a += [self._get_att_prev(x, att.att_type)]
         
         if self.num_encs != 1:
-            a += [self.get_att_prev(x)]  # atts + han
+            a += [self._get_att_prev(x)]  # atts + han
 
         # initialize cached parameters
         self.pre_compute_enc_h = []
@@ -156,12 +158,12 @@ class RNNDecoder(BatchScorerInterface):
                 self.mask.append(np.where(make_pad_mask(
                     [x[idx].shape[0]]) == 1, -float('inf'), 0).astype(np.float32))
 
-        input_dict = self.create_input_dic(vy, x, state)
+        input_dict = self._create_input_dic(vy, x, state)
         logp, *status_lists = self.decoder.run(
             self.decoder_output_names,
             input_dict
         )
-        c_list, z_list, att_w = self.separate(status_lists)
+        c_list, z_list, att_w = self._separate(status_lists)
         return (
             logp,
             dict(
@@ -172,7 +174,7 @@ class RNNDecoder(BatchScorerInterface):
             ),
         )
 
-    def create_input_dic(self, vy, x, state):
+    def _create_input_dic(self, vy, x, state):
         if self.rnn_type == 'lstm':
             ret = {
                 'vy': vy.astype(np.int64),
@@ -213,7 +215,7 @@ class RNNDecoder(BatchScorerInterface):
             })
         return ret
 
-    def separate(self, status_lists):
+    def _separate(self, status_lists):
         c_list = status_lists[:self.decoder_length]
         z_list = status_lists[self.decoder_length: 2*self.num_encs]
         att_w = status_lists[2*self.decoder_length:]

@@ -31,16 +31,22 @@ from espnet_onnx.utils.config import get_tag_config
 
 
 class Speech2Text:
-    """Wrapper class for espnet2.asr.bin.asr_infer.Speech2Text
-
-    """
-
     def __init__(self,
                  tag_name: str = None,
                  model_dir: Union[Path, str] = None,
                  providers: List[str] = ['CPUExecutionProvider'],
                  use_quantized: bool = False,
                  ):
+        """Wrapper class for espnet2.asr.bin.asr_infer.Speech2Text
+
+        Args:
+            tag_name (str, optional): Key to specify the model. This `tag_name` should be listed in the `tag_config.yaml`, which is located in the `${HOME}/.cache/espnet_onnx`.
+                Defaults to None.
+            model_dir (Union[Path, str], optional): Path to the directory where onnx models are stored. This can be used instead of the `tag_name`. Defaults to None.
+            providers (List[str], optional): Providers of the onnxruntime. Defaults to ['CPUExecutionProvider'].
+            use_quantized (bool, optional): Flag to use the quantized model. If True, all models are quantized model. Defaults to False.
+
+        """
         assert check_argument_types()
         if tag_name is None and model_dir is None:
             raise ValueError('tag_name or model_dir should be defined.')
@@ -52,17 +58,18 @@ class Speech2Text:
                                    + 'You have to export to onnx format with `espnet_onnx.export.asr.export_asr.ModelExport`,'
                                    + 'or have to set exported model path in tag_config.yaml.')
             model_dir = tag_config[tag_name]
-        
+
         # check onnxruntime version and providers
-        self.check_ort_version(providers)
+        self._check_ort_version(providers)
 
         # 1. Build asr model
         config_file = glob.glob(os.path.join(model_dir, 'config.*'))[0]
         config = get_config(config_file)
-        
+
         # check if model is exported for streaming.
         if config.encoder.enc_type == 'ContextualXformerEncoder':
-            raise RuntimeError('Onnx model is built for streaming. Use StreamingSpeech2Text instead.')
+            raise RuntimeError(
+                'Onnx model is built for streaming. Use StreamingSpeech2Text instead.')
 
         if use_quantized and 'quantized_model_path' not in config.encoder.keys():
             # check if quantized model config is defined.
@@ -71,8 +78,10 @@ class Speech2Text:
 
         # 2.
         self.encoder = get_encoder(config.encoder, providers, use_quantized)
-        decoder = get_decoder(config.decoder, config.transducer, providers, use_quantized)
-        ctc = CTCPrefixScorer(config.ctc, config.token.eos, providers, use_quantized)
+        decoder = get_decoder(
+            config.decoder, config.transducer, providers, use_quantized)
+        ctc = CTCPrefixScorer(config.ctc, config.token.eos,
+                              providers, use_quantized)
 
         scorers = {}
         scorers.update(
@@ -171,10 +180,13 @@ class Speech2Text:
         ]
     ]:
         """Inference
+        
         Args:
             data: Input speech data
+            
         Returns:
             text, token, token_int, hyp
+            
         """
         assert check_argument_types()
 
@@ -220,17 +232,15 @@ class Speech2Text:
 
         return results
 
-    def check_ort_version(self, providers: List[str]):
+    def _check_ort_version(self, providers: List[str]):
         # check cpu
         if onnxruntime.get_device() == 'CPU' and 'CPUExecutionProvider' not in providers:
-            raise RuntimeError('If you want to use GPU, then follow `How to use GPU on espnet_onnx` chapter in readme to install onnxruntime-gpu.')
-        
+            raise RuntimeError(
+                'If you want to use GPU, then follow `How to use GPU on espnet_onnx` chapter in readme to install onnxruntime-gpu.')
+
         # check GPU
         if onnxruntime.get_device() == 'GPU' and providers == ['CPUExecutionProvider']:
-            warnings.warn('Inference will be executed on the CPU. Please provide gpu providers. Read `How to use GPU on espnet_onnx` in readme in detail.')
-        
+            warnings.warn(
+                'Inference will be executed on the CPU. Please provide gpu providers. Read `How to use GPU on espnet_onnx` in readme in detail.')
+
         logging.info(f'Providers [{" ,".join(providers)}] detected.')
-        
-        
-        
-        

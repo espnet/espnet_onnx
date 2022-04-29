@@ -18,6 +18,14 @@ class TransformerLM(BatchScorerInterface):
         providers: List[str],
         use_quantized=False
     ):
+        """Onnx support for TransformerLM.
+
+        Args:
+            config (Config): Configuration for TransformerLM
+            providers (List[str]): List of providers
+            use_quantized (bool): Flag to use quantized model
+            
+        """
         if use_quantized:
             self.lm_session = onnxruntime.InferenceSession(
                 config.quantized_model_path,

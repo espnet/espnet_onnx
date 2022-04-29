@@ -27,11 +27,14 @@ class Stft:
         self, input: np.ndarray, ilens: np.ndarray = None
     ) -> Tuple[np.ndarray, Optional[np.ndarray]]:
         """STFT forward function.
+        
         Args:
             input: (Batch, Nsamples)
             ilens: (Batch)
+            
         Returns:
             output: (Batch, Frames, Freq, 2)
+            
         """
         assert check_argument_types()
         stft_kwargs = dict(

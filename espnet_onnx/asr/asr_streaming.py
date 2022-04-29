@@ -33,8 +33,6 @@ from espnet_onnx.utils.config import get_tag_config
 
 
 class StreamingSpeech2Text:
-    """Speech2Text class to support streaming asr
-    """
     def __init__(self,
                  tag_name: str = None,
                  model_dir: Union[Path, str] = None,
@@ -44,6 +42,18 @@ class StreamingSpeech2Text:
                  hop_size: int = 16,
                  look_ahead: int = 16
                  ):
+        """Wrapper class for espnet2.asr.bin.asr_infer.Speech2Text, and add features to support streaming asr.
+
+        Args:
+            tag_name (str, optional): Key to specify the model. This `tag_name` should be listed in the `tag_config.yaml`, which is located in the `${HOME}/.cache/espnet_onnx`.
+                Defaults to None.
+            model_dir (Union[Path, str], optional): Path to the directory where onnx models are stored. This can be used instead of the `tag_name`. Defaults to None.
+            providers (List[str], optional): Providers of the onnxruntime. Defaults to ['CPUExecutionProvider'].
+            use_quantized (bool, optional): Flag to use the quantized model. If True, all models are quantized model. Defaults to False.
+            block_size (int): The size of a block used for inference.
+            hop_size (int): The size of a hop length.
+            look_ahead (int): The length that the model can look ahead.
+        """
         assert check_argument_types()
         if tag_name is None and model_dir is None:
             raise ValueError('tag_name or model_dir should be defined.')
@@ -57,7 +67,7 @@ class StreamingSpeech2Text:
             model_dir = tag_config[tag_name]
 
         # check onnxruntime version and providers
-        self.check_ort_version(providers)
+        self._check_ort_version(providers)
         
         # 1. Build asr model
         config_file = glob.glob(os.path.join(model_dir, 'config.*'))[0]
@@ -188,11 +198,14 @@ class StreamingSpeech2Text:
             Union[Hypothesis],
         ]
     ]:
-        """Inference
+        """ Inference with the block of speech input.
+        
         Args:
-            data: Input speech data
+            speech (np.ndarray): A block of speech. `len(speech)` should be the same as `self.hop_size`
+            
         Returns:
-            text, token, token_int, hyp
+            List[Any]: [text, token, token_int, hyp]
+            
         """
         assert check_argument_types()
 
@@ -217,14 +230,21 @@ class StreamingSpeech2Text:
         if best_hyps == []:
             return []
         else:
-            return self.get_result(best_hyps[0])
+            return self._get_result(best_hyps[0])
 
     def simulate(self, speech: np.ndarray, print_every_hypo: bool = False):
+        """Sample function to simulate the streaming ASR.
+
+        Args:
+            speech (np.ndarray): Recorded wav file.
+            print_every_hypo (bool, optional): Flag to print the result. Defaults to False.
+
+        """
         # This function will simulate streaming asr with the given audio.
         self.start()
         process_num = len(speech) // self.hop_size + 1
         logging.info(f'Processing audio with {process_num} processes.')
-        padded_speech = self._pad(speech, length=process_num * self.hop_size)
+        padded_speech = self.pad(speech, length=process_num * self.hop_size)
         for i in range(process_num):
             start = self.hop_size * i
             end = self.hop_size * (i + 1)
@@ -236,12 +256,19 @@ class StreamingSpeech2Text:
         return nbest
 
     def start(self):
+        """Start streaming.
+        """
         self.beam_search.__class__ = BatchBeamSearchOnlineSim
         self.encoder.reset()
         self.streaming_states = self.encoder.init_state()
         self.beam_search.start()
         
     def end(self):
+        """Finish streaming
+
+        Returns:
+            List[Any]: [text, token, token_int, hyp]
+        """
         # compute final encoder process
         enc, *_ = self.encoder.forward_final(self.streaming_states)
         self.enc_feats += enc[0].tolist()
@@ -260,9 +287,9 @@ class StreamingSpeech2Text:
         if best_hyps == []:
             return []
         else:
-            return self.get_result(best_hyps[0])
+            return self._get_result(best_hyps[0])
 
-    def get_result(self, hyp: Hypothesis):
+    def _get_result(self, hyp: Hypothesis):
         token_int = hyp.yseq[2:-1].astype(np.int64).tolist()
         # remove blank symbol id, which is assumed to be 0
         token_int = list(filter(lambda x: x != 0, token_int))
@@ -275,15 +302,25 @@ class StreamingSpeech2Text:
         results = [(text, token, token_int, hyp)]
         return results
     
-    def _pad(self, x, length=None):
+    def pad(self, x: np.ndarray, length: int=None):
+        """Apply padding to the input speech.
+        If `len(speech) < self.hop_size`, then 0-padding is applied to the right.
+
+        Args:
+            x (np.ndarray): Input speech.
+            length (int, optional): Length of the returning speech. Defaults to None.
+
+        Returns:
+            np.ndarray: Padded speech.
+        """
         if length:
             base = np.zeros((length,))
         else:
-            base = np.zeros((self.config.encoder.block_size * self.config.encoder.frontend.stft.hop_length,))
+            base = np.zeros((self.hop_size,))
         base[:len(x)] = x
         return base
     
-    def check_ort_version(self, providers: List[str]):
+    def _check_ort_version(self, providers: List[str]):
         # check cpu
         if onnxruntime.get_device() == 'CPU' and 'CPUExecutionProvider' not in providers:
             raise RuntimeError('If you want to use GPU, then follow `How to use GPU on espnet_onnx` chapter in readme to install onnxruntime-gpu.')

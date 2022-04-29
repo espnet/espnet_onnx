@@ -24,8 +24,10 @@ class XformerDecoder(BatchScorerInterface):
         """Onnx support for espnet2.asr.decoder.transformer_decoder
 
         Args:
-            config (Config):
+            config (Config): Configuration for XformerDecoder
+            providers (List[str]): List of providers
             use_quantized (bool): Flag to use quantized model
+            
         """
         if use_quantized:
             self.decoder = onnxruntime.InferenceSession(
@@ -48,15 +50,18 @@ class XformerDecoder(BatchScorerInterface):
         self, ys: np.ndarray, states: List[Any], xs: np.ndarray
     ) -> Tuple[np.ndarray, List[Any]]:
         """Score new token batch.
+        
         Args:
             ys (np.ndarray): np.int64 prefix tokens (n_batch, ylen).
             states (List[Any]): Scorer states for prefix tokens.
             xs (np.ndarray):
                 The encoder feature that generates ys (n_batch, xlen, n_feat).
+                
         Returns:
             tuple[np.ndarray, List[Any]]: Tuple of
                 batchfied scores for next token with shape of `(n_batch, n_vocab)`
                 and next state list for ys.
+                
         """
         # merge states
         if len(ys.shape) == 1:
@@ -77,7 +82,7 @@ class XformerDecoder(BatchScorerInterface):
 
         # batch decoding
         ys_mask = subsequent_mask(ys.shape[-1])[None, :]
-        input_dict = self.get_input_dict(ys, ys_mask, xs, batch_state)
+        input_dict = self._get_input_dict(ys, ys_mask, xs, batch_state)
 
         logp, *states = self.decoder.run(
             ['y'] + self.out_caches,
@@ -89,7 +94,7 @@ class XformerDecoder(BatchScorerInterface):
                        for i in range(self.n_layers)] for b in range(n_batch)]
         return logp, state_list
 
-    def get_input_dict(self, ys, ys_mask, xs, state):
+    def _get_input_dict(self, ys, ys_mask, xs, state):
         in_names = [d.name for d in self.decoder.get_inputs() if 'cache' not in d.name]
         ret = {}
         if 'tgt' in in_names: ret.update(tgt=ys.astype(np.int64))

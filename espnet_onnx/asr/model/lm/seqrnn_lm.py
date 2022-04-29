@@ -14,8 +14,10 @@ from espnet_onnx.utils.config import Config
 
 class SequentialRNNLM(BatchScorerInterface):
     """Sequential RNNLM.
+    
     See also:
         https://github.com/pytorch/examples/blob/4581968193699de14b56527296262dd76ab43557/word_language_model/model.py
+        
     """
 
     def __init__(
@@ -24,6 +26,14 @@ class SequentialRNNLM(BatchScorerInterface):
         providers: List[str],
         use_quantized: bool = False
     ):
+        """Onnx support for Sequential RNNLM.
+
+        Args:
+            config (Config): Configuration for Sequential RNNLM
+            providers (List[str]): List of providers
+            use_quantized (bool): Flag to use quantized model
+            
+        """
         if use_quantized:
             self.lm_session = onnxruntime.InferenceSession(
                 config.quantized_model_path,
@@ -60,14 +70,17 @@ class SequentialRNNLM(BatchScorerInterface):
         x: np.ndarray,
     ) -> Tuple[np.ndarray, Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]]:
         """Score new token.
+        
         Args:
             y: 1D torch.int64 prefix tokens.
             state: Scorer state for prefix tokens
             x: 2D encoder feature that generates ys.
+            
         Returns:
             Tuple of
                 torch.float32 scores for next token (n_vocab)
                 and next state for ys
+                
         """
         input_dic = {'x': y[-1].reshape(1, 1)}
         input_dic.update({
@@ -84,15 +97,18 @@ class SequentialRNNLM(BatchScorerInterface):
         self, ys: np.ndarray, states: np.ndarray, xs: np.ndarray
     ) -> Tuple[np.ndarray, np.ndarray]:
         """Score new token batch.
+        
         Args:
             ys (np.ndarray): torch.int64 prefix tokens (n_batch, ylen).
             states (List[Any]): Scorer states for prefix tokens.
             xs (np.ndarray):
                 The encoder feature that generates ys (n_batch, xlen, n_feat).
+                
         Returns:
             tuple[np.ndarray, List[Any]]: Tuple of
                 batchfied scores for next token with shape of `(n_batch, n_vocab)`
                 and next state list for ys.
+                
         """
         if states[0] is None:
             c = np.zeros((self.nlayers, 1, self.nhid), dtype=np.float32)

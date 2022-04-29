@@ -13,6 +13,7 @@ def subsequent_mask(size):
         [[1, 0, 0],
         [1, 1, 0],
         [1, 1, 1]]
+        
     """
     return np.tril(np.ones((size, size)))
 
@@ -27,6 +28,7 @@ def mask_fill(arr, mask, mask_value):
 
     Returns:
         np.ndarray: Masked array
+        
     """
     arr[mask.astype(np.bool) == True] = mask_value
     return arr
@@ -52,7 +54,6 @@ def make_pad_mask(lengths, xs=None, dim=-1, xs_shape=None):
         masks = [[0, 0, 0, 0 ,0],
                  [0, 0, 0, 1, 1],
                  [0, 0, 1, 1, 1]]
-                 
         With the reference tensor.
         >>> xs = np.zeros((3, 2, 4))
         >>> make_pad_mask(lengths, xs)
@@ -62,7 +63,6 @@ def make_pad_mask(lengths, xs=None, dim=-1, xs_shape=None):
                  [0, 0, 0, 1]],
                 [[0, 0, 1, 1],
                  [0, 0, 1, 1]]])
-                 
         >>> xs = np.zeros((3, 2, 6))
         >>> make_pad_mask(lengths, xs)
         array([[[0, 0, 0, 0, 0, 1],
@@ -71,7 +71,6 @@ def make_pad_mask(lengths, xs=None, dim=-1, xs_shape=None):
                  [0, 0, 0, 1, 1, 1]],
                 [[0, 0, 1, 1, 1, 1],
                  [0, 0, 1, 1, 1, 1]]])
-                 
         With the reference tensor and dimension indicator.
         >>> xs = np.zeros((3, 6, 6))
         >>> make_pad_mask(lengths, xs, 1)
@@ -92,8 +91,7 @@ def make_pad_mask(lengths, xs=None, dim=-1, xs_shape=None):
                  [1, 1, 1, 1, 1, 1],
                  [1, 1, 1, 1, 1, 1],
                  [1, 1, 1, 1, 1, 1],
-                 [1, 1, 1, 1, 1, 1]]])
-                 
+                 [1, 1, 1, 1, 1, 1]]]) 
         >>> make_pad_mask(lengths, xs, 2)
         array([[[0, 0, 0, 0, 0, 1],
                  [0, 0, 0, 0, 0, 1],
@@ -142,15 +140,14 @@ def topk(x: np.ndarray, k: int):
         >>> a = np.array([3,6,1,7])
         >>> topk(a, 2)
         array([3, 1])
-
         >>> b = np.array([[3,6,2,7],
                           [6,2,4,8],
-                          [1,1,7,3]])
-                          
+                          [1,1,7,3]])  
         >>> topk(b, 2)
         array([[3,1],
                [3,0],
                [2,3]])
+               
     """
     return np.argsort(x)[..., -k:]
 
@@ -172,9 +169,9 @@ def pad_sequence(yseqs, batch_first=False, padding_value=0):
         >>> c = np.ones(15, 300)
         >>> pad_sequence([a, b, c]).size()
         (25, 3, 300)
-        
         >>> pad_sequence([a, b, c], batch_first=True).size()
         (3, 25, 300)
+        
     """
     if len(yseqs) == 1:
         return np.array(yseqs)
@@ -199,6 +196,7 @@ def is_prefix(x, pref) -> bool:
         
     Returns:
         : Whether pref is a prefix of x.
+        
     """
     if len(pref) >= len(x):
         return False
@@ -218,6 +216,7 @@ def recombine_hyps(hyps):
         
     Returns:
        final: Recombined hypotheses.
+       
     """
     final = []
 
@@ -255,6 +254,7 @@ def select_k_expansions(
         
     Return:
         k_expansions: Best K expansion hypotheses candidates.
+        
     """
     k_expansions = []
 
@@ -283,6 +283,7 @@ def subtract(x, subset):
         
     Returns:
        final: New set of hypotheses.
+       
     """
     final = []
 
@@ -301,6 +302,7 @@ def narrow(arr: np.ndarray, axis: int, start: int, length: int):
         axis (int): the dimension along which to narrow
         start (int): the starting dimension
         length (int): the distance to the ending dimension
+        
     """
     return arr.take(np.arange(start, start+length), axis=axis)
 

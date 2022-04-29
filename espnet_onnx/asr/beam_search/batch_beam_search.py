@@ -77,16 +77,19 @@ class BatchBeamSearch(BeamSearch):
         self, weighted_scores: np.ndarray, ids: np.ndarray
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Batch-compute topk full token ids and partial token ids.
+        
         Args:
             weighted_scores (np.ndarray): The weighted sum scores for each tokens.
                 Its shape is `(n_beam, self.vocab_size)`.
             ids (np.ndarray): The partial token ids to compute topk.
                 Its shape is `(n_beam, self.pre_beam_size)`.
+                
         Returns:
             Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
                 The topk full (prev_hyp, new_token) ids
                 and partial (prev_hyp, new_token) ids.
                 Their shapes are all `(self.beam_size,)`
+                
         """
         top_ids = topk(weighted_scores.reshape(-1), self.beam_size)
         prev_hyp_ids = top_ids // self.n_vocab
@@ -95,10 +98,13 @@ class BatchBeamSearch(BeamSearch):
 
     def init_hyp(self, x: np.ndarray) -> BatchHypothesis:
         """Get an initial hypothesis data.
+        
         Args:
             x (np.ndarray): The encoder output feature
+            
         Returns:
             Hypothesis: The initial hypothesis.
+            
         """
         init_states = dict()
         init_scores = dict()
@@ -120,15 +126,18 @@ class BatchBeamSearch(BeamSearch):
         self, hyp: BatchHypothesis, x: np.ndarray
     ) -> Tuple[Dict[str, np.ndarray], Dict[str, Any]]:
         """Score new hypothesis by `self.full_scorers`.
+        
         Args:
             hyp (Hypothesis): Hypothesis with prefix tokens to score
             x (np.ndarray): Corresponding input feature
+            
         Returns:
             Tuple[Dict[str, np.ndarray], Dict[str, Any]]: Tuple of
                 score dict of `hyp` that has string keys of `self.full_scorers`
                 and tensor score values of shape: `(self.n_vocab,)`,
                 and state dict that has string keys
                 and state values of `self.full_scorers`
+                
         """
         scores = dict()
         states = dict()
@@ -140,16 +149,19 @@ class BatchBeamSearch(BeamSearch):
         self, hyp: BatchHypothesis, ids: np.ndarray, x: np.ndarray
     ) -> Tuple[Dict[str, np.ndarray], Dict[str, Any]]:
         """Score new hypothesis by `self.full_scorers`.
+        
         Args:
             hyp (Hypothesis): Hypothesis with prefix tokens to score
             ids (np.ndarray): 2D tensor of new partial tokens to score
             x (np.ndarray): Corresponding input feature
+            
         Returns:
             Tuple[Dict[str, np.ndarray], Dict[str, Any]]: Tuple of
                 score dict of `hyp` that has string keys of `self.full_scorers`
                 and tensor score values of shape: `(self.n_vocab,)`,
                 and state dict that has string keys
                 and state values of `self.full_scorers`
+                
         """
         scores = dict()
         states = dict()
@@ -161,14 +173,17 @@ class BatchBeamSearch(BeamSearch):
 
     def merge_states(self, states: Any, part_states: Any, part_idx: int) -> Any:
         """Merge states for new hypothesis.
+        
         Args:
             states: states of `self.full_scorers`
             part_states: states of `self.part_scorers`
             part_idx (int): The new token id for `part_scores`
+            
         Returns:
             Dict[str, np.ndarray]: The new score dict.
                 Its keys are names of `self.full_scorers` and `self.part_scorers`.
                 Its values are states of the scorers.
+                
         """
         new_states = dict()
         for k, v in states.items():
@@ -179,11 +194,14 @@ class BatchBeamSearch(BeamSearch):
 
     def search(self, running_hyps: BatchHypothesis, x: np.ndarray) -> BatchHypothesis:
         """Search new tokens for running hypotheses and encoded speech x.
+        
         Args:
             running_hyps (BatchHypothesis): Running hypotheses on beam
             x (np.ndarray): Encoded speech feature (T, D)
+            
         Returns:
             BatchHypothesis: Best sorted hypotheses
+            
         """
         n_batch = len(running_hyps)
         part_ids = None  # no pre-beam
@@ -257,13 +275,16 @@ class BatchBeamSearch(BeamSearch):
         ended_hyps: List[Hypothesis],
     ) -> BatchHypothesis:
         """Perform post-processing of beam search iterations.
+        
         Args:
             i (int): The length of hypothesis tokens.
             maxlen (int): The maximum length of tokens in beam search.
             running_hyps (BatchHypothesis): The running hypotheses in beam search.
             ended_hyps (List[Hypothesis]): The ended hypotheses in beam search.
+            
         Returns:
             BatchHypothesis: The new running hypotheses.
+            
         """
         n_batch = running_hyps.yseq.shape[0]
         logging.debug(f"the number of running hypothes: {n_batch}")

@@ -15,10 +15,11 @@ class GlobalMVN:
     """Apply global mean and variance normalization
 
     Args:
-        config.stats_file: npy file
-        config.norm_means: Apply mean normalization
-        config.norm_vars: Apply var normalization
-        config.eps:
+        config.stats_file: Path to the npy file
+        config.norm_means: Flag to apply mean normalization
+        config.norm_vars: Flag to apply var normalization
+        config.eps: eps.
+        
     """
 
     def __init__(
@@ -58,9 +59,11 @@ class GlobalMVN:
         self, x: np.ndarray, ilens: np.ndarray
     ) -> Tuple[np.ndarray, np.ndarray]:
         """Forward function
+        
         Args:
             x: (B, L, ...)
             ilens: (B,)
+            
         """
         mask = make_pad_mask(ilens, x, 1)
 

@@ -17,6 +17,7 @@ class Frontend:
 
     Args:
         config (Config): configuration for default frontend
+        
     """
 
     def __init__(

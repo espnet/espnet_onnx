@@ -1,3 +1,5 @@
+"""Parallel beam search module for streaming."""
+
 from typing import List
 import numpy as np
 

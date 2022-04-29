@@ -14,6 +14,7 @@ from espnet_onnx.utils.config import Config
 class LogMel:
     """Convert STFT to fbank feats
     The arguments is same as librosa.filters.mel
+    
     Args:
         config.fs: number > 0 [scalar] sampling rate of the incoming signal
         config.n_fft: int > 0 [scalar] number of FFT components
@@ -22,6 +23,7 @@ class LogMel:
         config.fmax: float >= 0 [scalar] highest frequency (in Hz).
             If `None`, use `fmax = fs / 2.0`
         config.htk: use HTK formula instead of Slaney
+        
     """
 
     def __init__(

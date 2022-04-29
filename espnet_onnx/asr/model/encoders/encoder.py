@@ -25,6 +25,14 @@ class Encoder:
         providers: List[str],
         use_quantized: bool = False,
     ):
+        """Onnx support for Encoders.
+
+        Args:
+            encoder_config (Config): Configuration for Encoder
+            providers (List[str]): List of providers
+            use_quantized (bool): Flag to use quantized model
+            
+        """
         self.config = encoder_config
         if use_quantized:
             self.encoder = onnxruntime.InferenceSession(
@@ -53,10 +61,12 @@ class Encoder:
     def __call__(
         self, speech: np.ndarray, speech_length: np.ndarray
     ) -> Tuple[np.ndarray, np.ndarray]:
-        """Frontend + Encoder. Note that this method is used by asr_inference.py
+        """Frontend + Encoder.
+        
         Args:
             speech: (Batch, Length, ...)
             speech_lengths: (Batch, )
+            
         """
         # 1. Extract feature
         feats, feat_length = self.frontend(speech, speech_length)
@@ -70,8 +80,8 @@ class Encoder:
 
         # 3. forward encoder
         encoder_out, encoder_out_lens = \
-            self.forward_encoder(feats, feat_length)
-        encoder_out = self.mask_output(encoder_out, encoder_out_lens)
+            self._forward_encoder(feats, feat_length)
+        encoder_out = self._mask_output(encoder_out, encoder_out_lens)
 
         # if self.config.do_postencoder:
         #     encoder_out, encoder_out_lens = self.postencoder(
@@ -80,12 +90,12 @@ class Encoder:
 
         return encoder_out, encoder_out_lens
 
-    def mask_output(self, feats, feat_length):
+    def _mask_output(self, feats, feat_length):
         if self.config.is_vggrnn:
             feats = mask_fill(feats, make_pad_mask(feat_length, feats, 1), 0.0)
         return feats, feat_length
 
-    def forward_encoder(self, feats, feat_length):
+    def _forward_encoder(self, feats, feat_length):
         if self.config.enc_type == 'RNNEncoder':
             encoder_out, encoder_out_lens = \
                 self.encoder.run(["encoder_out", "encoder_out_lens"], {
