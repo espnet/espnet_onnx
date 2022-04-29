@@ -12,7 +12,7 @@ jobs:
   linter_and_test:
     runs-on: ubuntu-18.04
     steps:
-      - uses: actions/checkout@feature/sphinx
+      - uses: actions/checkout@master
       - uses: actions/cache@v1
         with:
           path: ~/.cache/pip
