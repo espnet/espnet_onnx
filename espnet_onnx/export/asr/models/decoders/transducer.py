@@ -3,14 +3,14 @@ import os
 import torch
 import torch.nn as nn
 
-from espnet2.asr.decoder.transformer_decoder import TransformerDecoder
+from espnet2.asr.transducer.transducer_decoder import TransducerDecoder
 
 from espnet_onnx.utils.function import subsequent_mask
 from ..language_models.lm import Embedding
 from ..abs_model import AbsModel
 
 
-class XformerDecoder(nn.Module, AbsModel):
+class TransducerDecoder(nn.Module, AbsModel):
     def __init__(self, model):
         super().__init__()
         self.embed = Embedding(model.embed)
@@ -79,9 +79,12 @@ class XformerDecoder(nn.Module, AbsModel):
 
     def get_model_config(self, path):
         file_name = os.path.join(path, 'decoder.onnx')
-        return {
-            "dec_type": "XformerDecoder",
-            "model_path": file_name,
-            "n_layers": len(self.model.decoders),
-            "odim": self.model.decoders[0].size
-        }
+        if isinstance(self.model, TransducerDecoder):
+            raise ValueError('TransducerDecoder is currently not supported')
+        else:
+            return {
+                "dec_type": "XformerDecoder",
+                "model_path": file_name,
+                "n_layers": len(self.model.decoders),
+                "odim": self.model.decoders[0].size
+            }

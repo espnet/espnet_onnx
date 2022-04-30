@@ -1,5 +1,6 @@
 from .ctc import CTC
 from .lm import LanguageModel
+from .joint_network import JointNetwork
 
 # encoder
 from espnet2.asr.encoder.rnn_encoder import RNNEncoder as espnetRNNEncoder
@@ -12,11 +13,14 @@ from .encoders.contextual_block_xformer import ContextualBlockXformerEncoder
 
 # decoder
 from espnet2.asr.decoder.rnn_decoder import RNNDecoder as espnetRNNDecoder
+from espnet2.asr.decoder.transformer_decoder import TransformerDecoder as espnetTransformerDecoder
+from espnet2.asr.transducer.transducer_decoder import TransducerDecoder as espnetTransducerDecoder
 from .decoders.rnn import (
     RNNDecoder,
     PreDecoder
 )
 from .decoders.xformer import XformerDecoder
+from .decoders.transducer import TransducerDecoder
 
 
 def get_encoder(model):
@@ -31,5 +35,7 @@ def get_encoder(model):
 def get_decoder(model):
     if isinstance(model, espnetRNNDecoder):
         return RNNDecoder(model)
-    else:
+    elif isinstance(model, espnetTransducerDecoder):
+        return TransducerDecoder(model)
+    elif isinstance(model, espnetTransformerDecoder):
         return XformerDecoder(model)
