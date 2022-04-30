@@ -21,7 +21,8 @@ from .models import (
     RNNDecoder,
     PreDecoder,
     CTC,
-    LanguageModel
+    LanguageModel,
+    JointNetwork,
 )
 from .get_config import (
     get_ngram_config,
@@ -74,6 +75,12 @@ class ModelExport:
         dec_model = get_decoder(model.asr_model.decoder)
         self._export_decoder(dec_model, enc_out_size, export_dir, verbose)
         model_config.update(decoder=dec_model.get_model_config(export_dir))
+        
+        # export joint_network if transducer decoder is used.
+        if model.asr_model.use_transducer_decoder:
+            joint_network = JointNetwork(model.asr_model.joint_network)
+            self._export_joint_network(joint_network, export_dir, verbose)
+            model_config.update(joint_network=joint_network.get_model_config())
 
         # export ctc
         ctc_model = CTC(model.asr_model.ctc.ctc_lo)
@@ -189,7 +196,13 @@ class ModelExport:
         if verbose:
             logging.info(f'LM model is saved in {file_name}')
         self._export_model(model, file_name, verbose)
-
+    
+    def _export_joint_network(self, model, path, verbose):
+        file_name = os.path.join(path, 'joint_network.onnx')
+        if verbose:
+            logging.info(f'JointNetwork model is saved in {file_name}')
+        self._export_model(model, file_name, verbose)
+        
     def _copy_files(self, model, path, verbose):
         # copy stats file
         if model.asr_model.normalize is not None \
