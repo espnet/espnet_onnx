@@ -133,14 +133,16 @@ class ModelExport:
         ret.update(token=get_token_config(model.asr_model))
         ret.update(tokenizer=get_tokenizer_config(model.tokenizer, path))
         return ret
-
-    def _export_encoder(self, model, path, verbose):
-        file_name = os.path.join(path, 'encoder.onnx')
-        if verbose:
-            logging.info(f'Encoder model is saved in {file_name}')
+    
+    def _export_model(self, model, file_name, verbose, enc_size=None):
+        if enc_size:
+            dummy_input = model.get_dummy_inputs(enc_size)
+        else:
+            dummy_input = model.get_dummy_inputs()
+            
         torch.onnx.export(
             model,
-            model.get_dummy_inputs(),
+            dummy_input,
             file_name,
             verbose=verbose,
             opset_version=11,
@@ -149,73 +151,44 @@ class ModelExport:
             dynamic_axes=model.get_dynamic_axes()
         )
 
-    def _export_decoder(self, dec_model, enc_size, path, verbose):
+    def _export_encoder(self, model, path, verbose):
+        file_name = os.path.join(path, 'encoder.onnx')
+        if verbose:
+            logging.info(f'Encoder model is saved in {file_name}')
+        self._export_model(model, file_name, verbose)
+
+    def _export_decoder(self, model, enc_size, path, verbose):
         file_name = os.path.join(path, 'decoder.onnx')
         if verbose:
             logging.info(f'Decoder model is saved in {file_name}')
-        torch.onnx.export(
-            dec_model,
-            dec_model.get_dummy_inputs(enc_size),
-            file_name,
-            verbose=verbose,
-            opset_version=11,
-            input_names=dec_model.get_input_names(),
-            output_names=dec_model.get_output_names(),
-            dynamic_axes=dec_model.get_dynamic_axes()
-        )
+        self._export_model(model, file_name, verbose, enc_size)
+        
         # if decoder is RNNDecoder, then export predecoders
-        if isinstance(dec_model, RNNDecoder):
-            self._export_predecoder(dec_model, path, verbose)
+        if isinstance(model, RNNDecoder):
+            self._export_predecoder(model, path, verbose, enc_size)
 
-    def _export_predecoder(self, dec_model, path, verbose):
+    def _export_predecoder(self, model, path, verbose, enc_size):
         if verbose:
             logging.info(f'Pre-Decoder model is saved in {path}.' \
-                + f'There should be {len(dec_model.model.att_list)} files.')
-        for i, att in enumerate(dec_model.model.att_list):
+                + f'There should be {len(model.model.att_list)} files.')
+            
+        for i, att in enumerate(model.model.att_list):
             att_model = PreDecoder(att)
             if att_model.require_onnx():
-                file_name = os.path.join(path, 'predecoder_%d.onnx' % i)
-                torch.onnx.export(
-                    att_model,
-                    att_model.get_dummy_inputs(),
-                    file_name,
-                    verbose=verbose,
-                    opset_version=11,
-                    input_names=att_model.get_input_names(),
-                    output_names=att_model.get_output_names(),
-                    dynamic_axes=att_model.get_dynamic_axes()
-                )
+                file_name = os.path.join(path, f'predecoder_{i}.onnx')
+                self._export_model(model, file_name, verbose, enc_size)
 
-    def _export_ctc(self, ctc_model, enc_size, path, verbose):
+    def _export_ctc(self, model, enc_size, path, verbose):
         file_name = os.path.join(path, 'ctc.onnx')
         if verbose:
             logging.info(f'CTC model is saved in {file_name}')
-        torch.onnx.export(
-            ctc_model,
-            ctc_model.get_dummy_inputs(enc_size),
-            file_name,
-            verbose=verbose,
-            opset_version=11,
-            input_names=ctc_model.get_input_names(),
-            output_names=ctc_model.get_output_names(),
-            dynamic_axes=ctc_model.get_dynamic_axes()
-        )
+        self._export_model(model, file_name, verbose, enc_size)
 
-    def _export_lm(self, lm_model, path, verbose):
+    def _export_lm(self, model, path, verbose):
         file_name = os.path.join(path, 'lm.onnx')
         if verbose:
             logging.info(f'LM model is saved in {file_name}')
-        # export encoder
-        torch.onnx.export(
-            lm_model,
-            lm_model.get_dummy_inputs(),
-            file_name,
-            verbose=verbose,
-            opset_version=11,
-            input_names=lm_model.get_input_names(),
-            output_names=lm_model.get_output_names(),
-            dynamic_axes=lm_model.get_dynamic_axes()
-        )
+        self._export_model(model, file_name, verbose)
 
     def _copy_files(self, model, path, verbose):
         # copy stats file
