@@ -57,7 +57,7 @@ class StreamingSpeech2Text:
             model_dir = tag_config[tag_name]
 
         # check onnxruntime version and providers
-        self.check_ort_version(providers)
+        self._check_ort_version(providers)
         
         # 1. Build asr model
         config_file = glob.glob(os.path.join(model_dir, 'config.*'))[0]
@@ -217,7 +217,7 @@ class StreamingSpeech2Text:
         if best_hyps == []:
             return []
         else:
-            return self.get_result(best_hyps[0])
+            return self._get_result(best_hyps[0])
 
     def simulate(self, speech: np.ndarray, print_every_hypo: bool = False):
         # This function will simulate streaming asr with the given audio.
@@ -260,9 +260,9 @@ class StreamingSpeech2Text:
         if best_hyps == []:
             return []
         else:
-            return self.get_result(best_hyps[0])
+            return self._get_result(best_hyps[0])
 
-    def get_result(self, hyp: Hypothesis):
+    def _get_result(self, hyp: Hypothesis):
         token_int = hyp.yseq[2:-1].astype(np.int64).tolist()
         # remove blank symbol id, which is assumed to be 0
         token_int = list(filter(lambda x: x != 0, token_int))
@@ -275,15 +275,15 @@ class StreamingSpeech2Text:
         results = [(text, token, token_int, hyp)]
         return results
     
-    def _pad(self, x, length=None):
+    def pad(self, x, length=None):
         if length:
             base = np.zeros((length,))
         else:
-            base = np.zeros((self.config.encoder.block_size * self.config.encoder.frontend.stft.hop_length,))
+            base = np.zeros((self.hop_size,))
         base[:len(x)] = x
         return base
     
-    def check_ort_version(self, providers: List[str]):
+    def _check_ort_version(self, providers: List[str]):
         # check cpu
         if onnxruntime.get_device() == 'CPU' and 'CPUExecutionProvider' not in providers:
             raise RuntimeError('If you want to use GPU, then follow `How to use GPU on espnet_onnx` chapter in readme to install onnxruntime-gpu.')

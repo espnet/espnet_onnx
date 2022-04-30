@@ -1,7 +1,7 @@
 # espnet_onnx
 ![](https://circleci.com/gh/Masao-Someki/espnet_onnx.svg?style=shield)
 ![](https://img.shields.io/badge/licence-MIT-blue)
-[![](https://img.shields.io/badge/pypi-0.1.4-brightgreen)](https://pypi.org/project/espnet-onnx/)
+[![](https://img.shields.io/badge/pypi-0.1.5-brightgreen)](https://pypi.org/project/espnet-onnx/)
 
 **ESPNet without PyTorch!**  
 

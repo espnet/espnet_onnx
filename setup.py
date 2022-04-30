@@ -22,7 +22,7 @@ requirements = {
 
 setup(
     name="espnet_onnx",
-    version="0.1.4",
+    version="0.1.5",
     url="https://github.com/Masao-Someki/espnet_onnx",
     author="Masao Someki",
     author_email="masao.someki@gmail.com",
