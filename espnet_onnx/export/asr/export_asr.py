@@ -187,9 +187,9 @@ class ModelExport:
         
         # if decoder is RNNDecoder, then export predecoders
         if isinstance(model, RNNDecoder):
-            self._export_predecoder(model, path, verbose, enc_size)
+            self._export_predecoder(model, path, verbose)
 
-    def _export_predecoder(self, model, path, verbose, enc_size):
+    def _export_predecoder(self, model, path, verbose):
         if verbose:
             logging.info(f'Pre-Decoder model is saved in {path}.' \
                 + f'There should be {len(model.model.att_list)} files.')
@@ -198,7 +198,7 @@ class ModelExport:
             att_model = PreDecoder(att)
             if att_model.require_onnx():
                 file_name = os.path.join(path, f'predecoder_{i}.onnx')
-                self._export_model(model, file_name, verbose, enc_size)
+                self._export_model(model, file_name, verbose)
 
     def _export_ctc(self, model, enc_size, path, verbose):
         file_name = os.path.join(path, 'ctc.onnx')
