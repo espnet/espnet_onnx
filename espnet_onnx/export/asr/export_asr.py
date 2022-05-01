@@ -80,7 +80,10 @@ class ModelExport:
         
         # export joint_network if transducer decoder is used.
         if model.asr_model.use_transducer_decoder:
-            joint_network = JointNetwork(model.asr_model.joint_network)
+            joint_network = JointNetwork(
+                model.asr_model.joint_network,
+                model_config['beam_search']['search_type'],
+            )
             self._export_joint_network(joint_network, export_dir, verbose)
             model_config.update(joint_network=joint_network.get_model_config(export_dir))
 

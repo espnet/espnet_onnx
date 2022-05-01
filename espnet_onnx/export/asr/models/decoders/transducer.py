@@ -22,46 +22,32 @@ class TransducerDecoder(nn.Module, AbsModel):
     def forward(self, labels, h_cache, c_cache):
         # embed and rnn-forward
         sequence = self.embed(labels)
-        h_next_list = []
-        c_next_list = []
+        h_next = torch.zeros(self.dlayers, h_cache.size(1), self.dunits)
+        c_next = torch.zeros(self.dlayers, c_cache.size(1), self.dunits)
         if self.dtype == "lstm":
             for i in range(self.dlayers):
-                sequence, (_h, _c) = self.decoder[i](
+                sequence, (h_next[i:i+1], c_next[i:i+1]) = self.decoder[i](
                     sequence,
-                    hx=(h_cache[i], c_cache[i]) 
+                    hx=(h_cache[i:i+1], c_cache[i:i+1]) 
                 )
-                h_next_list.append(_h)
-                c_next_list.append(_c)
         else:
             for i in range(self.dlayers):
-                sequence, _h = self.decoder[i](
-                    sequence, hx=h_cache[i]
+                sequence, h_next[i:i+1] = self.decoder[i](
+                    sequence, hx=h_cache[i:i+1]
                 )
-                h_next_list.append(_h)
-
-        return sequence, h_next_list, c_next_list 
+        return sequence, h_next, c_next
 
     def get_dummy_inputs(self, enc_size):
         labels = torch.LongTensor([0, 1]).unsqueeze(0)
-        h_cache = [
-            torch.randn(1, 1, self.dunits)
-            for _ in range(self.dlayers)
-        ]
-        c_cache = [
-            torch.randn(1, 1, self.dunits)
-            for _ in range(self.dlayers)
-        ]
+        h_cache = torch.randn(self.dlayers, 1, self.dunits)
+        c_cache = torch.randn(self.dlayers, 1, self.dunits)
         return labels, h_cache, c_cache
 
     def get_input_names(self):
-        return ['labels'] \
-            + [f'h_cache_{i}' for i in range(self.dlayers)] \
-            + [f'c_cache_{i}' for i in range(self.dlayers)]
+        return ['labels', 'h_cache', 'c_cache'] 
 
     def get_output_names(self):
-        return ['sequence'] \
-            + [f'out_h_cache_{i}' for i in range(self.dlayers)] \
-            + [f'out_c_cache_{i}' for i in range(self.dlayers)]
+        return ['sequence', 'out_h_cache', 'out_c_cache_']
             
     def get_dynamic_axes(self):
         ret = {
@@ -70,21 +56,20 @@ class TransducerDecoder(nn.Module, AbsModel):
                 1: 'labels_length'
             }
         }
-        for i in range(self.dlayers):
-            ret.update({
-                f'h_cache_{i}': {
-                    1: f'h_cache_{i}_length'
-                },
-                f'c_cache_{i}': {
-                    1: f'c_cache_{i}_length'
-                },
-                f'out_h_cache_{i}': {
-                    1: f'out_h_cache_{i}_length'
-                },
-                f'out_c_cache_{i}': {
-                    1: f'out_c_cache_{i}_length'
-                }
-            })
+        ret.update({
+            f'h_cache': {
+                1: f'h_cache_length'
+            },
+            f'c_cache': {
+                1: f'c_cache_length'
+            },
+            f'out_h_cache': {
+                1: f'out_h_cache_length'
+            },
+            f'out_c_cache': {
+                1: f'out_c_cache_length'
+            }
+        })
         return ret
 
     def get_model_config(self, path):

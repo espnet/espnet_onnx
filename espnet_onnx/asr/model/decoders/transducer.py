@@ -44,11 +44,9 @@ class TransducerDecoder(BatchScorerInterface):
         self.n_layers = config.n_layers
         self.odim = config.odim
         self.dtype = config.dtype
-        self.in_caches = [d.name for d in self.decoder.get_inputs()
-                          if 'cache' in d.name]
         self.output_names = ['sequence'] \
-            + [d.name for d in self.decoder.get_outputs()
-                if 'cache' in d.name]
+            + sorted([d.name for d in self.decoder.get_outputs() if 'h_cache' in d.name]) \
+            + sorted([d.name for d in self.decoder.get_outputs() if 'c_cache' in d.name])
     
     def score(
         self, hyp: Hypothesis, cache: Dict[str, Any]
@@ -129,9 +127,8 @@ class TransducerDecoder(BatchScorerInterface):
                 cache[process[j][0]] = (dec_out[j], state)
                 j += 1
 
-        dec_out = np.array([d[0] for d in done])
+        dec_out = np.concatenate([d[0] for d in done], axis=0)
         dec_states = self.create_batch_states(dec_states, [d[1] for d in done])
-
         if use_lm:
             lm_labels = np.array(
                 [h.yseq[-1] for h in hyps], dtype=np.int64
@@ -142,13 +139,11 @@ class TransducerDecoder(BatchScorerInterface):
         return dec_out, dec_states, None
 
     def get_input_dict(self, labels, states):
-        ret = {'labels': labels}
-        h_names = sorted([d.name for d in self.decoder.get_inputs() if 'h_cache_' not in d.name])
-        c_names = sorted([d.name for d in self.decoder.get_inputs() if 'c_cache_' not in d.name])
-        ret.update({k: v for k, v in zip(h_names, states[0])})
-        if self.dtype == "lstm":
-            ret.update({k: v for k, v in zip(c_names, states[1])})
-            
+        ret = {
+            'labels': labels,
+            'h_cache': states[0],
+            'c_cache': states[1]
+            }
         return ret
     
     def select_state(self, states: Tuple[np.ndarray, Optional[np.ndarray]], idx: int) -> Tuple[np.ndarray, Optional[np.ndarray]]:
@@ -178,16 +173,10 @@ class TransducerDecoder(BatchScorerInterface):
             : Initial decoder hidden states. ((N, B, D_dec), (N, B, D_dec))
 
         """
-        h_n = [
-            np.zeros((batch_size, 1, self.odim), dtype=np.float32)
-            for _ in range(self.n_layers)
-        ]
+        h_n = np.zeros((self.n_layers, batch_size, self.odim), dtype=np.float32)
 
         if self.dtype == "lstm":
-            c_n = [
-                np.zeros((batch_size, 1, self.odim), dtype=np.float32)
-                for _ in range(self.n_layers)
-            ]
+            c_n = np.zeros((self.n_layers, batch_size, self.odim), dtype=np.float32)
             return (h_n, c_n)
 
         return (h_n, None)
@@ -209,16 +198,16 @@ class TransducerDecoder(BatchScorerInterface):
 
         """
         return (
-            np.concatenate([s[0] for s in new_states], dim=1),
-            np.concatenate([s[1] for s in new_states], dim=1)
+            np.concatenate([s[0] for s in new_states], axis=1),
+            np.concatenate([s[1] for s in new_states], axis=1)
             if self.dtype == "lstm"
             else None,
         )
         
     def split(self, states):
         if self.dtype == "lstm":
-            h_next = states[:len(states)//2]
-            c_next = states[len(states)//2:]
+            h_next = states[0]
+            c_next = states[1]
             return (h_next, c_next)
         else:
             return (states, None)

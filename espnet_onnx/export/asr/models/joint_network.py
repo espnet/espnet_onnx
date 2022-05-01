@@ -8,19 +8,21 @@ from .abs_model import AbsModel
 
 
 class JointNetwork(nn.Module, AbsModel):
-    def __init__(self, model):
+    def __init__(self, model, search_type):
         super().__init__()
         self.model = model
+        self.search_type = search_type
 
     def forward(self, enc_out, dec_out):
-        return torch.log_softmax(
-            self.model(enc_out, dec_out),
-            dim=-1
-        )
+        return self.model(enc_out, dec_out)
 
     def get_dummy_inputs(self):
-        enc_out = torch.randn(self.model.lin_enc.in_features)
-        dec_out = torch.randn(self.model.lin_dec.in_features)
+        if self.search_type in ('default'):
+            enc_out = torch.randn(self.model.lin_enc.in_features)
+            dec_out = torch.randn(self.model.lin_dec.in_features)
+        else:
+            enc_out = torch.randn(1, self.model.lin_enc.in_features)
+            dec_out = torch.randn(1, self.model.lin_dec.in_features)
         return (enc_out, dec_out)
 
     def get_input_names(self):
@@ -30,7 +32,14 @@ class JointNetwork(nn.Module, AbsModel):
         return ['joint_out']
 
     def get_dynamic_axes(self):
-        return {}
+        return {
+            'enc_out': {
+                0: 'enc_out_length'
+            },
+            'dec_out': {
+                0: 'dec_out_length'
+            }
+        }
 
     def get_model_config(self, path):
         return {

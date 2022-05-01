@@ -154,7 +154,7 @@ def topk(x: np.ndarray, k: int, require_value: bool = False):
     """
     topk_index = np.argsort(x)[..., -k:]
     if require_value:
-        return x[topk_index], topk_index
+        return np.sort(x)[..., -k:], topk_index
     else:
         return topk_index
 
@@ -233,6 +233,7 @@ def recombine_hyps(hyps):
 
             final[seq_pos].score = np.logaddexp(
                 final[seq_pos].score, hyp.score)
+            
         else:
             final.append(hyp)
 

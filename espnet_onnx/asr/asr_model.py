@@ -44,6 +44,13 @@ class Speech2Text(AbsASRModel):
                 'Configuration for quantized model is not defined.')
 
         self._build_model(providers, use_quantized)
+        
+        if self.config.transducer.use_transducer_decoder:
+            self.start_idx = 1
+            self.last_idx = None
+        else:
+            self.start_idx = 2
+            self.last_idx = -1
 
 
     def __call__(self, speech: np.ndarray) -> List[
@@ -82,19 +89,16 @@ class Speech2Text(AbsASRModel):
         results = []
         for hyp in nbest_hyps:
             # remove sos/eos and get results
-            last_pos = -1
-            if isinstance(hyp.yseq, list):
-                token_int = hyp.yseq[1:last_pos]
+            if self.last_idx is not None:
+                token_int = list(hyp.yseq[self.start_idx : self.last_idx])
             else:
-                token_int = hyp.yseq[1:last_pos].tolist()
-
+                token_int = list(hyp.yseq[self.start_idx:])
+                
             # remove blank symbol id, which is assumed to be 0
             token_int = list(filter(lambda x: x != 0, token_int))
 
             # Change integer-ids to tokens
             token = self.converter.ids2tokens(token_int)
-            # since I add 'blank' before sos for onnx computing
-            token = token[1:]
 
             if self.tokenizer is not None:
                 text = self.tokenizer.tokens2text(token)
