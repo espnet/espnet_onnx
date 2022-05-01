@@ -84,9 +84,9 @@ class Speech2Text(AbsASRModel):
             # remove sos/eos and get results
             last_pos = -1
             if isinstance(hyp.yseq, list):
-                token_int = hyp.yseq[1:last_pos].astype(np.int64)
+                token_int = hyp.yseq[1:last_pos]
             else:
-                token_int = hyp.yseq[1:last_pos].astype(np.int64).tolist()
+                token_int = hyp.yseq[1:last_pos].tolist()
 
             # remove blank symbol id, which is assumed to be 0
             token_int = list(filter(lambda x: x != 0, token_int))

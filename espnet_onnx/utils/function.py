@@ -131,7 +131,7 @@ def make_pad_mask(lengths, xs=None, dim=-1, xs_shape=None):
     return base
 
 
-def topk(x: np.ndarray, k: int):
+def topk(x: np.ndarray, k: int, require_value: bool = False):
     """Get indicies of topk.
 
     Args:
@@ -152,7 +152,11 @@ def topk(x: np.ndarray, k: int):
                [3,0],
                [2,3]])
     """
-    return np.argsort(x)[..., -k:]
+    topk_index = np.argsort(x)[..., -k:]
+    if require_value:
+        return x[topk_index], topk_index
+    else:
+        return topk_index
 
 
 def pad_sequence(yseqs, batch_first=False, padding_value=0):
