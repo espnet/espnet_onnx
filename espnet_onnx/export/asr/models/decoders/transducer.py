@@ -14,77 +14,84 @@ class TransducerDecoder(nn.Module, AbsModel):
     def __init__(self, model):
         super().__init__()
         self.embed = Embedding(model.embed)
-        self.model = model
+        self.decoder = model.decoder
+        self.is_lstm = model.dtype == 'lstm'
+        self.dlayers = model.dlayers
+        self.dunits = model.dunits
 
-    def forward(self, tgt, tgt_mask, memory, cache):
-        x = self.embed(tgt)
-        new_cache = []
-        for c, decoder in zip(cache, self.model.decoders):
-            x, tgt_mask, memory, memory_mask = decoder(
-                x, tgt_mask, memory, None, cache=c
-            )
-            new_cache.append(x)  # (1, L, 512) * n_layer
-        y = self.model.after_norm(x[:, -1])
-        y = torch.log_softmax(self.model.output_layer(y), dim=-1)
-        return y, new_cache
+    def forward(self, labels, h_cache, c_cache):
+        # embed and rnn-forward
+        sequence = self.embed(labels)
+        h_next_list = []
+        c_next_list = []
+        if self.is_lstm:
+            for i in range(self.dlayers):
+                sequence, (_h, _c) = self.decoder[i](
+                    sequence,
+                    hx=(h_cache[i], c_cache[i]) 
+                )
+                h_next_list.append(_h)
+                c_next_list.append(_c)
+        else:
+            for i in range(self.dlayers):
+                sequence, _h = self.decoder[i](
+                    sequence, hx=h_cache[i]
+                )
+                h_next_list.append(_h)
+
+        return sequence, h_next_list, c_next_list 
 
     def get_dummy_inputs(self, enc_size):
-        tgt = torch.LongTensor([0, 1]).unsqueeze(0)
-        tgt_mask = torch.from_numpy(subsequent_mask(2)[None, :])
-        enc_out = torch.randn(1, 100, enc_size)
-        cache = [
-            torch.zeros((1, 1, self.model.decoders[0].size))
-            for _ in range(len(self.model.decoders))
+        labels = torch.LongTensor([0, 1]).unsqueeze(0)
+        h_cache = [
+            torch.randn(1, 1, self.dunits)
+            for _ in range(self.dlayers)
         ]
-        return (tgt, tgt_mask, enc_out, cache)
+        c_cache = [
+            torch.randn(1, 1, self.dunits)
+            for _ in range(self.dlayers)
+        ]
+        return labels, h_cache, c_cache
 
     def get_input_names(self):
-        return ['tgt', 'tgt_mask', 'memory'] \
-            + ['cache_%d' % i for i in range(len(self.model.decoders))]
+        return ['labels'] \
+            + [f'h_cache_{i}' for i in range(self.dlayers)] \
+            + [f'c_cache_{i}' for i in range(self.dlayers)]
 
     def get_output_names(self):
-        return ['y'] \
-            + ['out_cache_%d' % i for i in range(len(self.model.decoders))]
-
+        return ['sequence'] \
+            + [f'out_h_cache_{i}' for i in range(self.dlayers)] \
+            + [f'out_c_cache_{i}' for i in range(self.dlayers)]
+            
     def get_dynamic_axes(self):
         ret = {
-            'tgt': {
-                0: 'tgt_batch',
-                1: 'tgt_length'
-            },
-            'tgt_mask': {
-                1: 'tgt_mask_length',
-                2: 'tgt_mask_height'
-            },
-            'memory': {
-                0: 'memory_batch',
-                1: 'memory_length'
+            'labels': {
+                0: 'labels_batch',
+                1: 'labels_length'
             }
         }
-        ret.update({
-            'cache_%d' % d: {
-                0: 'cache_%d_batch' % d,
-                1: 'cache_%d_length' % d
-            }
-            for d in range(len(self.model.decoders))
-        })
-        ret.update({
-            'out_cache_%d' % d: {
-                0: 'out_cache_%d_batch' % d,
-                1: 'out_cache_%d_length' % d
-            }
-            for d in range(len(self.model.decoders))
-        })
+        for i in range(self.dlayers):
+            ret.update({
+                f'h_cache_{i}': {
+                    1: f'h_cache_{i}_length'
+                },
+                f'c_cache_{i}': {
+                    1: f'c_cache_{i}_length'
+                },
+                f'out_h_cache_{i}': {
+                    1: f'out_h_cache_{i}_length'
+                },
+                f'out_c_cache_{i}': {
+                    1: f'out_c_cache_{i}_length'
+                }
+            })
         return ret
 
     def get_model_config(self, path):
         file_name = os.path.join(path, 'decoder.onnx')
-        if isinstance(self.model, TransducerDecoder):
-            raise ValueError('TransducerDecoder is currently not supported')
-        else:
-            return {
-                "dec_type": "XformerDecoder",
-                "model_path": file_name,
-                "n_layers": len(self.model.decoders),
-                "odim": self.model.decoders[0].size
-            }
+        return {
+            "dec_type": "TransducerDecoder",
+            "model_path": file_name,
+            "n_layers": self.dlayers,
+            "odim": self.dunits
+        }

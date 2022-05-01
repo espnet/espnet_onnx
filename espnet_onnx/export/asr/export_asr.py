@@ -28,7 +28,9 @@ from .get_config import (
     get_ngram_config,
     get_beam_config,
     get_token_config,
-    get_tokenizer_config
+    get_tokenizer_config,
+    get_weights_transducer,
+    get_trans_beam_config,
 )
 from espnet_onnx.utils.config import (
     save_config,
@@ -80,7 +82,7 @@ class ModelExport:
         if model.asr_model.use_transducer_decoder:
             joint_network = JointNetwork(model.asr_model.joint_network)
             self._export_joint_network(joint_network, export_dir, verbose)
-            model_config.update(joint_network=joint_network.get_model_config())
+            model_config.update(joint_network=joint_network.get_model_config(export_dir))
 
         # export ctc
         ctc_model = CTC(model.asr_model.ctc.ctc_lo)
@@ -88,7 +90,15 @@ class ModelExport:
         model_config.update(ctc=ctc_model.get_model_config(export_dir))
 
         # export lm
-        if 'lm' in model.beam_search.full_scorers.keys():
+        export_lm = False
+        if not model.asr_model.use_transducer_decoder:
+            if 'lm' in model.beam_search.full_scorers.keys():
+                export_lm = True
+        else:
+            if model.beam_search_transducer.use_lm:
+                export_lm = True
+        
+        if export_lm:
             lm_model = LanguageModel(model.beam_search.full_scorers['lm'])
             self._export_lm(lm_model, export_dir, verbose)
             model_config.update(lm=lm_model.get_model_config(export_dir))
@@ -126,17 +136,22 @@ class ModelExport:
 
     def _create_config(self, model, path):
         ret = {}
-        if "ngram" in list(model.beam_search.full_scorers.keys()) \
-                + list(model.beam_search.part_scorers.keys()):
-            ret.update(ngram=get_ngram_config(model))
+        if not model.asr_model.use_transducer_decoder:
+            if "ngram" in list(model.beam_search.full_scorers.keys()) \
+                    + list(model.beam_search.part_scorers.keys()):
+                ret.update(ngram=get_ngram_config(model))
+            else:
+                ret.update(ngram=dict(use_ngram=False))
+            ret.update(weights=model.beam_search.weights)
+            ret.update(beam_search=get_beam_config(
+                model.beam_search, model.minlenratio, model.maxlenratio))
         else:
-            ret.update(ngram=dict(use_ngram=False))
-
-        # Transducer is currently not supported
-        ret.update(transducer=dict(use_transducer_decoder=False))
-        ret.update(weights=model.beam_search.weights)
-        ret.update(beam_search=get_beam_config(
-            model.beam_search, model.minlenratio, model.maxlenratio))
+            ret.update(weights=get_weights_transducer(
+                model.beam_search_transducer))
+            ret.update(beam_search=get_trans_beam_config(
+                model.beam_search_transducer
+            ))
+        
         ret.update(token=get_token_config(model.asr_model))
         ret.update(tokenizer=get_tokenizer_config(model.tokenizer, path))
         return ret

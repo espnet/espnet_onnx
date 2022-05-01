@@ -8,20 +8,19 @@ from .abs_model import AbsModel
 
 
 class JointNetwork(nn.Module, AbsModel):
-    def __init__(self, model, templature):
+    def __init__(self, model):
         super().__init__()
         self.model = model
-        self.templature = templature
 
     def forward(self, enc_out, dec_out):
         return torch.log_softmax(
-            self.model(enc_out, dec_out) / self.templature,
+            self.model(enc_out, dec_out),
             dim=-1
         )
 
     def get_dummy_inputs(self):
-        enc_out = torch.randn(1, 50, 1, self.model.lin_enc.in_feature)
-        dec_out = torch.randn(1, 1, 3, self.model.lin_dec.in_feature)
+        enc_out = torch.randn(1, 50, 1, self.model.lin_enc.in_features)
+        dec_out = torch.randn(1, 1, 3, self.model.lin_dec.in_features)
         return (enc_out, dec_out)
 
     def get_input_names(self):
