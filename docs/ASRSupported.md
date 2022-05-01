@@ -2,31 +2,32 @@
 
 **Encoder**
 
-| arch name                          | supported  |
-| ---------------------------------- | ---------- |
-| ConformerEncoder                   | ◯          |
-| ContextualBlockConformerEncoder    | ◯          |
-| ContextualBlockTransformerEncoderx | ◯          |
-| FairseqHubertEncoder               | x           |
-| RNNEncoder                         | ◯          |
-| TransformerEncoder                 | ◯          |
-| VGGRNNEncoderx                     | ◯          |
-| FairSeqWav2Vec2Encoder             | x           |
-
-
+| arch name                          | supported |
+| ---------------------------------- | --------- |
+| ConformerEncoder                   | ◯         |
+| ContextualBlockConformerEncoder    | ◯         |
+| ContextualBlockTransformerEncoderx | ◯         |
+| FairseqHubertEncoder               | x         |
+| RNNEncoder                         | ◯         |
+| TransformerEncoder                 | ◯         |
+| VGGRNNEncoderx                     | ◯         |
+| FairSeqWav2Vec2Encoder             | x         |
+| FairseqHubertEncoder               | x         |
+| FairseqHubertPretrainEncoder       | x         |
+| LongformerEncoder                  | x         |
 
 **Decoder**
 
-| arch name                                  | supported  |
-| ------------------------------------------ | ---------- |
-| RNNDecoder                                 | ◯          |
-| TransformerDecoder                         | ◯          |
+| arch name                                  | supported |
+| ------------------------------------------ | --------- |
+| RNNDecoder                                 | ◯         |
+| TransformerDecoder                         | ◯         |
 | LightweightConvolutionTransformerDecoder   | ◯         |
 | LightweightConvolution2DTransformerDecoder | ◯         |
-| DynamicConvolutionTransformerDecoder       | x          |
-| DynamicConvolution2DTransformerDecoder     | x          |
-
-
+| DynamicConvolutionTransformerDecoder       | x         |
+| DynamicConvolution2DTransformerDecoder     | x         |
+| TransducerDecoder                          | ◯         |
+| MLMDecoder                                 | x         |
 
 **Language Model**
 
@@ -35,19 +36,31 @@
 | SequentialRNNLM | ◯         |
 | TransformerLM   | ◯         |
 
+**frontend**
 
+| arch name       | supported |
+| --------------- | --------- |
+| DefaultFrontend | ◯         |
+| SlidingWindow   | x         |
+| S3prlFrontend   | x         |
+| FusedFrontends  | x         |
+
+**normalize**
+
+| arch name    | supported |
+| ------------ | --------- |
+| GlobalMVN    | ◯         |
+| UtteranceMVN | ◯         |
 
 **PositionalEmbedding**
 
-| arch name                   | supported  |
-| --------------------------- | ---------- |
-| PositionalEncoding          | ◯          |
-| ScaledPositionalEncoding    | ◯          |
-| LegacyRelPositionalEncoding | ◯          |
+| arch name                   | supported |
+| --------------------------- | --------- |
+| PositionalEncoding          | ◯         |
+| ScaledPositionalEncoding    | ◯         |
+| LegacyRelPositionalEncoding | ◯         |
 | RelPositionalEncoding       | ◯         |
-| StreamPositionalEncoding    | ◯          |
-
-
+| StreamPositionalEncoding    | ◯         |
 
 **Attention**
 
@@ -68,13 +81,8 @@
 | AttForward              | x         |
 | AttForwardTA            | x         |
 
-
-
 **pre encoder**  
 not supported.
 
 **post encoder**  
-not supported.
-
-**transducer**  
 not supported.
