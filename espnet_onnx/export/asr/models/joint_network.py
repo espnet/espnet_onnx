@@ -19,8 +19,8 @@ class JointNetwork(nn.Module, AbsModel):
         )
 
     def get_dummy_inputs(self):
-        enc_out = torch.randn(1, 50, 1, self.model.lin_enc.in_features)
-        dec_out = torch.randn(1, 1, 3, self.model.lin_dec.in_features)
+        enc_out = torch.randn(self.model.lin_enc.in_features)
+        dec_out = torch.randn(self.model.lin_dec.in_features)
         return (enc_out, dec_out)
 
     def get_input_names(self):
@@ -30,14 +30,7 @@ class JointNetwork(nn.Module, AbsModel):
         return ['joint_out']
 
     def get_dynamic_axes(self):
-        return {
-            "enc_out": {1: "joint_enc_T"},
-            "dec_out": {2: "joint_dec_U"},
-            "joint_out": {
-                1: "joint_out_T",
-                2: "joint_out_U"
-            }
-        }
+        return {}
 
     def get_model_config(self, path):
         return {

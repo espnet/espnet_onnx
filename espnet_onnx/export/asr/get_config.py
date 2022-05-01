@@ -27,32 +27,32 @@ def get_beam_config(model, minlenratio, maxlenratio):
 
 def get_trans_beam_config(model):
     # check search algorithm
-    search_algorithm = ""
+    search_type = ""
     search_args = {}
     if model.beam_size <= 1:
-        search_algorithm = "greedy"
+        search_type = "greedy"
     elif hasattr(model, 'max_sym_exp'):
-        search_algorithm = "tsd"
+        search_type = "tsd"
         search_args['max_sym_exp'] = model.max_sym_exp
     elif hasattr(model, 'u_max'):
-        search_algorithm = "alsd"
+        search_type = "alsd"
         search_args['u_max'] = model.u_max
     elif hasattr(model, 'nstep'):
         search_args['prefix_alpha'] = model.prefix_alpha
         if hasattr(model, 'expansion_gamma'):
-            search_algorithm = "maes"
+            search_type = "maes"
             search_args['nstep'] = max(2, model.nstep)
             search_args['expansion_gamma'] = model.expansion_gamma
             search_args['expansion_beta'] = model.expansion_beta
         else:
-            search_algorithm = "nsc"
+            search_type = "nsc"
             search_args['nstep'] = model.nstep
     else:
-        search_algorithm = "default"
+        search_type = "default"
 
     return {
         "beam_size": model.beam_size,
-        "search_algorithm": search_algorithm,
+        "search_type": search_type,
         "search_args": search_args,
         "score_norm": model.score_norm,
     }

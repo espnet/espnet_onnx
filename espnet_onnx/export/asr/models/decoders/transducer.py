@@ -15,16 +15,16 @@ class TransducerDecoder(nn.Module, AbsModel):
         super().__init__()
         self.embed = Embedding(model.embed)
         self.decoder = model.decoder
-        self.is_lstm = model.dtype == 'lstm'
         self.dlayers = model.dlayers
         self.dunits = model.dunits
+        self.dtype = model.dtype
 
     def forward(self, labels, h_cache, c_cache):
         # embed and rnn-forward
         sequence = self.embed(labels)
         h_next_list = []
         c_next_list = []
-        if self.is_lstm:
+        if self.dtype == "lstm":
             for i in range(self.dlayers):
                 sequence, (_h, _c) = self.decoder[i](
                     sequence,
@@ -93,5 +93,6 @@ class TransducerDecoder(nn.Module, AbsModel):
             "dec_type": "TransducerDecoder",
             "model_path": file_name,
             "n_layers": self.dlayers,
-            "odim": self.dunits
+            "odim": self.dunits,
+            "dtype": self.dtype
         }
