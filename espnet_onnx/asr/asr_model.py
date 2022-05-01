@@ -9,28 +9,14 @@ import warnings
 import os
 import logging
 import numpy as np
-import librosa
-import glob
 import onnxruntime
 
-from espnet_onnx.asr.model.encoder import get_encoder
-from espnet_onnx.asr.model.decoder import get_decoder
-from espnet_onnx.asr.model.lm.seqrnn_lm import SequentialRNNLM
-from espnet_onnx.asr.model.lm.transformer_lm import TransformerLM
-from espnet_onnx.asr.scorer.ctc_prefix_scorer import CTCPrefixScorer
-from espnet_onnx.asr.scorer.length_bonus import LengthBonus
-from espnet_onnx.asr.scorer.interface import BatchScorerInterface
+from espnet_onnx.asr.abs_asr_model import AbsASRModel
 from espnet_onnx.asr.beam_search.hyps import Hypothesis
-from espnet_onnx.asr.beam_search.beam_search import BeamSearch
-from espnet_onnx.asr.beam_search.batch_beam_search import BatchBeamSearch
-from espnet_onnx.asr.postprocess.build_tokenizer import build_tokenizer
-from espnet_onnx.asr.postprocess.token_id_converter import TokenIDConverter
-
-from espnet_onnx.utils.config import get_config
-from espnet_onnx.utils.config import get_tag_config
 
 
-class Speech2Text:
+
+class Speech2Text(AbsASRModel):
     """Wrapper class for espnet2.asr.bin.asr_infer.Speech2Text
 
     """
@@ -42,125 +28,23 @@ class Speech2Text:
                  use_quantized: bool = False,
                  ):
         assert check_argument_types()
-        if tag_name is None and model_dir is None:
-            raise ValueError('tag_name or model_dir should be defined.')
-
-        if tag_name is not None:
-            tag_config = get_tag_config()
-            if tag_name not in tag_config.keys():
-                raise RuntimeError(f'Model path for tag_name "{tag_name}" is not set on tag_config.yaml.'
-                                   + 'You have to export to onnx format with `espnet_onnx.export.asr.export_asr.ModelExport`,'
-                                   + 'or have to set exported model path in tag_config.yaml.')
-            model_dir = tag_config[tag_name]
+        self._check_argument(tag_name, model_dir)
+        self._load_config()
         
         # check onnxruntime version and providers
         self._check_ort_version(providers)
-
-        # 1. Build asr model
-        config_file = glob.glob(os.path.join(model_dir, 'config.*'))[0]
-        config = get_config(config_file)
         
         # check if model is exported for streaming.
-        if config.encoder.enc_type == 'ContextualXformerEncoder':
+        if self.config.encoder.enc_type == 'ContextualXformerEncoder':
             raise RuntimeError('Onnx model is built for streaming. Use StreamingSpeech2Text instead.')
 
-        if use_quantized and 'quantized_model_path' not in config.encoder.keys():
+        if use_quantized and 'quantized_model_path' not in self.config.encoder.keys():
             # check if quantized model config is defined.
             raise RuntimeError(
                 'Configuration for quantized model is not defined.')
 
-        # 2.
-        self.encoder = get_encoder(config.encoder, providers, use_quantized)
-        decoder = get_decoder(config.decoder, config.transducer, providers, use_quantized)
-        ctc = CTCPrefixScorer(config.ctc, config.token.eos, providers, use_quantized)
+        self._build_model(providers, use_quantized)
 
-        scorers = {}
-        scorers.update(
-            decoder=decoder,
-            ctc=ctc,
-            length_bonus=LengthBonus(len(config.token.list))
-        )
-
-        # 2. Build lm model
-        if config.lm.use_lm:
-            if config.lm.lm_type == 'SequentialRNNLM':
-                scorers.update(
-                    lm=SequentialRNNLM(config.lm, use_quantized, providers)
-                )
-            elif config.lm.lm_type == 'TransformerLM':
-                scorers.update(
-                    lm=TransformerLM(config.lm, use_quantized, providers)
-                )
-
-        # 3. Build ngram model
-        # Currently not supported.
-        # if config.ngram.use_ngram:
-        #     if config.ngram.scorer_type == 'full':
-        #         scorers.update(
-        #             ngram=NgramFullScorer(
-        #                 config.ngram.ngram_file,
-        #                 config.token.list
-        #             )
-        #         )
-        #     else:
-        #         scorers.update(
-        #             ngram=NgramPartialScorer(
-        #                 config.ngram.ngram_file,
-        #                 config.token.list
-        #             )
-        #         )
-
-        # 4. Build beam search object
-        weights = dict(
-            decoder=config.weights.decoder,
-            ctc=config.weights.ctc,
-            lm=config.weights.lm,
-            length_bonus=config.weights.length_bonus,
-        )
-        if config.transducer.use_transducer_decoder:
-            # self.beam_search = BSTransducer(
-            #     config.beam_search,
-            #     config.transducer,
-            #     config.token,
-            #     decoder=decoder,
-            #     # lm=scorers["lm"] if "lm" in scorers else None,
-            #     weights=weights
-            # )
-            raise ValueError('Transducer is currently not supported.')
-        else:
-            self.beam_search = BeamSearch(
-                config.beam_search,
-                config.token,
-                scorers=scorers,
-                weights=weights,
-            )
-
-        non_batch = [
-            k
-            for k, v in self.beam_search.full_scorers.items()
-            if not isinstance(v, BatchScorerInterface)
-        ]
-        if len(non_batch) == 0:
-            self.beam_search.__class__ = BatchBeamSearch
-            logging.info("BatchBeamSearch implementation is selected.")
-        else:
-            logging.warning(
-                f"As non-batch scorers {non_batch} are found, "
-                f"fall back to non-batch implementation."
-            )
-
-        # 5. Build text converter
-        if config.tokenizer.token_type is None:
-            self.tokenizer = None
-        elif config.tokenizer.token_type == 'bpe':
-            self.tokenizer = build_tokenizer(
-                'bpe', config.tokenizer.bpemodel)
-        else:
-            self.tokenizer = build_tokenizer(
-                token_type=config.tokenizer.token_type)
-
-        self.converter = TokenIDConverter(token_list=config.token.list)
-        self.config = config
 
     def __call__(self, speech: np.ndarray) -> List[
         Tuple[
@@ -230,7 +114,3 @@ class Speech2Text:
             warnings.warn('Inference will be executed on the CPU. Please provide gpu providers. Read `How to use GPU on espnet_onnx` in readme in detail.')
         
         logging.info(f'Providers [{" ,".join(providers)}] detected.')
-        
-        
-        
-        

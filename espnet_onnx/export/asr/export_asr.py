@@ -151,7 +151,8 @@ class ModelExport:
             ret.update(beam_search=get_trans_beam_config(
                 model.beam_search_transducer
             ))
-        
+            
+        ret.update(transducer=dict(use_transducer_decoder=model.asr_model.use_transducer_decoder))
         ret.update(token=get_token_config(model.asr_model))
         ret.update(tokenizer=get_tokenizer_config(model.tokenizer, path))
         return ret
