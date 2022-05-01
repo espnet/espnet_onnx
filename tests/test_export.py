@@ -55,6 +55,7 @@ decoder_cases = [
     # 'rnn_loc2d'
     'rnn_coverage',
     'rnn_covloc',
+    'transducer',
 ]
 
 lm_cases = [
@@ -97,11 +98,18 @@ def test_export_decoder(dec_type, load_config, model_export, decoder_choices):
     model_config = load_config(dec_type, model_type='decoder')
     # prepare encoder model
     decoder_class = decoder_choices.get_class(model_config.decoder)
-    decoder = decoder_class(
-        vocab_size=32000,
-        encoder_output_size=512,
-        **model_config.decoder_conf.dic,
-    )
+    if model_config.decoder == 'transducer':
+        decoder = decoder_class(
+            vocab_size=32000,
+            embed_pad=0,
+            **model_config.decoder_conf.dic,
+        )
+    else:
+        decoder = decoder_class(
+            vocab_size=32000,
+            encoder_output_size=512,
+            **model_config.decoder_conf.dic,
+        )
     # create onnx wrapper and export
     dec_wrapper = get_decoder(decoder)
     export_dir = Path(model_export.cache_dir) / 'test' / \
