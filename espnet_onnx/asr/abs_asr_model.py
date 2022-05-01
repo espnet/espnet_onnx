@@ -7,11 +7,13 @@ import logging
 from espnet_onnx.asr.model.encoder import get_encoder
 from espnet_onnx.asr.model.decoder import get_decoder
 from espnet_onnx.asr.model.lm import get_lm
+from espnet_onnx.asr.model.joint_network import JointNetwork
 from espnet_onnx.asr.scorer.ctc_prefix_scorer import CTCPrefixScorer
 from espnet_onnx.asr.scorer.length_bonus import LengthBonus
 from espnet_onnx.asr.scorer.interface import BatchScorerInterface
 from espnet_onnx.asr.beam_search.beam_search import BeamSearch
 from espnet_onnx.asr.beam_search.batch_beam_search import BatchBeamSearch
+from espnet_onnx.asr.beam_search.beam_search_transducer import BeamSearchTransducer
 from espnet_onnx.asr.postprocess.build_tokenizer import build_tokenizer
 from espnet_onnx.asr.postprocess.token_id_converter import TokenIDConverter
 
@@ -41,7 +43,7 @@ class AbsASRModel(ABC):
     
     def _build_beam_search(self, scorers, weights):
         if self.config.transducer.use_transducer_decoder:
-            self.beam_search = BSTransducer(
+            self.beam_search = BeamSearchTransducer(
                 self.config.beam_search,
                 self.config.token,
                 scorers=scorers,
@@ -97,7 +99,7 @@ class AbsASRModel(ABC):
                 length_bonus=self.config.weights.length_bonus,
             )
         else:
-            joint_network = JointNetwork(self.onfig.joint_network, providers, use_quantized)
+            joint_network = JointNetwork(self.config.joint_network, providers, use_quantized)
             scorers.update(joint_network=joint_network)
             
         lm = get_lm(self.config, providers, use_quantized)
