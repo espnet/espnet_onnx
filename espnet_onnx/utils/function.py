@@ -1,5 +1,6 @@
 import numpy as np
 import six
+import bottleneck as bn
 
 def subsequent_mask(size):
     """Create mask for subsequent steps (size, size).
@@ -131,28 +132,30 @@ def make_pad_mask(lengths, xs=None, dim=-1, xs_shape=None):
     return base
 
 
-def topk(x: np.ndarray, k: int):
+def topk(x: np.ndarray, k: int, require_value: bool = False):
     """Get indicies of topk.
-
+    
     Args:
         x (np.ndarray)
         k (int)
-
+        
     Examples:
         >>> a = np.array([3,6,1,7])
         >>> topk(a, 2)
         array([3, 1])
-
         >>> b = np.array([[3,6,2,7],
                           [6,2,4,8],
                           [1,1,7,3]])
-                          
         >>> topk(b, 2)
         array([[3,1],
                [3,0],
                [2,3]])
     """
-    return np.argsort(x)[..., -k:]
+    topk_index = bn.argpartition(x, x.shape[-1] - k, axis=-1)[..., -k:]
+    if require_value:
+        return np.take_along_axis(x, topk_index, axis=-1), topk_index
+    else:
+        return topk_index
 
 
 def pad_sequence(yseqs, batch_first=False, padding_value=0):
@@ -229,6 +232,7 @@ def recombine_hyps(hyps):
 
             final[seq_pos].score = np.logaddexp(
                 final[seq_pos].score, hyp.score)
+            
         else:
             final.append(hyp)
 

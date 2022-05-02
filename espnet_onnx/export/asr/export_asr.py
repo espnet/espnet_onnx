@@ -21,13 +21,16 @@ from .models import (
     RNNDecoder,
     PreDecoder,
     CTC,
-    LanguageModel
+    LanguageModel,
+    JointNetwork,
 )
 from .get_config import (
     get_ngram_config,
     get_beam_config,
     get_token_config,
-    get_tokenizer_config
+    get_tokenizer_config,
+    get_weights_transducer,
+    get_trans_beam_config,
 )
 from espnet_onnx.utils.config import (
     save_config,
@@ -74,6 +77,15 @@ class ModelExport:
         dec_model = get_decoder(model.asr_model.decoder)
         self._export_decoder(dec_model, enc_out_size, export_dir, verbose)
         model_config.update(decoder=dec_model.get_model_config(export_dir))
+        
+        # export joint_network if transducer decoder is used.
+        if model.asr_model.use_transducer_decoder:
+            joint_network = JointNetwork(
+                model.asr_model.joint_network,
+                model_config['beam_search']['search_type'],
+            )
+            self._export_joint_network(joint_network, export_dir, verbose)
+            model_config.update(joint_network=joint_network.get_model_config(export_dir))
 
         # export ctc
         ctc_model = CTC(model.asr_model.ctc.ctc_lo)
@@ -81,7 +93,15 @@ class ModelExport:
         model_config.update(ctc=ctc_model.get_model_config(export_dir))
 
         # export lm
-        if 'lm' in model.beam_search.full_scorers.keys():
+        export_lm = False
+        if not model.asr_model.use_transducer_decoder:
+            if 'lm' in model.beam_search.full_scorers.keys():
+                export_lm = True
+        else:
+            if model.beam_search_transducer.use_lm:
+                export_lm = True
+        
+        if export_lm:
             lm_model = LanguageModel(model.beam_search.full_scorers['lm'])
             self._export_lm(lm_model, export_dir, verbose)
             model_config.update(lm=lm_model.get_model_config(export_dir))
@@ -119,28 +139,36 @@ class ModelExport:
 
     def _create_config(self, model, path):
         ret = {}
-        if "ngram" in list(model.beam_search.full_scorers.keys()) \
-                + list(model.beam_search.part_scorers.keys()):
-            ret.update(ngram=get_ngram_config(model))
+        if not model.asr_model.use_transducer_decoder:
+            if "ngram" in list(model.beam_search.full_scorers.keys()) \
+                    + list(model.beam_search.part_scorers.keys()):
+                ret.update(ngram=get_ngram_config(model))
+            else:
+                ret.update(ngram=dict(use_ngram=False))
+            ret.update(weights=model.beam_search.weights)
+            ret.update(beam_search=get_beam_config(
+                model.beam_search, model.minlenratio, model.maxlenratio))
         else:
-            ret.update(ngram=dict(use_ngram=False))
-
-        # Transducer is currently not supported
-        ret.update(transducer=dict(use_transducer_decoder=False))
-        ret.update(weights=model.beam_search.weights)
-        ret.update(beam_search=get_beam_config(
-            model.beam_search, model.minlenratio, model.maxlenratio))
+            ret.update(weights=get_weights_transducer(
+                model.beam_search_transducer))
+            ret.update(beam_search=get_trans_beam_config(
+                model.beam_search_transducer
+            ))
+            
+        ret.update(transducer=dict(use_transducer_decoder=model.asr_model.use_transducer_decoder))
         ret.update(token=get_token_config(model.asr_model))
         ret.update(tokenizer=get_tokenizer_config(model.tokenizer, path))
         return ret
-
-    def _export_encoder(self, model, path, verbose):
-        file_name = os.path.join(path, 'encoder.onnx')
-        if verbose:
-            logging.info(f'Encoder model is saved in {file_name}')
+    
+    def _export_model(self, model, file_name, verbose, enc_size=None):
+        if enc_size:
+            dummy_input = model.get_dummy_inputs(enc_size)
+        else:
+            dummy_input = model.get_dummy_inputs()
+            
         torch.onnx.export(
             model,
-            model.get_dummy_inputs(),
+            dummy_input,
             file_name,
             verbose=verbose,
             opset_version=11,
@@ -149,74 +177,51 @@ class ModelExport:
             dynamic_axes=model.get_dynamic_axes()
         )
 
-    def _export_decoder(self, dec_model, enc_size, path, verbose):
+    def _export_encoder(self, model, path, verbose):
+        file_name = os.path.join(path, 'encoder.onnx')
+        if verbose:
+            logging.info(f'Encoder model is saved in {file_name}')
+        self._export_model(model, file_name, verbose)
+
+    def _export_decoder(self, model, enc_size, path, verbose):
         file_name = os.path.join(path, 'decoder.onnx')
         if verbose:
             logging.info(f'Decoder model is saved in {file_name}')
-        torch.onnx.export(
-            dec_model,
-            dec_model.get_dummy_inputs(enc_size),
-            file_name,
-            verbose=verbose,
-            opset_version=11,
-            input_names=dec_model.get_input_names(),
-            output_names=dec_model.get_output_names(),
-            dynamic_axes=dec_model.get_dynamic_axes()
-        )
+        self._export_model(model, file_name, verbose, enc_size)
+        
         # if decoder is RNNDecoder, then export predecoders
-        if isinstance(dec_model, RNNDecoder):
-            self._export_predecoder(dec_model, path, verbose)
+        if isinstance(model, RNNDecoder):
+            self._export_predecoder(model, path, verbose)
 
-    def _export_predecoder(self, dec_model, path, verbose):
+    def _export_predecoder(self, model, path, verbose):
         if verbose:
             logging.info(f'Pre-Decoder model is saved in {path}.' \
-                + f'There should be {len(dec_model.model.att_list)} files.')
-        for i, att in enumerate(dec_model.model.att_list):
+                + f'There should be {len(model.model.att_list)} files.')
+            
+        for i, att in enumerate(model.model.att_list):
             att_model = PreDecoder(att)
             if att_model.require_onnx():
-                file_name = os.path.join(path, 'predecoder_%d.onnx' % i)
-                torch.onnx.export(
-                    att_model,
-                    att_model.get_dummy_inputs(),
-                    file_name,
-                    verbose=verbose,
-                    opset_version=11,
-                    input_names=att_model.get_input_names(),
-                    output_names=att_model.get_output_names(),
-                    dynamic_axes=att_model.get_dynamic_axes()
-                )
+                file_name = os.path.join(path, f'predecoder_{i}.onnx')
+                self._export_model(att_model, file_name, verbose)
 
-    def _export_ctc(self, ctc_model, enc_size, path, verbose):
+    def _export_ctc(self, model, enc_size, path, verbose):
         file_name = os.path.join(path, 'ctc.onnx')
         if verbose:
             logging.info(f'CTC model is saved in {file_name}')
-        torch.onnx.export(
-            ctc_model,
-            ctc_model.get_dummy_inputs(enc_size),
-            file_name,
-            verbose=verbose,
-            opset_version=11,
-            input_names=ctc_model.get_input_names(),
-            output_names=ctc_model.get_output_names(),
-            dynamic_axes=ctc_model.get_dynamic_axes()
-        )
+        self._export_model(model, file_name, verbose, enc_size)
 
-    def _export_lm(self, lm_model, path, verbose):
+    def _export_lm(self, model, path, verbose):
         file_name = os.path.join(path, 'lm.onnx')
         if verbose:
             logging.info(f'LM model is saved in {file_name}')
-        # export encoder
-        torch.onnx.export(
-            lm_model,
-            lm_model.get_dummy_inputs(),
-            file_name,
-            verbose=verbose,
-            opset_version=11,
-            input_names=lm_model.get_input_names(),
-            output_names=lm_model.get_output_names(),
-            dynamic_axes=lm_model.get_dynamic_axes()
-        )
-
+        self._export_model(model, file_name, verbose)
+    
+    def _export_joint_network(self, model, path, verbose):
+        file_name = os.path.join(path, 'joint_network.onnx')
+        if verbose:
+            logging.info(f'JointNetwork model is saved in {file_name}')
+        self._export_model(model, file_name, verbose)
+        
     def _copy_files(self, model, path, verbose):
         # copy stats file
         if model.asr_model.normalize is not None \

@@ -5,6 +5,7 @@ from typing import NamedTuple
 from typing import Tuple
 from typing import Any
 from typing import Optional
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -40,7 +41,8 @@ class BatchHypothesis(NamedTuple):
         return len(self.length)
 
 
-class TransducerHypothesis(NamedTuple):
+@dataclass
+class TransducerHypothesis:
     """Default hypothesis definition for Transducer search algorithms."""
 
     score: float
@@ -53,6 +55,7 @@ class TransducerHypothesis(NamedTuple):
     lm_state: Union[Dict[str, Any], List[Any]] = None
 
 
+@dataclass
 class ExtendedHypothesis(TransducerHypothesis):
     """Extended hypothesis definition for NSC beam search and mAES."""
 
