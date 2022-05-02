@@ -37,5 +37,5 @@ def get_decoder(model):
         return RNNDecoder(model)
     elif isinstance(model, espnetTransducerDecoder):
         return TransducerDecoder(model)
-    elif isinstance(model, espnetTransformerDecoder):
+    else:
         return XformerDecoder(model)

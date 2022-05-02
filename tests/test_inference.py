@@ -22,8 +22,8 @@ from espnet_onnx.export.asr.models import (
 )
 from espnet_onnx.asr.model.decoders.rnn import RNNDecoder
 from espnet_onnx.asr.model.decoders.xformer import XformerDecoder
-from espnet_onnx.asr.model.lm.seqrnn_lm import SequentialRNNLM
-from espnet_onnx.asr.model.lm.transformer_lm import TransformerLM
+from espnet_onnx.asr.model.lms.seqrnn_lm import SequentialRNNLM
+from espnet_onnx.asr.model.lms.transformer_lm import TransformerLM
 from espnet_onnx.utils.function import (
     subsequent_mask,
     make_pad_mask,
