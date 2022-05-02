@@ -288,13 +288,13 @@ class BeamSearchTransducer:
 
         if self.use_lm:
             B[0].lm_state = self.lm.zero_state()
-
+        
         for enc_out_t in enc_out:
             A = []
             C = B
             
             enc_out_t = enc_out_t[None, :]
-
+            
             for v in range(self.max_sym_exp):
                 D = []
                 beam_dec_out, beam_state, beam_lm_tokens = self.decoder.batch_score(
@@ -303,7 +303,6 @@ class BeamSearchTransducer:
                     cache,
                     self.use_lm,
                 )
-
                 beam_logp = log_softmax(self.joint_network(enc_out_t, beam_dec_out), axis=-1)
                 beam_topk = topk(beam_logp[:, 1:], beam, require_value=True)
 
@@ -321,16 +320,11 @@ class BeamSearchTransducer:
                         )
                     else:
                         dict_pos = seq_A.index(hyp.yseq)
-
-                        new_score = np.logaddexp(
-                            A[dict_pos].score, (hyp.score + float(beam_logp[i, 0])),
-                            dtype=np.float32
-                        )
+                        
                         A[dict_pos].score = np.logaddexp(
                             A[dict_pos].score, (hyp.score + float(beam_logp[i, 0]))
                         )
                             
-
                 if v < (self.max_sym_exp - 1):
                     if self.use_lm:
                         beam_lm_scores, beam_lm_states = self.lm.batch_score(
