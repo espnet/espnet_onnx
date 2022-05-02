@@ -134,9 +134,11 @@ def make_pad_mask(lengths, xs=None, dim=-1, xs_shape=None):
 
 def topk(x: np.ndarray, k: int, require_value: bool = False):
     """Get indicies of topk.
+    
     Args:
         x (np.ndarray)
         k (int)
+        
     Examples:
         >>> a = np.array([3,6,1,7])
         >>> topk(a, 2)
