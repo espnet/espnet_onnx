@@ -202,7 +202,7 @@ class ModelExport:
             att_model = PreDecoder(att)
             if att_model.require_onnx():
                 file_name = os.path.join(path, f'predecoder_{i}.onnx')
-                self._export_model(model, file_name, verbose)
+                self._export_model(att_model, file_name, verbose)
 
     def _export_ctc(self, model, enc_size, path, verbose):
         file_name = os.path.join(path, 'ctc.onnx')

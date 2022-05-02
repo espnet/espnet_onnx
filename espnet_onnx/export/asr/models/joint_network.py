@@ -17,7 +17,7 @@ class JointNetwork(nn.Module, AbsModel):
         return self.model(enc_out, dec_out)
 
     def get_dummy_inputs(self):
-        if self.search_type in ('default'):
+        if self.search_type in ('default', 'greedy'):
             enc_out = torch.randn(self.model.lin_enc.in_features)
             dec_out = torch.randn(self.model.lin_dec.in_features)
         else:

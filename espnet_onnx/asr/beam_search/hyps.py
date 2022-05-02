@@ -9,7 +9,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-@dataclass
+
 class Hypothesis(NamedTuple):
     """Hypothesis data type."""
 
@@ -27,7 +27,6 @@ class Hypothesis(NamedTuple):
         )._asdict()
 
 
-@dataclass
 class BatchHypothesis(NamedTuple):
     """Batchfied/Vectorized hypothesis data type."""
 

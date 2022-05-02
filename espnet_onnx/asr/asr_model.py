@@ -95,7 +95,7 @@ class Speech2Text(AbsASRModel):
                 token_int = list(hyp.yseq[self.start_idx:])
                 
             # remove blank symbol id, which is assumed to be 0
-            token_int = list(filter(lambda x: x != 0, token_int))
+            token_int = list([int(i) for i in filter(lambda x: x != 0, token_int)])
 
             # Change integer-ids to tokens
             token = self.converter.ids2tokens(token_int)
