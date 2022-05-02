@@ -66,3 +66,19 @@ def rnn_onnx_dec(onnx_model, dummy_input):
     logp, state = onnx_model.score(yseq, state, dummy_input)
     return logp
 
+
+def td_torch_dec(model, dummy_input, h):
+    emb = model.embed(dummy_input)
+    y, state = model.rnn_forward(emb, (h,h))
+    return y
+
+def td_onnx_dec(model, dummy_input, h):
+    input_dict = {
+        'labels': dummy_input,
+        'h_cache': h,
+        'c_cache': h
+    }
+    y, *new_state = model.decoder.run(
+        ['sequence', 'out_h_cache', 'out_c_cache_'], input_dict
+    )
+    return y

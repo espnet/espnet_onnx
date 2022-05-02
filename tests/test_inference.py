@@ -22,6 +22,7 @@ from espnet_onnx.export.asr.models import (
 )
 from espnet_onnx.asr.model.decoders.rnn import RNNDecoder
 from espnet_onnx.asr.model.decoders.xformer import XformerDecoder
+from espnet_onnx.asr.model.decoders.transducer import TransducerDecoder
 from espnet_onnx.asr.model.lms.seqrnn_lm import SequentialRNNLM
 from espnet_onnx.asr.model.lms.transformer_lm import TransformerLM
 from espnet_onnx.utils.function import (
@@ -37,6 +38,8 @@ from .forward_utils import (
     xformer_onnx_enc,
     xformer_onnx_dec,
     xformer_torch_dec,
+    td_torch_dec,
+    td_onnx_dec,
 )
 
 encoder_cases = [
@@ -52,6 +55,7 @@ encoder_cases = [
 
 decoder_cases = [
     ('transformer', [50, 100]),
+    ('transducer', [1]),
     ('lightweight_conv', [50, 100]),
     ('lightweight_conv2d', [50, 100]),
     # ('dynamic_conv', [50, 100]),
@@ -136,24 +140,37 @@ def test_infer_decoder(dec_type, feat_lens, load_config, model_export, decoder_c
     model_config = load_config(dec_type, model_type='decoder')
     # prepare encoder model
     decoder_class = decoder_choices.get_class(model_config.decoder)
-    decoder_espnet = decoder_class(
-        vocab_size=32000,
-        encoder_output_size=512,
-        **model_config.decoder_conf.dic,
-    )
+    if dec_type == 'transducer':
+        decoder_espnet = decoder_class(
+            vocab_size=32000,
+            **model_config.decoder_conf.dic,
+        )
+    else:
+        decoder_espnet = decoder_class(
+            vocab_size=32000,
+            encoder_output_size=512,
+            **model_config.decoder_conf.dic,
+        )
     decoder_espnet.load_state_dict(torch.load(str(model_dir / 'decoder.pth')))
     decoder_espnet.eval()
     if dec_type[:3] == 'rnn':
         decoder_onnx = RNNDecoder(get_config(model_dir / 'config.yaml'), providers=PROVIDERS)
+    elif dec_type == 'transducer':
+        decoder_onnx = TransducerDecoder(get_config(model_dir / 'config.yaml'), providers=PROVIDERS)
     else:
         decoder_onnx = XformerDecoder(get_config(model_dir / 'config.yaml'), providers=PROVIDERS)
-    # test output
     for fl in feat_lens:
         dummy_input = torch.randn(1, fl, 512)
         if dec_type[:3] == 'rnn':
             with torch.no_grad():
                 torch_out = rnn_torch_dec(decoder_espnet, dummy_input)
                 onnx_out = rnn_onnx_dec(decoder_onnx, dummy_input.numpy())
+        elif dec_type == 'transducer':
+            dummy_input = torch.LongTensor([0, 1]).unsqueeze(0)
+            h = torch.randn(1, 1, 512)
+            with torch.no_grad():
+                torch_out = td_torch_dec(decoder_espnet, dummy_input, h)
+                onnx_out = td_onnx_dec(decoder_onnx, dummy_input.numpy(), h.numpy())
         else:
             with torch.no_grad():
                 torch_out = xformer_torch_dec(decoder_espnet, dummy_input)
