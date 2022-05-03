@@ -19,6 +19,7 @@ from espnet.nets.pytorch_backend.transformer.subsampling_without_posenc import (
 from espnet2.asr.frontend.default import DefaultFrontend
 from espnet2.layers.global_mvn import GlobalMVN
 from espnet2.layers.utterance_mvn import UtteranceMVN
+from espnet_onnx.export.asr.get_config import get_frontend_config
 
 from ..abs_model import AbsModel
 
@@ -162,13 +163,13 @@ class ContextualBlockXformerEncoder(nn.Module, AbsModel):
         ret.update(
             enc_type='ContextualXformerEncoder',
             model_path=os.path.join(path, 'encoder.onnx'),
-            frontend=self.get_frontend_config(asr_model.frontend),
+            frontend=get_frontend_config(asr_model.frontend, stft_center=False),
             do_normalize=asr_model.normalize is not None,
             do_preencoder=asr_model.preencoder is not None,
             do_postencoder=asr_model.postencoder is not None
         )
         if ret['do_normalize']:
-            ret.update(normalize=self.get_norm_config(
+            ret.update(normalize=get_norm_config(
                 asr_model.normalize, path))
         # streaming config
         ret.update(
@@ -183,40 +184,3 @@ class ContextualBlockXformerEncoder(nn.Module, AbsModel):
         #     ret.update(postencoder=get_postenc_config(self.model.postencoder))
         return ret
 
-    def get_frontend_config(self, frontend):
-        # currently only default config is supported.
-        assert isinstance(
-            frontend, DefaultFrontend), 'Currently only DefaultFrontend is supported.'
-
-        stft_config = dict(
-            n_fft=frontend.stft.n_fft,
-            win_length=frontend.stft.win_length,
-            hop_length=frontend.stft.hop_length,
-            window=frontend.stft.window,
-            center=False, # Set false to compute stft continuously
-            onesided=frontend.stft.onesided,
-            normalized=frontend.stft.normalized,
-        )
-        logmel_config = frontend.logmel.mel_options
-        logmel_config.update(log_base=frontend.logmel.log_base)
-        return {
-            "stft": stft_config,
-            "logmel": logmel_config
-        }
-
-    def get_norm_config(self, normalize, path):
-        if isinstance(normalize, GlobalMVN):
-            return {
-                "type": "gmvn",
-                "norm_means": normalize.norm_means,
-                "norm_vars": normalize.norm_vars,
-                "eps": normalize.eps,
-                "stats_file": str(path.parent / 'feats_stats.npz')
-            }
-        elif isinstance(normalize, UtteranceMVN):
-            return {
-                "type": "utterance_mvn",
-                "norm_means": normalize.norm_means,
-                "norm_vars": normalize.norm_vars,
-                "eps": normalize.eps,
-            }
