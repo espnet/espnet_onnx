@@ -23,6 +23,7 @@ from .models import (
     CTC,
     LanguageModel,
     JointNetwork,
+    get_frontend_models,
 )
 from .get_config import (
     get_ngram_config,
@@ -45,6 +46,7 @@ class ModelExport:
             cache_dir = Path.home() / ".cache" / "espnet_onnx"
 
         self.cache_dir = Path(cache_dir)
+        self.export_options = dict()
 
     def export(
         self,
@@ -72,6 +74,14 @@ class ModelExport:
         self._export_encoder(enc_model, export_dir, verbose)
         model_config.update(encoder=enc_model.get_model_config(
             model.asr_model, export_dir))
+        
+        # export frontend-related models
+        frontend_models = get_frontend_models(model.asr_model.encoder.frontend)
+        self._export_frontend(model.asr_models.encoder, frontend_models, 
+                              export_dir, verbose)
+        model_config['encoder']['frontend'].update(
+            get_front_model_configs(model.asr_model.encoder, frontend_models, export_dir)
+        )
 
         # export decoder
         dec_model = get_decoder(model.asr_model.decoder)
@@ -136,6 +146,11 @@ class ModelExport:
         model_config = d.unpack_local_file(path)
         model = Speech2Text(**model_config)
         self.export(model, tag_name, quantize)
+    
+    def set_options(self, key, value):
+        if key in self.export_options.keys():
+            raise ValueError(f'Key {key} is already set into export option.')
+        self.export_options[key] = value
 
     def _create_config(self, model, path):
         ret = {}
@@ -182,6 +197,27 @@ class ModelExport:
         if verbose:
             logging.info(f'Encoder model is saved in {file_name}')
         self._export_model(model, file_name, verbose)
+    
+    def _export_frontend(self, model, frontend, models, path, verbose):
+        if model.frontend.apply_stft:
+            feat_dim = model.frontend.stft.n_fft
+        else:
+            if 'frontend::feat_dim'self.export_options.keys():
+                raise RuntimeError('When apply_stft is False, then you have to set value for "frontend::feat_dim".')
+            feat_dim = self.export_options['frontend::feat_dim']
+            
+        if 'wpe' in frontend.keys():
+            file_name = os.path.join(path, 'wpe_mask_estimator.onnx')
+            self._export_model(frontend['wpe'], file_name, verbose, feat_dim)
+        
+        if 'beamformer' in frontend.keys():
+            # export mask estimator
+            file_name = os.path.join(path, 'beamformer_mask_estimator.onnx')
+            self._export_model(frontend['beamformer']['MaskEstimator'], file_name, verbose, feat_dim)
+            
+            # export AttentionReference
+            file_name = os.path.join(path, 'beamformer_att_ref.onnx')
+            self._export_model(frontend['beamformer']['AttentionReference'], file_name, verbose, feat_dim)
 
     def _export_decoder(self, model, enc_size, path, verbose):
         file_name = os.path.join(path, 'decoder.onnx')

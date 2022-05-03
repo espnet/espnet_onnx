@@ -6,7 +6,7 @@ from typing import (
 import onnxruntime
 import numpy as np
 
-from espnet_onnx.asr.frontend.default.default_frontend import DefaultFrontend
+from espnet_onnx.asr.frontend.frontend import Frontend
 from espnet_onnx.asr.frontend.normalize.global_mvn import GlobalMVN
 from espnet_onnx.asr.frontend.normalize.utterance_mvn import UtteranceMVN
 from espnet_onnx.asr.scorer.interface import BatchScorerInterface
@@ -37,7 +37,7 @@ class Encoder:
                 providers=providers
             )
 
-        self.frontend = Frontend(self.config.frontend)
+        self.frontend = Frontend(self.config.frontend, providers, use_quantized)
         if self.config.do_normalize:
             if self.config.normalize.type == 'gmvn':
                 self.normalize = GlobalMVN(self.config.normalize)

@@ -1,4 +1,7 @@
-from typing import Union
+from typing import (
+    Union,
+    List
+)
 from pathlib import Path
 from typeguard import check_argument_types
 
@@ -22,9 +25,11 @@ class Frontend:
     def __init__(
         self,
         config: Config,
+        providers: List[str],
+        use_quantized: bool = False,
     ):
-        self.stft = Stft(config.stft)
-        self.logmel = LogMel(config.logmel)
+        if config.frontend_type == 'default':
+            self.model = DefaultFrontend(config, providers, use_quantized)
 
     def __call__(self, inputs: np.ndarray, input_length: np.ndarray):
         assert check_argument_types()
