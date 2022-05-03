@@ -12,7 +12,6 @@ requirements = {
         "g2p-en",
         "jamo==0.4.1",  # For kss
         "numpy<=1.21.3",
-        "Bottleneck" # for performance improvement
     ],
     "test": [
         "torch>=1.11.0",
