@@ -29,7 +29,8 @@ class DefaultFrontend:
         use_quantized: bool = False,
     ):
         self.config = config
-        self.speech_enhance = SpeechEnhance(config.speech_enhance, providers, use_quantized)
+        if self.config.apply_enhance:
+            self.speech_enhance = SpeechEnhance(config.speech_enhance, providers, use_quantized)
         self.stft = Stft(config.stft)
         self.logmel = LogMel(config.logmel)
 
@@ -43,6 +44,7 @@ class DefaultFrontend:
             feats_lens = input_length
         
         # 2. [Option] Speech enhancement
+        # Currently this is not supported.
         # if self.config.apply_enhance:
         #     input_stft, _, mask = self.speech_enhance(input_stft, feats_lens)
 

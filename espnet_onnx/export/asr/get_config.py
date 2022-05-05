@@ -102,7 +102,7 @@ def get_frontend_config(frontend, **kwargs):
 def get_default_frontend(frontend, **kwargs):
     return {
         "apply_stft": frontend.apply_stft,
-        "apply_enhance": frontend.frontend is not None,
+        "apply_enhance": False, # onnx conversion for SpeechEnhancement will be supported in the future.
         "speech_enhance": get_enh_config(frontend.frontend),
         "stft": get_stft_config(frontend.stft, **kwargs),
         "logmel": get_logmel_config(frontend.logmel, **kwargs),
