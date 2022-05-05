@@ -1,5 +1,4 @@
 numpy==1.21
-Bottleneck
 onnxruntime
 librosa
 sentencepiece
@@ -7,3 +6,4 @@ typeguard
 pyyaml
 g2p_en
 jamo
+nara_wpe

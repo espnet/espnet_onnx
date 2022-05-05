@@ -1,6 +1,7 @@
 from .ctc import CTC
 from .lm import LanguageModel
 from .joint_network import JointNetwork
+from .frontend import get_frontend_models
 
 # encoder
 from espnet2.asr.encoder.rnn_encoder import RNNEncoder as espnetRNNEncoder

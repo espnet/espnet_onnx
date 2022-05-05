@@ -3,7 +3,7 @@
 import torch
 import torch.nn as nn
 
-from espnet_onnx.export.asr.encoder.rnn import RNNEncoderLayer
+from espnet_onnx.export.asr.models.encoders.rnn import RNNEncoderLayer
 from ..abs_model import AbsModel
 
 

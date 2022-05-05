@@ -1,5 +1,4 @@
 numpy==1.21
-Bottleneck
 onnxruntime
 librosa
 sentencepiece
@@ -11,3 +10,4 @@ torch
 espnet
 espnet_model_zoo
 onnx
+nara_wpe

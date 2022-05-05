@@ -202,7 +202,7 @@ class ModelExport:
         if model.frontend.apply_stft:
             feat_dim = model.frontend.stft.n_fft
         else:
-            if 'frontend::feat_dim'self.export_options.keys():
+            if 'frontend::feat_dim' in self.export_options.keys():
                 raise RuntimeError('When apply_stft is False, then you have to set value for "frontend::feat_dim".')
             feat_dim = self.export_options['frontend::feat_dim']
             

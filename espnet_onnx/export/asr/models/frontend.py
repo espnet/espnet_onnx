@@ -1,10 +1,9 @@
 
 
-from espnet2.asr.frontend.default import espnetDefaultFrontend
+from espnet2.asr.frontend.default import DefaultFrontend as espnetDefaultFrontend
 
-from espnet_onnx.export.asr.frontends import (
-    MaskEstimator
-)
+from espnet_onnx.export.asr.models.frontends.mask_estimator import MaskEstimator
+from espnet_onnx.export.asr.models.frontends.beamformer import AttentionReference
 
 def get_frontend_models(model):
     if isinstance(model, espnetDefaultFrontend):
@@ -36,19 +35,16 @@ def get_front_model_configs(encoder, models, path):
             )
         )
     if 'beamformer' in models.keys():
-            model_config.update(
-                beamformer=dict(
-                    mask_estimator=models['beamformer']['MaskEstimator'].get_model_config(path),
-                    ref=models['beamformer']['AttentionReference'].get_model_config(path),
-                    ref_channel=encoder.frontend.beamformer.ref_channel,
-                    nmask=encoder.frontend.beamformer.nmask,
-                    beamformer_type=encoder.frontend.beamformer.beamformer_type,
-                )
+        model_config.update(
+            beamformer=dict(
+                mask_estimator=models['beamformer']['MaskEstimator'].get_model_config(path),
+                ref=models['beamformer']['AttentionReference'].get_model_config(path),
+                ref_channel=encoder.frontend.beamformer.ref_channel,
+                nmask=encoder.frontend.beamformer.nmask,
+                beamformer_type=encoder.frontend.beamformer.beamformer_type,
             )
-        return model_config
-    
-    else:
-        raise ValueError('not supported.')
+        )
+    return model_config
 
 
 
