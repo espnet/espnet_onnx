@@ -72,13 +72,7 @@ class StreamingSpeech2Text(AbsASRModel):
         logging.info("BatchBeamSearchOnlineSim implementation is selected.")
 
         # streaming related parameters
-        self.enc_feats = []
-        self.streaming_states = {
-            'buffer_before_downsampling': None,
-            'buffer_after_downsampling': None,
-            'prev_addin': None,
-            'past_encoder_ctx': None,
-        }
+        self._init_streaming_config()
         self.hop_size = self.config.encoder.frontend.stft.hop_length * self.config.encoder.subsample * hop_size  \
             + (self.config.encoder.frontend.stft.n_fft // self.config.encoder.frontend.stft.hop_length) * \
             self.config.encoder.frontend.stft.hop_length
@@ -142,7 +136,17 @@ class StreamingSpeech2Text(AbsASRModel):
         nbest = self.end()
         return nbest
 
+    def _init_streaming_config(self):
+        self.enc_feats = []
+        self.streaming_states = {
+            'buffer_before_downsampling': None,
+            'buffer_after_downsampling': None,
+            'prev_addin': None,
+            'past_encoder_ctx': None,
+        }
+
     def start(self):
+        self._init_streaming_config()
         self.beam_search.__class__ = BatchBeamSearchOnlineSim
         self.encoder.reset()
         self.streaming_states = self.encoder.init_state()
@@ -156,13 +160,7 @@ class StreamingSpeech2Text(AbsASRModel):
             np.array(self.enc_feats, dtype=np.float32))
 
         # initialize beam_search related parameters
-        self.enc_feats = []
-        self.streaming_states = {
-            'buffer_before_downsampling': None,
-            'buffer_after_downsampling': None,
-            'prev_addin': None,
-            'past_encoder_ctx': None,
-        }
+        self._init_streaming_config()
         self.beam_search.end()
 
         if best_hyps == []:
