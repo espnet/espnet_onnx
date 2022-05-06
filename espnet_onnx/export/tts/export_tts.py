@@ -15,10 +15,8 @@ from onnxruntime.quantization import quantize_dynamic, QuantType
 from espnet2.bin.tts_inference import Text2Speech
 from espnet2.text.sentencepiece_tokenizer import SentencepiecesTokenizer
 from espnet_model_zoo.downloader import ModelDownloader
-from .models import (
-    get_model,
-    get_vocoder,
-)
+from espnet_onnx.export.tts.models import get_tts_model
+get_vocoder = None
 # from .get_config import (
 #     get_ngram_config,
 #     get_beam_config,
@@ -43,7 +41,7 @@ class TTSModelExport:
 
     def export(
         self,
-        model: Speech2Text,
+        model: Text2Speech,
         tag_name: str = None,
         quantize: bool = False,
         verbose: bool = False,
@@ -62,7 +60,7 @@ class TTSModelExport:
         model_config = self._create_config(model, export_dir)
 
         # export encoder
-        tts_model = get_model(model.model)
+        tts_model = get_model(model)
         self._export_tts(tts_model, export_dir, verbose)
         model_config.update(tts_model=enc_model.get_model_config(
             model.asr_model, export_dir))
