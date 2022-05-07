@@ -120,14 +120,14 @@ class OnnxVITSGenerator(nn.Module):
         # since it seems utorch.flip contains a bug in onnx conversion.
         # So I will flip weight/bias of conv to avoid torch.flip.
         flip = False
-        for i in range(len(self.flows)):
-            if isinstance(self.flows[i], FlipFlow):
-                self.flows[i] = OnnxFlipFlow()
+        for i in range(len(self.flow.flows)):
+            if isinstance(self.flow.flows[i], FlipFlow):
+                self.flow.flows[i] = OnnxFlipFlow()
                 if not flip:
                     flip = True
-            elif isinstance(self.flows[i], ConvFlow) and flip:
-                self.flows[i].input_conv.weight = \
-                    nn.Parameter(torch.flip(self.flows[i].input_conv.weight, [1]))
+            elif isinstance(self.flow.flows[i], ConvFlow) and flip:
+                self.flow.flows[i].input_conv.weight = \
+                    nn.Parameter(torch.flip(self.flow.flows[i].input_conv.weight, [1]))
 
     def forward(
         self,
