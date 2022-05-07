@@ -54,16 +54,12 @@ class TTSModelExport:
         export_dir = base_dir / 'full'
         export_dir.mkdir(parents=True, exist_ok=True)
 
-        # copy model files
-        self._copy_files(model, base_dir, verbose)
-
         model_config = self._create_config(model, export_dir)
 
         # export encoder
-        tts_model = get_model(model)
+        tts_model = get_tts_model(model)
         self._export_tts(tts_model, export_dir, verbose)
-        model_config.update(tts_model=enc_model.get_model_config(
-            model.asr_model, export_dir))
+        model_config.update(tts_model=tts_model.get_model_config(export_dir))
 
         # export vocoder
         if model.vocoder is not None:
@@ -98,25 +94,25 @@ class TTSModelExport:
 
     def _create_config(self, model, path):
         ret = {}
-        if not model.asr_model.use_transducer_decoder:
-            if "ngram" in list(model.beam_search.full_scorers.keys()) \
-                    + list(model.beam_search.part_scorers.keys()):
-                ret.update(ngram=get_ngram_config(model))
-            else:
-                ret.update(ngram=dict(use_ngram=False))
-            ret.update(weights=model.beam_search.weights)
-            ret.update(beam_search=get_beam_config(
-                model.beam_search, model.minlenratio, model.maxlenratio))
-        else:
-            ret.update(weights=get_weights_transducer(
-                model.beam_search_transducer))
-            ret.update(beam_search=get_trans_beam_config(
-                model.beam_search_transducer
-            ))
+        # if not model.asr_model.use_transducer_decoder:
+        #     if "ngram" in list(model.beam_search.full_scorers.keys()) \
+        #             + list(model.beam_search.part_scorers.keys()):
+        #         ret.update(ngram=get_ngram_config(model))
+        #     else:
+        #         ret.update(ngram=dict(use_ngram=False))
+        #     ret.update(weights=model.beam_search.weights)
+        #     ret.update(beam_search=get_beam_config(
+        #         model.beam_search, model.minlenratio, model.maxlenratio))
+        # else:
+        #     ret.update(weights=get_weights_transducer(
+        #         model.beam_search_transducer))
+        #     ret.update(beam_search=get_trans_beam_config(
+        #         model.beam_search_transducer
+        #     ))
             
-        ret.update(transducer=dict(use_transducer_decoder=model.asr_model.use_transducer_decoder))
-        ret.update(token=get_token_config(model.asr_model))
-        ret.update(tokenizer=get_tokenizer_config(model.tokenizer, path))
+        # ret.update(transducer=dict(use_transducer_decoder=model.asr_model.use_transducer_decoder))
+        # ret.update(token=get_token_config(model.asr_model))
+        # ret.update(tokenizer=get_tokenizer_config(model.tokenizer, path))
         return ret
     
     def _export_model(self, model, file_name, verbose, enc_size=None):
@@ -137,20 +133,26 @@ class TTSModelExport:
         )
 
     def _export_tts(self, model, path, verbose):
-        file_name = os.path.join(path, 'encoder.onnx')
+        file_name = os.path.join(path, 'tts_model.onnx')
         if verbose:
-            logging.info(f'Encoder model is saved in {file_name}')
+            logging.info(f'TTS model is saved in {file_name}')
+        self._export_model(model, file_name, verbose)
+        
+        # export submodels
+        for sm in model.get_submodel():
+            self._export_submodel(sm, path, verbose)
+
+    def _export_submodel(self, model, path, verbose):
+        file_name = os.path.join(path, model.get_model_name() + '.onnx')
+        if verbose:
+            logging.info(f'{model.get_model_name()} is saved in {file_name}')
         self._export_model(model, file_name, verbose)
 
-    def _export_vocoder(self, model, enc_size, path, verbose):
-        file_name = os.path.join(path, 'decoder.onnx')
+    def _export_vocoder(self, model, path, verbose):
+        file_name = os.path.join(path, 'vocoder.onnx')
         if verbose:
-            logging.info(f'Decoder model is saved in {file_name}')
+            logging.info(f'Vocoder model is saved in {file_name}')
         self._export_model(model, file_name, verbose, enc_size)
-        
-        # if decoder is RNNDecoder, then export predecoders
-        if isinstance(model, RNNDecoder):
-            self._export_predecoder(model, path, verbose)
 
     def _quantize_model(self, model_from, model_to, verbose):
         if verbose:

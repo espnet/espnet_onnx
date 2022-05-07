@@ -25,7 +25,7 @@ except ImportError:
 from espnet2.gan_tts.vits.monotonic_align import maximum_path_numba
 from espnet.nets.pytorch_backend.nets_utils import make_non_pad_mask
 
-from ..abs_model import AbsModel
+from ..abs_model import AbsModel, AbsSubModel
 
 def maximum_path(neg_x_ent: torch.Tensor, attn_mask: torch.Tensor, path: torch.Tensor) -> torch.Tensor:
     """Calculate maximum path.
@@ -381,13 +381,7 @@ class OnnxVITSModel (nn.Module, AbsModel):
     
     def get_submodel(self):
         # VITS requires to separate DurationEstimator into another onnx model.
-        return [
-            {
-                'model_name': 'duration_predictor.onnx',
-                'model': DurationEstimator(self.generator.duration_estimator)
-            }
-            
-        ]
+        return [DurationPredictor(self.generator.duration_predictor, inverse=True, noise_scale=self.noise_scale_dur)]
 
     def get_model_config(self, path):
         return {
@@ -400,31 +394,32 @@ class OnnxVITSModel (nn.Module, AbsModel):
         }
 
 
-class DurationEstimator(nn.Module, AbsModel):
-    def __init__(self, model, inverse=False):
-        # models
+class DurationPredictor(nn.Module, AbsSubModel):
+    def __init__(self, model, inverse=False, noise_scale=1.0):
+        # sub model for 
         super().__init__()
         self.model = model
-        self.input_names = []
         self.inverse = inverse
+        self.noise_scale = noise_scale
         if inverse:
             flows = list(reversed(model.flows))
-            self.model.flows = flows[:-2] + [flows[-1]]  # remove a useless vflow
+            self.flows = flows[:-2] + [flows[-1]]
+        else:
+            self.flows = model.flows
 
-    def forward(self, x, x_mask, w=None, g=None, inverse=False, noise_scale=1.0):
+    def forward(self, x, x_mask, z, w, g):
         x = self.model.pre(x)
         if g is not None:
             x = x + self.model.global_conv(g)
         x = self.model.dds(x, x_mask)
         x = self.model.proj(x) * x_mask
 
-        if not inverse:
+        if not self.inverse:
             assert w is not None, "w must be provided."
             h_w = self.model.post_pre(w)
             h_w = self.model.post_dds(h_w, x_mask)
             h_w = self.model.post_proj(h_w) * x_mask
-            e_q = (torch.randn(w.size(0), 2, w.size(2),) * x_mask)
-            z_q = e_q
+            z_q = z
             logdet_tot_q = 0.0
             for flow in self.model.post_flows:
                 z_q, logdet_q = flow(z_q, x_mask, g=(x + h_w))
@@ -436,7 +431,7 @@ class DurationEstimator(nn.Module, AbsModel):
                 (F.logsigmoid(z_u) + F.logsigmoid(-z_u)) * x_mask, [1, 2]
             )
             logq = (
-                torch.sum(-0.5 * (math.log(2 * math.pi) + (e_q**2)) * x_mask, [1, 2])
+                torch.sum(-0.5 * (math.log(2 * math.pi) + (z**2)) * x_mask, [1, 2])
                 - logdet_tot_q
             )
 
@@ -444,8 +439,8 @@ class DurationEstimator(nn.Module, AbsModel):
             z0, logdet = self.model.log_flow(z0, x_mask)
             logdet_tot += logdet
             z = torch.cat([z0, z1], 1)
-            for flow in self.model.flows:
-                z, logdet = flow(z, x_mask, g=x, inverse=inverse)
+            for flow in self.flows:
+                z, logdet = flow(z, x_mask, g=x, inverse=self.inverse)
                 logdet_tot = logdet_tot + logdet
             nll = (
                 torch.sum(0.5 * (math.log(2 * math.pi) + (z**2)) * x_mask, [1, 2])
@@ -453,10 +448,8 @@ class DurationEstimator(nn.Module, AbsModel):
             )
             return nll + logq  # (B,)
         else:
-            z = (torch.randn(x.size(0), 2, x.size(2))* noise_scale)
-            
-            for flow in self.model.flows:
-                z = flow(z, x_mask, g=x, inverse=inverse)
+            for flow in self.flows:
+                z = flow(z, x_mask, g=x, inverse=self.inverse)
                 
             z0, z1 = z.split(1, 1)
             logw = z0
@@ -464,45 +457,49 @@ class DurationEstimator(nn.Module, AbsModel):
 
     def get_dummy_inputs(self):
         ret = []
-        x = torch.LongTensor([0, 1]).unsqueeze(0)
+        # text = [0, 1]
+        x = torch.randn(1, self.model.pre.in_channels, 2)
         _text_lengths = torch.tensor(
-            [text.size(1)],
+            [2],
             dtype=torch.long,
         )
-        x_mask = make_non_pad_mask(text_length).unsqueeze(1)
+        x_mask = make_non_pad_mask(_text_lengths).unsqueeze(1)
         ret += [x, x_mask]
-        self.input_names += ['x', 'x_mask']
+        
+        # feed random value
+        if not self.inverse:
+            e_q = (torch.randn(0, 2, _text_lengths) * x_mask)
+            w = torch.randn(1, 1, _text_lengths)
+            ret += [e_q, w]
+        else:
+            z = (torch.randn(1, 2, _text_lengths)* self.noise_scale)
+            ret += [z, None]
         
         if hasattr(self.model, 'global_conv'):
             g = torch.randn(1, self.model.global_conv.in_features, 1)
             ret.append(g)
-            self.input_names.append('g')
+        else:
+            ret.append(None)
         
-        if self.inverse:
-            w = torch.randn(1, 1, _text_lengths)
-            ret.append(w)
-            self.input_names.append('w')
-        
-        return ret
+        return tuple(ret)
     
     def get_input_names(self):
-        if self.input_names == []:
-            self.get_dummy_inputs()
-        return self.input_names
+        return ['x', 'x_mask', 'z', 'w', 'g']
 
     def get_output_names(self):
         return ['logw']
     
     def get_dynamic_axes(self):
-        if self.input_names == []:
-            self.get_dummy_inputs()
-            
         ret = {
-            'x': {1: 'x_length'},
-            'x_mask': { 2: 'x_mask_length'}
+            'x': {2: 'x_length'},
+            'x_mask': { 2: 'x_mask_length'},
+            'z': {2: 'z_length'},
         }
-        if 'w' in self.input_names:
+        if not self.inverse:
             ret.update({
                 'w': {2: 'w_length'}
             })
         return ret    
+
+    def get_model_name(self):
+        return 'duration_predictor'

@@ -19,3 +19,7 @@ class AbsModel(ABC):
 
     def get_submodel(self):
         return []
+
+class AbsSubModel(AbsModel):
+    def get_model_name(self):
+        raise NotImplementedError
