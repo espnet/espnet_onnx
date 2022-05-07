@@ -1,5 +1,7 @@
 
 from typing import (
+    Union,
+    Tuple,
     Optional
 )
 
@@ -23,6 +25,10 @@ except ImportError:
     )
     
 from espnet2.gan_tts.vits.monotonic_align import maximum_path_numba
+from espnet2.gan_tts.vits.flow import (
+    FlipFlow,
+    ConvFlow
+)
 from espnet.nets.pytorch_backend.nets_utils import make_non_pad_mask
 
 from ..abs_model import AbsModel, AbsSubModel
@@ -394,6 +400,27 @@ class OnnxVITSModel (nn.Module, AbsModel):
         }
 
 
+class OnnxFlipFlow(torch.nn.Module):
+    """Flip flow module."""
+
+    def forward(
+        self, x: torch.Tensor, *args, inverse: bool = False, **kwargs
+    ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
+        """Calculate forward propagation.
+        Args:
+            x (Tensor): Input tensor (B, channels, T).
+            inverse (bool): Whether to inverse the flow.
+        Returns:
+            Tensor: Flipped tensor (B, channels, T).
+            Tensor: Log-determinant tensor for NLL (B,) if not inverse.
+        """
+        if not inverse:
+            logdet = x.new_zeros(x.size(0))
+            return x, logdet
+        else:
+            return x
+
+
 class DurationPredictor(nn.Module, AbsSubModel):
     def __init__(self, model, inverse=False, noise_scale=1.0):
         # sub model for 
@@ -406,6 +433,18 @@ class DurationPredictor(nn.Module, AbsSubModel):
             self.flows = flows[:-2] + [flows[-1]]
         else:
             self.flows = model.flows
+        self._fix_flows()
+        
+    def _fix_flows(self):
+        # since it seems utorch.flip contains a bug in onnx conversion.
+        # So I will flip weight/bias of conv to avoid torch.flip.
+        for i in range(len(self.flows)):
+            if isinstance(self.flows[i], FlipFlow):
+                self.flows[i] = OnnxFlipFlow()
+                flipped = not flipped
+            elif isinstance(self.flows[i], ConvFlow):
+                self.flows[i].input_conv.weight = \
+                    nn.Parameter(torch.flip(self.flows[i].input_conv.weight, [1]))
 
     def forward(self, x, x_mask, z, w, g):
         x = self.model.pre(x)
@@ -448,7 +487,7 @@ class DurationPredictor(nn.Module, AbsSubModel):
             )
             return nll + logq  # (B,)
         else:
-            for flow in self.flows:
+            for i,flow in enumerate(self.flows):
                 z = flow(z, x_mask, g=x, inverse=self.inverse)
                 
             z0, z1 = z.split(1, 1)
@@ -468,11 +507,11 @@ class DurationPredictor(nn.Module, AbsSubModel):
         
         # feed random value
         if not self.inverse:
-            e_q = (torch.randn(0, 2, _text_lengths) * x_mask)
+            e_q = torch.randn(0, 2, _text_lengths) * x_mask
             w = torch.randn(1, 1, _text_lengths)
             ret += [e_q, w]
         else:
-            z = (torch.randn(1, 2, _text_lengths)* self.noise_scale)
+            z = torch.randn(1, 2, _text_lengths)* self.noise_scale
             ret += [z, None]
         
         if hasattr(self.model, 'global_conv'):
