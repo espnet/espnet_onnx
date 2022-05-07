@@ -30,6 +30,7 @@ from espnet2.gan_tts.vits.flow import (
     ConvFlow
 )
 from espnet.nets.pytorch_backend.nets_utils import make_non_pad_mask
+from espnet_onnx.export.asr.models.language_models.lm import Embedding
 
 from ..abs_model import AbsModel, AbsSubModel
 
@@ -58,7 +59,7 @@ class TextEncoder(nn.Module):
     def __init__(self, model):
         super().__init__()
         self.attention_dim = model.attention_dim
-        self.emb = model.emb
+        self.emb = Embedding(model.emb) # RelPositionalEncoding
         self.encoder = model.encoder
         self.proj = model.proj
     
@@ -111,8 +112,22 @@ class OnnxVITSGenerator(nn.Module):
             self.lang_emb = model.lang_emb
         self.posterior_encoder = PosteriorEncoder(model.posterior_encoder)
         self.flow = model.flow
+        self._fix_flows() # remove torch.flip() from onnx model.
         self.decoder = model.decoder
         self.duration_predictor = model.duration_predictor
+        
+    def _fix_flows(self):
+        # since it seems utorch.flip contains a bug in onnx conversion.
+        # So I will flip weight/bias of conv to avoid torch.flip.
+        flip = False
+        for i in range(len(self.flows)):
+            if isinstance(self.flows[i], FlipFlow):
+                self.flows[i] = OnnxFlipFlow()
+                if not flip:
+                    flip = True
+            elif isinstance(self.flows[i], ConvFlow) and flip:
+                self.flows[i].input_conv.weight = \
+                    nn.Parameter(torch.flip(self.flows[i].input_conv.weight, [1]))
 
     def forward(
         self,
@@ -438,11 +453,13 @@ class DurationPredictor(nn.Module, AbsSubModel):
     def _fix_flows(self):
         # since it seems utorch.flip contains a bug in onnx conversion.
         # So I will flip weight/bias of conv to avoid torch.flip.
+        flip = False
         for i in range(len(self.flows)):
             if isinstance(self.flows[i], FlipFlow):
                 self.flows[i] = OnnxFlipFlow()
-                flipped = not flipped
-            elif isinstance(self.flows[i], ConvFlow):
+                if not flip:
+                    flip = True
+            elif isinstance(self.flows[i], ConvFlow) and flip:
                 self.flows[i].input_conv.weight = \
                     nn.Parameter(torch.flip(self.flows[i].input_conv.weight, [1]))
 
@@ -487,7 +504,7 @@ class DurationPredictor(nn.Module, AbsSubModel):
             )
             return nll + logq  # (B,)
         else:
-            for i,flow in enumerate(self.flows):
+            for flow in self.flows:
                 z = flow(z, x_mask, g=x, inverse=self.inverse)
                 
             z0, z1 = z.split(1, 1)
