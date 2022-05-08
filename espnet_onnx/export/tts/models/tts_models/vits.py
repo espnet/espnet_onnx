@@ -90,7 +90,7 @@ class PosteriorEncoder(nn.Module):
         stats = self.proj(x) * x_mask
         m, logs = stats.split(stats.size(1) // 2, dim=1)
         z = (m + torch.randn_like(m) * torch.exp(logs)) * x_mask
-        return z, m, logs, x_mask
+        return z, m, logs
 
 
 class OnnxVITSGenerator(nn.Module):
@@ -103,7 +103,6 @@ class OnnxVITSGenerator(nn.Module):
         self.use_teacher_forcing = use_teacher_forcing
 
         # models
-        self.text_encoder = TextEncoder(model.text_encoder)
         if hasattr(model, 'global_conv'):
             self.global_emb = model.global_emb
         if hasattr(model, 'spemb_proj'):
@@ -131,8 +130,8 @@ class OnnxVITSGenerator(nn.Module):
 
     def forward(
         self,
-        text: torch.Tensor,
-        text_lengths: torch.Tensor,
+        m_p: Optional[torch.Tensor],
+        logs_p: Optional[torch.Tensor],
         x_mask: torch.Tensor,
         y_mask: torch.Tensor,
         path: torch.Tensor,
@@ -148,7 +147,6 @@ class OnnxVITSGenerator(nn.Module):
         max_len: int = None
     ):
         # encoder
-        x, m_p, logs_p = self.text_encoder(text, x_mask)
         g = None
         if self.spks is not None:
             # (B, global_channels, 1)
@@ -263,6 +261,7 @@ class OnnxVITSGenerator(nn.Module):
 class OnnxVITSModel (nn.Module, AbsModel):
     def __init__(self, model, use_teacher_forcing: bool = False):
         super().__init__()
+        self.model = model
         self.generator = OnnxVITSGenerator(model.generator, use_teacher_forcing)
         self.use_teacher_forcing = use_teacher_forcing
         self.require_sids = model.generator.spks is not None
@@ -273,19 +272,20 @@ class OnnxVITSModel (nn.Module, AbsModel):
         self.y_mask_length = 0
         self.max_len = None
 
-    def forward(self,
-                text: torch.Tensor,
-                text_lengths: torch.Tensor,
-                x_mask: torch.Tensor,
-                y_mask: torch.Tensor,
-                path: torch.Tensor,
-                feats: Optional[torch.Tensor] = None,
-                feats_lengths: Optional[torch.Tensor] = None,
-                durations: Optional[torch.Tensor] = None,
-                sids: Optional[torch.Tensor] = None,
-                spembs: Optional[torch.Tensor] = None,
-                lids: Optional[torch.Tensor] = None,
-                ):
+    def forward(
+        self,
+        m_p: Optional[torch.Tensor],
+        logs_p: Optional[torch.Tensor],
+        x_mask: torch.Tensor,
+        y_mask: torch.Tensor,
+        path: torch.Tensor,
+        feats: Optional[torch.Tensor] = None,
+        feats_lengths: Optional[torch.Tensor] = None,
+        durations: Optional[torch.Tensor] = None,
+        sids: Optional[torch.Tensor] = None,
+        spembs: Optional[torch.Tensor] = None,
+        lids: Optional[torch.Tensor] = None,
+    ):
         if not self.use_teacher_forcing:
             assert durations is not None
 
@@ -304,8 +304,8 @@ class OnnxVITSModel (nn.Module, AbsModel):
             feats = feats[None].transpose(1, 2)
 
         wav, att_w, dur = self.generator(
-            text=text,
-            text_lengths=text_lengths,
+            m_p=m_p,
+            logs_p=logs_p,
             path=path,
             x_mask=x_mask,
             y_mask=y_mask,
@@ -324,13 +324,15 @@ class OnnxVITSModel (nn.Module, AbsModel):
 
     def get_dummy_inputs(self):
         ret = []
-        text = torch.LongTensor([0, 1]).unsqueeze(0)
-        text_lengths = torch.tensor(
-            [text.size(1)],
+        # _text = torch.LongTensor([0, 1]).unsqueeze(0)
+        _text_lengths = torch.tensor(
+            [2],
             dtype=torch.long,
         )
-        x_mask = make_non_pad_mask(text_lengths).unsqueeze(1)
-        ret += [text, text_lengths, x_mask]
+        m_p = torch.randn(1, self.model.generator.text_encoder.attention_dim, _text_lengths)
+        logs_p = torch.randn(1, self.model.generator.text_encoder.attention_dim, _text_lengths)
+        x_mask = make_non_pad_mask(_text_lengths).unsqueeze(1)
+        ret += [m_p, logs_p, x_mask]
         
         if self.use_teacher_forcing:
             feats = torch.randn(1,
@@ -341,7 +343,7 @@ class OnnxVITSModel (nn.Module, AbsModel):
             path = torch.zeros(1, feats_lengths, text_lengths)
             ret += [y_mask, path, feats, feats_lengths, None]
         else:
-            x = torch.randn(1, self.generator.duration_predictor.pre.in_channels, text_lengths)
+            x = torch.randn(1, self.generator.duration_predictor.pre.in_channels, _text_lengths)
             _logw = self.generator.duration_predictor(x, x_mask, inverse=True, noise_scale=self.noise_scale_dur)
             _w = torch.exp(_logw) * x_mask * self.alpha
             dur = torch.ceil(_w)
@@ -370,7 +372,7 @@ class OnnxVITSModel (nn.Module, AbsModel):
         return tuple(ret)
 
     def get_input_names(self):
-        return ['text', 'text_lengths', 'x_mask', 'y_mask', 'path',
+        return ['m_p', 'logs_p', 'x_mask', 'y_mask', 'path',
             'feats', 'feat_lengths', 'durations', 'sids', 'spembs', 'lids']
 
     def get_output_names(self):
@@ -379,7 +381,8 @@ class OnnxVITSModel (nn.Module, AbsModel):
     def get_dynamic_axes(self):
         ret = {}
         ret.update({
-            'text': { 1: 'text_length' },
+            'm_p': { 2: 'm_length' },
+            'logs_p': { 2: 'logs_length' },
             'x_mask': { 2: 'x_mask_length'},
             'wav': {0: 'wav_length'},
             'att_w': {1: 'att_w_length'}
@@ -402,11 +405,17 @@ class OnnxVITSModel (nn.Module, AbsModel):
     
     def get_submodel(self):
         # VITS requires to separate DurationEstimator into another onnx model.
-        return [DurationPredictor(self.generator.duration_predictor, inverse=True, noise_scale=self.noise_scale_dur)]
+        return [DurationPredictor(
+            self.generator.duration_predictor,
+            self.model.generator.text_encoder,
+            inverse=True,
+            noise_scale=self.noise_scale_dur
+        )]
 
     def get_model_config(self, path):
         return {
             'model_path': path / 'tts_model.onnx',
+            'use_teacher_forcing': self.use_teacher_forcing,
             'submodel': {
                 'duration_predictor': {
                     'model_path': path / 'duration_predictor.onnx'
@@ -437,10 +446,11 @@ class OnnxFlipFlow(torch.nn.Module):
 
 
 class DurationPredictor(nn.Module, AbsSubModel):
-    def __init__(self, model, inverse=False, noise_scale=1.0):
+    def __init__(self, model, text_encoder, inverse=False, noise_scale=1.0):
         # sub model for 
         super().__init__()
-        self.model = model
+        self.duration_predictor = model
+        self.text_encoder = TextEncoder(text_encoder)
         self.inverse = inverse
         self.noise_scale = noise_scale
         if inverse:
@@ -463,21 +473,22 @@ class DurationPredictor(nn.Module, AbsSubModel):
                 self.flows[i].input_conv.weight = \
                     nn.Parameter(torch.flip(self.flows[i].input_conv.weight, [1]))
 
-    def forward(self, x, x_mask, z, w, g):
-        x = self.model.pre(x)
+    def forward(self, text, x_mask, z, w, g):
+        x, m_p, logs_p = self.text_encoder(text, x_mask)
+        x = self.duration_predictor.pre(x)
         if g is not None:
-            x = x + self.model.global_conv(g)
-        x = self.model.dds(x, x_mask)
-        x = self.model.proj(x) * x_mask
+            x = x + self.duration_predictor.global_conv(g)
+        x = self.duration_predictor.dds(x, x_mask)
+        x = self.duration_predictor.proj(x) * x_mask
 
         if not self.inverse:
             assert w is not None, "w must be provided."
-            h_w = self.model.post_pre(w)
-            h_w = self.model.post_dds(h_w, x_mask)
-            h_w = self.model.post_proj(h_w) * x_mask
+            h_w = self.duration_predictor.post_pre(w)
+            h_w = self.duration_predictor.post_dds(h_w, x_mask)
+            h_w = self.duration_predictor.post_proj(h_w) * x_mask
             z_q = z
             logdet_tot_q = 0.0
-            for flow in self.model.post_flows:
+            for flow in self.duration_predictor.post_flows:
                 z_q, logdet_q = flow(z_q, x_mask, g=(x + h_w))
                 logdet_tot_q += logdet_q
             z_u, z1 = torch.split(z_q, [1, 1], 1)
@@ -492,7 +503,7 @@ class DurationPredictor(nn.Module, AbsSubModel):
             )
 
             logdet_tot = 0
-            z0, logdet = self.model.log_flow(z0, x_mask)
+            z0, logdet = self.duration_predictor.log_flow(z0, x_mask)
             logdet_tot += logdet
             z = torch.cat([z0, z1], 1)
             for flow in self.flows:
@@ -502,19 +513,19 @@ class DurationPredictor(nn.Module, AbsSubModel):
                 torch.sum(0.5 * (math.log(2 * math.pi) + (z**2)) * x_mask, [1, 2])
                 - logdet_tot
             )
-            return nll + logq  # (B,)
+            return nll + logq, m_p, logs_p  # (B,)
         else:
             for flow in self.flows:
                 z = flow(z, x_mask, g=x, inverse=self.inverse)
                 
             z0, z1 = z.split(1, 1)
             logw = z0
-            return logw
+            return logw, m_p, logs_p
 
     def get_dummy_inputs(self):
         ret = []
         # text = [0, 1]
-        x = torch.randn(1, self.model.pre.in_channels, 2)
+        x = torch.LongTensor([0, 1]).unsqueeze(0)
         _text_lengths = torch.tensor(
             [2],
             dtype=torch.long,
@@ -531,8 +542,8 @@ class DurationPredictor(nn.Module, AbsSubModel):
             z = torch.randn(1, 2, _text_lengths)* self.noise_scale
             ret += [z, None]
         
-        if hasattr(self.model, 'global_conv'):
-            g = torch.randn(1, self.model.global_conv.in_features, 1)
+        if hasattr(self.duration_predictor, 'global_conv'):
+            g = torch.randn(1, self.duration_predictor.global_conv.in_features, 1)
             ret.append(g)
         else:
             ret.append(None)
@@ -540,16 +551,18 @@ class DurationPredictor(nn.Module, AbsSubModel):
         return tuple(ret)
     
     def get_input_names(self):
-        return ['x', 'x_mask', 'z', 'w', 'g']
+        return ['text', 'x_mask', 'z', 'w', 'g']
 
     def get_output_names(self):
-        return ['logw']
+        return ['logw', 'm_p', 'logs_p']
     
     def get_dynamic_axes(self):
         ret = {
-            'x': {2: 'x_length'},
+            'text': {1: 'text_length'},
             'x_mask': { 2: 'x_mask_length'},
             'z': {2: 'z_length'},
+            'm_p': {2: 'm_length'},
+            'logs_p': {2: 'logs_length'},
         }
         if not self.inverse:
             ret.update({
