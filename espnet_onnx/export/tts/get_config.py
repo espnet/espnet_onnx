@@ -31,7 +31,8 @@ def get_tokenizer_config(model, path):
         }
     elif isinstance(model, PhonemeTokenizer):
         return {
-            "token_type": "phn"
+            "token_type": "phn",
+            "g2p_type": model.g2p_type
         }
 
 def get_preprocess_config(model, path):

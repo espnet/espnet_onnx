@@ -57,6 +57,6 @@ class DurationCalculator:
             raise ValueError("att_ws should be 2 or 4 dimensional tensor.")
         # calculate duration from 2d attention weight
         durations = np.stack(
-            [att_ws.argmax(-1).eq(i).sum() for i in range(att_ws.shape[1])]
+            [(att_ws.argmax(-1) == i).sum() for i in range(att_ws.shape[1])]
         )
         return durations.reshape(-1)

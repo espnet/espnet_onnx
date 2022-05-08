@@ -278,7 +278,7 @@ class OnnxVITSModel (nn.Module, AbsModel):
             alpha=self.alpha,
             max_len=self.max_len,
         )
-        return wav.view(-1), att_w[0], dur[0]
+        return wav.view(-1), att_w[0], durations
 
     def get_dummy_inputs(self):
         ret = []
@@ -317,13 +317,12 @@ class OnnxVITSModel (nn.Module, AbsModel):
             _attn_mask = torch.unsqueeze(x_mask, 2) * torch.unsqueeze(y_mask, -1)
             path = torch.arange(_attn_mask.shape[2])
             z_mp = torch.randn(1, self.model.generator.text_encoder.attention_dim, y_mask.shape[2])
-            ret += [y_mask, path, z_mp, None, dur.squeeze(1)]
+            ret += [y_mask, path, z_mp, None, dur]
 
         return tuple(ret)
 
     def get_input_names(self):
-        return ['m_p', 'logs_p', 'x_mask', 'y_mask', 'path', 'z_mp',
-            'feats', 'durations']
+        return ['m_p', 'logs_p', 'x_mask', 'y_mask', 'path', 'z_mp', 'durations', 'feats']
 
     def get_output_names(self):
         return ['wav', 'att_w', 'out_duration']
@@ -335,6 +334,7 @@ class OnnxVITSModel (nn.Module, AbsModel):
             'z_mp': { 2: 'zm_length' },
             'logs_p': { 2: 'logs_length' },
             'x_mask': { 2: 'x_mask_length'},
+            'y_mask': { 2: 'y_mask_length'},
             'wav': {0: 'wav_length'},
             'att_w': {1: 'att_w_length'}
         })
@@ -349,7 +349,7 @@ class OnnxVITSModel (nn.Module, AbsModel):
         else:
             ret.update({
                 'path': { 0: 'path_width'},
-                'durations': {1: 'duration_length'}
+                'durations': {2: 'duration_length'}
             })
         
         return ret
@@ -369,9 +369,9 @@ class OnnxVITSModel (nn.Module, AbsModel):
             'use_teacher_forcing': self.use_teacher_forcing,
             'submodel': {
                 'duration_predictor': {
-                    'model_path': str(path / 'duration_predictor.onnx')
+                    'model_path': str(path / 'duration_predictor.onnx'),
+                    'noise_scale': self.noise_scale,
                 },
-                "noise_scale": self.noise_scale,
                 "alpha": self.alpha
             }
         }
@@ -458,7 +458,7 @@ class DurationPredictor(nn.Module, AbsSubModel):
             [2],
             dtype=torch.long,
         )
-        x_mask = make_non_pad_mask(_text_lengths).unsqueeze(1)
+        x_mask = make_non_pad_mask(_text_lengths).unsqueeze(1).type(torch.float32)
         z = torch.randn(1, 2, _text_lengths)* self.noise_scale
         ret += [x, x_mask, z]
         

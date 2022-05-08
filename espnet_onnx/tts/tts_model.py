@@ -46,10 +46,9 @@ class Text2Speech(AbsTTSModel):
     def __call__(
         self,
         text: str,
-        speech: np.ndarray = None,
-        durations: np.ndarray= None,
-        spembs:np.ndarray = None,
+        feats: np.ndarray = None,
         sids: np.ndarray = None,
+        spembs:np.ndarray = None,
         lids:  np.ndarray = None,
     ) -> Dict[str, np.ndarray]:
         """Inference
@@ -63,18 +62,23 @@ class Text2Speech(AbsTTSModel):
         assert check_argument_types()
         
         # check argument
-        if self.tts_model.use_speech and speech is None:
-            raise RuntimeError("Missing required argument: 'speech'")
-        if self.tts_model.use_sids and sids is None:
-            raise RuntimeError("Missing required argument: 'sids'")
-        if self.tts_model.use_lids and lids is None:
-            raise RuntimeError("Missing required argument: 'lids'")
-        if self.tts_model.use_spembs and spembs is None:
-            raise RuntimeError("Missing required argument: 'spembs'")
-            
+        options = dict()
+        if self.tts_model.use_sids:
+            if sids is None or spembs is None:
+                raise RuntimeError("'sids' or 'spembs' is missing.")
+            else:
+                options.update(sids=sids, spembs=spembs)
+        if self.tts_model.use_lids:
+            if lids is None:
+                raise RuntimeError("Missing required argument: 'lids'")
+            else:
+                options.update(lids=lids)
+        if feats is not None:
+            options.update(feats=feats)
+        
         # preprocess text
         text = self.preprocess(text)
-        output_dict = self.tts_model(text)
+        output_dict = self.tts_model(text, options)
         
         if output_dict.get("att_w") is not None:
             duration, focus_rate = self.duration_calculator(output_dict["att_w"])
@@ -92,5 +96,5 @@ class Text2Speech(AbsTTSModel):
         #     wav = self.vocoder(input_feat)
         #     output_dict.update(wav=wav)
             
-        return results
+        return output_dict
 

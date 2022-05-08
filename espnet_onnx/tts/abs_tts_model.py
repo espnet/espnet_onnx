@@ -46,8 +46,7 @@ class AbsTTSModel(ABC):
             self.tokenizer = build_tokenizer(
                 'bpe', self.config.preprocess.tokenizer.bpemodel)
         else:
-            self.tokenizer = build_tokenizer(
-                token_type=self.config.preprocess.tokenizer.token_type)
+            self.tokenizer = build_tokenizer(**self.config.preprocess.tokenizer.dic)
 
     def _build_token_converter(self):
         self.converter = TokenIDConverter(token_list=self.config.token.list)
