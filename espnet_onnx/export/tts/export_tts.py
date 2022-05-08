@@ -17,14 +17,10 @@ from espnet2.text.sentencepiece_tokenizer import SentencepiecesTokenizer
 from espnet_model_zoo.downloader import ModelDownloader
 from espnet_onnx.export.tts.models import get_tts_model
 get_vocoder = None
-# from .get_config import (
-#     get_ngram_config,
-#     get_beam_config,
-#     get_token_config,
-#     get_tokenizer_config,
-#     get_weights_transducer,
-#     get_trans_beam_config,
-# )
+from .get_config import (
+    get_token_config,
+    get_preprocess_config
+)
 from espnet_onnx.utils.config import (
     save_config,
     update_model_path
@@ -94,25 +90,8 @@ class TTSModelExport:
 
     def _create_config(self, model, path):
         ret = {}
-        # if not model.asr_model.use_transducer_decoder:
-        #     if "ngram" in list(model.beam_search.full_scorers.keys()) \
-        #             + list(model.beam_search.part_scorers.keys()):
-        #         ret.update(ngram=get_ngram_config(model))
-        #     else:
-        #         ret.update(ngram=dict(use_ngram=False))
-        #     ret.update(weights=model.beam_search.weights)
-        #     ret.update(beam_search=get_beam_config(
-        #         model.beam_search, model.minlenratio, model.maxlenratio))
-        # else:
-        #     ret.update(weights=get_weights_transducer(
-        #         model.beam_search_transducer))
-        #     ret.update(beam_search=get_trans_beam_config(
-        #         model.beam_search_transducer
-        #     ))
-            
-        # ret.update(transducer=dict(use_transducer_decoder=model.asr_model.use_transducer_decoder))
-        # ret.update(token=get_token_config(model.asr_model))
-        # ret.update(tokenizer=get_tokenizer_config(model.tokenizer, path))
+        ret.update(preprocess=get_preprocess_config(model.preprocess_fn, path))
+        ret.update(token=get_token_config(model.preprocess_fn.token_id_converter))
         return ret
     
     def _export_model(self, model, file_name, verbose, enc_size=None):
