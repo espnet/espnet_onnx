@@ -43,7 +43,15 @@ class Text2Speech(AbsTTSModel):
         self._build_model(providers, use_quantized)
 
 
-    def __call__(self, speech: np.ndarray) -> List[
+    def __call__(
+        self,
+        text: str,
+        speech: np.ndarray = None,
+        durations: np.ndarray= None,
+        spembs:np.ndarray = None,
+        sids: np.ndarray = None,
+        lids:  np.ndarray = None,
+    ) -> List[
         Tuple[
             Optional[str],
             List[str],
@@ -58,43 +66,36 @@ class Text2Speech(AbsTTSModel):
             text, token, token_int, hyp
         """
         assert check_argument_types()
-
-        # check dtype
-        if speech.dtype != np.float32:
-            speech = speech.astype(np.float32)
-
-        # data: (Nsamples,) -> (1, Nsamples)
-        speech = speech[np.newaxis, :]
-        # lengths: (1,)
-        lengths = np.array([speech.shape[1]]).astype(np.int64)
-
-        # b. Forward Encoder
-        enc, _ = self.encoder(speech=speech, speech_length=lengths)
-        if isinstance(enc, tuple):
-            enc = enc[0]
-        assert len(enc) == 1, len(enc)
-
-        nbest_hyps = self.beam_search(enc[0])[:1]
-
-        results = []
-        for hyp in nbest_hyps:
-            # remove sos/eos and get results
-            if self.last_idx is not None:
-                token_int = list(hyp.yseq[self.start_idx : self.last_idx])
-            else:
-                token_int = list(hyp.yseq[self.start_idx:])
-                
-            # remove blank symbol id, which is assumed to be 0
-            token_int = list([int(i) for i in filter(lambda x: x != 0, token_int)])
-
-            # Change integer-ids to tokens
-            token = self.converter.ids2tokens(token_int)
-
-            if self.tokenizer is not None:
-                text = self.tokenizer.tokens2text(token)
-            else:
-                text = None
-            results.append((text, token, token_int, hyp))
-
+        
+        # check argument
+        if self.tts_model.use_speech and speech is None:
+            raise RuntimeError("Missing required argument: 'speech'")
+        if self.tts_model.use_sids and sids is None:
+            raise RuntimeError("Missing required argument: 'sids'")
+        if self.tts_model.use_lids and lids is None:
+            raise RuntimeError("Missing required argument: 'lids'")
+        if self.tts_model.use_spembs and spembs is None:
+            raise RuntimeError("Missing required argument: 'spembs'")
+            
+        # preprocess text
+        text = self.preprocess(text)
+        output_dict = self.tts_model(text)
+        
+        if output_dict.get("att_w") is not None:
+            duration, focus_rate = self.duration_calculator(output_dict["att_w"])
+            output_dict.update(duration=duration, focus_rate=focus_rate)
+        
+        # vocoder is currently not supported.
+        # if self.vocoder is not None:
+        #     if (
+        #         self.prefer_normalized_feats
+        #         or output_dict.get("feat_gen_denorm") is None
+        #     ):
+        #         input_feat = output_dict["feat_gen"]
+        #     else:
+        #         input_feat = output_dict["feat_gen_denorm"]
+        #     wav = self.vocoder(input_feat)
+        #     output_dict.update(wav=wav)
+            
         return results
 

@@ -4,6 +4,8 @@ import os
 import glob
 import logging
 
+from espnet_onnx.tts.model.preprocess import CommonProcessor
+from espnet_onnx.tts.model.duration_calculator import DurationCalculator
 from espnet_onnx.utils.config import get_config
 from espnet_onnx.utils.config import get_tag_config
 
@@ -27,78 +29,35 @@ class AbsTTSModel(ABC):
     def _load_config(self):
         config_file = glob.glob(os.path.join(self.model_dir, 'config.*'))[0]
         self.config = get_config(config_file)
-    
-    def _build_beam_search(self, scorers, weights):
-        if self.config.transducer.use_transducer_decoder:
-            self.beam_search = BeamSearchTransducer(
-                self.config.beam_search,
-                self.config.token,
-                scorers=scorers,
-                weights=weights
-            )
-        else:
-            self.beam_search = BeamSearch(
-                self.config.beam_search,
-                self.config.token,
-                scorers=scorers,
-                weights=weights,
-            )
-            non_batch = [
-                k for k, v in self.beam_search.full_scorers.items()
-                if not isinstance(v, BatchScorerInterface)
-            ]
-            if len(non_batch) == 0:
-                self.beam_search.__class__ = BatchBeamSearch
-                logging.info("BatchBeamSearch implementation is selected.")
-            else:
-                logging.warning(
-                    f"As non-batch scorers {non_batch} are found, "
-                    f"fall back to non-batch implementation."
-                )
-    
+
     def _build_tokenizer(self):
-        if self.config.tokenizer.token_type is None:
+        if self.config.preprocess.tokenizer.token_type is None:
             self.tokenizer = None
-        elif self.config.tokenizer.token_type == 'bpe':
+        elif self.config.preprocess.tokenizer.token_type == 'bpe':
             self.tokenizer = build_tokenizer(
-                'bpe', self.config.tokenizer.bpemodel)
+                'bpe', self.config.preprocess.tokenizer.bpemodel)
         else:
             self.tokenizer = build_tokenizer(
-                token_type=self.config.tokenizer.token_type)
+                token_type=self.config.preprocess.tokenizer.token_type)
 
     def _build_token_converter(self):
         self.converter = TokenIDConverter(token_list=self.config.token.list)
     
     def _build_model(self, providers, use_quantized):
-        self.encoder = get_encoder(self.config.encoder, providers, use_quantized)
-        decoder = get_decoder(self.config.decoder, providers, use_quantized)
-        scorers = {'decoder': decoder}
-        weights = {}
-        if not self.config.transducer.use_transducer_decoder:
-            ctc = CTCPrefixScorer(self.config.ctc, self.config.token.eos, providers, use_quantized)
-            scorers.update(
-                ctc=ctc,
-                length_bonus=LengthBonus(len(self.config.token.list))
-            )
-            weights.update(
-                decoder=self.config.weights.decoder,
-                ctc=self.config.weights.ctc,
-                length_bonus=self.config.weights.length_bonus,
-            )
-        else:
-            joint_network = JointNetwork(self.config.joint_network, providers, use_quantized)
-            scorers.update(joint_network=joint_network)
-            
-        lm = get_lm(self.config, providers, use_quantized)
-        if lm is not None:
-            scorers.update(lm=lm)
-            weights.update(lm=self.config.weights.lm)
-
-        self._build_beam_search(scorers, weights)
+        # build tts model such as vits
+        self.tts_model = get_tts_model(self.config.tts_model, providers, use_quantized)
+        
         self._build_tokenizer()
         self._build_token_converter()
-        self.scorers = scorers
-        self.weights = weights
+        self.preprocess = CommonProcessor(
+            tokenizer=self.tokenizer,
+            token_id_converter=self.converter,
+            text_cleaner=args.cleaner,
+        )
+        self.duration_calculator = DurationCalculator()
+
+        # vocoder is currently not supported
+        # self.vocoder is get_vocoder()
 
     def _check_ort_version(self, providers: List[str]):
         # check cpu
