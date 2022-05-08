@@ -132,7 +132,6 @@ class OnnxVITSGenerator(nn.Module):
         y_mask: torch.Tensor,
         path: torch.Tensor,
         feats: Optional[torch.Tensor] = None,
-        feats_lengths: Optional[torch.Tensor] = None,
         dur: Optional[torch.Tensor] = None,
         noise_scale: float = 0.667,
         noise_scale_dur: float = 0.8,
@@ -253,7 +252,6 @@ class OnnxVITSModel (nn.Module, AbsModel):
         y_mask: torch.Tensor,
         path: torch.Tensor,
         feats: Optional[torch.Tensor] = None,
-        feats_lengths: Optional[torch.Tensor] = None,
         durations: Optional[torch.Tensor] = None,
     ):
         if not self.use_teacher_forcing:
@@ -272,7 +270,6 @@ class OnnxVITSModel (nn.Module, AbsModel):
             x_mask=x_mask,
             y_mask=y_mask,
             feats=feats,
-            feats_lengths=feats_lengths,
             dur=durations,
             noise_scale=self.noise_scale,
             noise_scale_dur=self.noise_scale_dur,
@@ -304,7 +301,7 @@ class OnnxVITSModel (nn.Module, AbsModel):
             y_mask = make_non_pad_mask(feats_lengths).unsqueeze(1)
             self.y_mask_length = int(feats_lengths)
             path = torch.zeros(1, feats_lengths, text_lengths)
-            ret += [y_mask, path, feats, feats_lengths, None]
+            ret += [y_mask, path, feats, None]
         else:
             x = torch.randn(1, self.generator.duration_predictor.pre.in_channels, _text_lengths)
             _logw = self.generator.duration_predictor(x, x_mask, inverse=True, noise_scale=self.noise_scale_dur)
@@ -317,13 +314,13 @@ class OnnxVITSModel (nn.Module, AbsModel):
             self.y_mask_length = int(_y_length)
             _attn_mask = torch.unsqueeze(x_mask, 2) * torch.unsqueeze(y_mask, -1)
             path = torch.arange(_attn_mask.shape[2])
-            ret += [y_mask, path, None, None, dur.squeeze(1)]
+            ret += [y_mask, path, None, dur.squeeze(1)]
 
         return tuple(ret)
 
     def get_input_names(self):
         return ['m_p', 'logs_p', 'x_mask', 'y_mask', 'path',
-            'feats', 'feat_lengths', 'durations']
+            'feats', 'durations']
 
     def get_output_names(self):
         return ['wav', 'att_w', 'out_duration']
@@ -369,7 +366,8 @@ class OnnxVITSModel (nn.Module, AbsModel):
                 'duration_predictor': {
                     'model_path': path / 'duration_predictor.onnx'
                 },
-                "noise_scale": 1.0
+                "noise_scale": self.noise_scale,
+                "alpha": self.alpha
             }
         }
 
