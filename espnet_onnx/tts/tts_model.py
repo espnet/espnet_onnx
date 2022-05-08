@@ -1,7 +1,8 @@
-from typing import Union
-from typing import List
-from typing import Tuple
-from typing import Optional
+from typing import (
+    Union,
+    Dict,
+    List
+)
 from pathlib import Path
 from typeguard import check_argument_types
 import warnings
@@ -11,8 +12,7 @@ import logging
 import numpy as np
 import onnxruntime
 
-from espnet_onnx.asr.abs_tts_model import AbsTTSModel
-from espnet_onnx.asr.beam_search.hyps import Hypothesis
+from espnet_onnx.tts.abs_tts_model import AbsTTSModel
 
 
 
@@ -51,19 +51,14 @@ class Text2Speech(AbsTTSModel):
         spembs:np.ndarray = None,
         sids: np.ndarray = None,
         lids:  np.ndarray = None,
-    ) -> List[
-        Tuple[
-            Optional[str],
-            List[str],
-            List[int],
-            Union[Hypothesis],
-        ]
-    ]:
+    ) -> Dict[str, np.ndarray]:
         """Inference
+        
         Args:
             data: Input speech data
+            
         Returns:
-            text, token, token_int, hyp
+            Dict[str, np.ndarray]
         """
         assert check_argument_types()
         

@@ -1,10 +1,12 @@
 from abc import ABC
 
+from typing import List
+
 import os
 import glob
 import logging
 
-from espnet_onnx.tts.model.preprocess import CommonProcessor
+from espnet_onnx.tts.model.preprocess.common_processor import CommonPreprocessor
 from espnet_onnx.tts.model.duration_calculator import DurationCalculator
 from espnet_onnx.utils.config import get_config
 from espnet_onnx.utils.config import get_tag_config
@@ -49,7 +51,7 @@ class AbsTTSModel(ABC):
         
         self._build_tokenizer()
         self._build_token_converter()
-        self.preprocess = CommonProcessor(
+        self.preprocess = CommonPreprocessor(
             tokenizer=self.tokenizer,
             token_id_converter=self.converter,
             text_cleaner=args.cleaner,
