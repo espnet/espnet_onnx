@@ -132,6 +132,7 @@ class OnnxVITSGenerator(nn.Module):
         x_mask: torch.Tensor,
         y_mask: torch.Tensor,
         path: torch.Tensor,
+        z_mp: torch.Tensor = None,
         feats: Optional[torch.Tensor] = None,
         dur: Optional[torch.Tensor] = None,
         noise_scale: float = 0.667,
@@ -188,9 +189,7 @@ class OnnxVITSGenerator(nn.Module):
             wav = self.decoder(z * y_mask, g=g)
         else:
             # duration, y_mask is computed outside this onnx model.
-            attn_mask = torch.unsqueeze(
-                x_mask, 2) * torch.unsqueeze(y_mask, -1)
-            
+            attn_mask = x_mask.unsqueeze(2) * y_mask.unsqueeze(-1)
             attn = self._generate_path(dur, attn_mask, path)
 
             # expand the length to match with the feature sequence
@@ -206,10 +205,10 @@ class OnnxVITSGenerator(nn.Module):
             ).transpose(1, 2)
 
             # decoder
-            z_p = m_p + torch.randn_like(m_p) * torch.exp(logs_p) * noise_scale
+            z_p = m_p + z_mp * torch.exp(logs_p) * noise_scale
             z = self.flow(z_p, y_mask, g=g, inverse=True)
             wav = self.decoder((z * y_mask)[:, :, :max_len], g=g)
-
+            
         return wav.squeeze(1), attn.squeeze(1), dur
 
     def _generate_path(self, dur, mask, path):
@@ -220,8 +219,8 @@ class OnnxVITSGenerator(nn.Module):
         b, _, t_y, t_x = mask.shape
         cum_dur = torch.cumsum(dur.unsqueeze(1), -1)
         cum_dur_flat = cum_dur.view(b * t_x)
-        path = path.unsqueeze(0) < cum_dur_flat.unsqueeze(1)
-        path = path.view(b, t_x, t_y).to(dtype=mask.dtype)
+        path = (path.unsqueeze(0) < cum_dur_flat.unsqueeze(1)).type(torch.float32)
+        path = path.view(b, t_x, t_y)
         # path will be like (t_x = 3, t_y = 5):
         # [[[1., 1., 0., 0., 0.],      [[[1., 1., 0., 0., 0.],
         #   [1., 1., 1., 1., 0.],  -->   [0., 0., 1., 1., 0.],
@@ -252,6 +251,7 @@ class OnnxVITSModel (nn.Module, AbsModel):
         x_mask: torch.Tensor,
         y_mask: torch.Tensor,
         path: torch.Tensor,
+        z_mp: torch.Tensor = None,
         feats: Optional[torch.Tensor] = None,
         durations: Optional[torch.Tensor] = None,
     ):
@@ -272,6 +272,7 @@ class OnnxVITSModel (nn.Module, AbsModel):
             y_mask=y_mask,
             feats=feats,
             dur=durations,
+            z_mp=z_mp,
             noise_scale=self.noise_scale,
             noise_scale_dur=self.noise_scale_dur,
             alpha=self.alpha,
@@ -288,7 +289,7 @@ class OnnxVITSModel (nn.Module, AbsModel):
         )
         m_p = torch.randn(1, self.model.generator.text_encoder.attention_dim, _text_lengths)
         logs_p = torch.randn(1, self.model.generator.text_encoder.attention_dim, _text_lengths)
-        x_mask = make_non_pad_mask(_text_lengths).unsqueeze(1)
+        x_mask = make_non_pad_mask(_text_lengths).unsqueeze(1).type(torch.float32)
         if self.require_sids and self.require_lids:
             g = torch.randn(1, self.model.generator.global_emb.embedding_dim, 1)
         else: g = None
@@ -299,10 +300,10 @@ class OnnxVITSModel (nn.Module, AbsModel):
             feats = torch.randn(1,
                 self.generator.posterior_encoder.input_conv.in_channels, text.size(1))
             feats_lengths = text_lengths
-            y_mask = make_non_pad_mask(feats_lengths).unsqueeze(1)
+            y_mask = make_non_pad_mask(feats_lengths).unsqueeze(1).type(torch.float32)
             self.y_mask_length = int(feats_lengths)
             path = torch.zeros(1, feats_lengths, text_lengths)
-            ret += [y_mask, path, feats, None]
+            ret += [y_mask, path, None, feats, None]
         else:
             x = torch.randn(1, self.generator.duration_predictor.pre.in_channels, _text_lengths)
             _logw = self.generator.duration_predictor(x, x_mask, inverse=True, noise_scale=self.noise_scale_dur)
@@ -311,16 +312,17 @@ class OnnxVITSModel (nn.Module, AbsModel):
             _y_length = torch.clamp_min(
                 torch.sum(dur, [1,2]), 1
             ).long()
-            y_mask = make_non_pad_mask(_y_length).unsqueeze(1)
+            y_mask = make_non_pad_mask(_y_length).unsqueeze(1).type(torch.float32)
             self.y_mask_length = int(_y_length)
             _attn_mask = torch.unsqueeze(x_mask, 2) * torch.unsqueeze(y_mask, -1)
             path = torch.arange(_attn_mask.shape[2])
-            ret += [y_mask, path, None, dur.squeeze(1)]
+            z_mp = torch.randn(1, self.model.generator.text_encoder.attention_dim, y_mask.shape[2])
+            ret += [y_mask, path, z_mp, None, dur.squeeze(1)]
 
         return tuple(ret)
 
     def get_input_names(self):
-        return ['m_p', 'logs_p', 'x_mask', 'y_mask', 'path',
+        return ['m_p', 'logs_p', 'x_mask', 'y_mask', 'path', 'z_mp',
             'feats', 'durations']
 
     def get_output_names(self):
@@ -330,6 +332,7 @@ class OnnxVITSModel (nn.Module, AbsModel):
         ret = {}
         ret.update({
             'm_p': { 2: 'm_length' },
+            'z_mp': { 2: 'zm_length' },
             'logs_p': { 2: 'logs_length' },
             'x_mask': { 2: 'x_mask_length'},
             'wav': {0: 'wav_length'},
