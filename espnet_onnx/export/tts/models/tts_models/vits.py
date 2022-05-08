@@ -30,7 +30,7 @@ from espnet2.gan_tts.vits.flow import (
     ConvFlow
 )
 from espnet.nets.pytorch_backend.nets_utils import make_non_pad_mask
-from espnet_onnx.export.asr.models.language_models.lm import Embedding
+from espnet_onnx.export.asr.models.language_models.lm import get_pos_emb
 
 from ..abs_model import AbsModel, AbsSubModel
 
@@ -59,8 +59,9 @@ class TextEncoder(nn.Module):
     def __init__(self, model):
         super().__init__()
         self.attention_dim = model.attention_dim
-        self.emb = Embedding(model.emb) # RelPositionalEncoding
+        self.emb = model.emb
         self.encoder = model.encoder
+        self.encoder.embed[0] = get_pos_emb(self.encoder.embed[0])
         self.proj = model.proj
     
     def forward(self, text, x_mask):
@@ -360,11 +361,12 @@ class OnnxVITSModel (nn.Module, AbsModel):
 
     def get_model_config(self, path):
         return {
-            'model_path': path / 'tts_model.onnx',
+            'model_path': str(path / 'tts_model.onnx'),
+            'model_type': 'VITS',
             'use_teacher_forcing': self.use_teacher_forcing,
             'submodel': {
                 'duration_predictor': {
-                    'model_path': path / 'duration_predictor.onnx'
+                    'model_path': str(path / 'duration_predictor.onnx')
                 },
                 "noise_scale": self.noise_scale,
                 "alpha": self.alpha

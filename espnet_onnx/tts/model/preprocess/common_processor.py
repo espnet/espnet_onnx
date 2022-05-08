@@ -6,9 +6,9 @@ class CommonPreprocessor:
         self,
         tokenizer,
         token_id_converter,
-        cleaner_type,
+        cleaner_config,
     ):
-        self.text_cleaner = TextCleaner(text_cleaner)
+        self.text_cleaner = TextCleaner(cleaner_config.cleaner_types)
         self.tokenizer = tokenizer
         self.token_id_converter = token_id_converter
 
