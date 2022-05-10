@@ -31,7 +31,7 @@ class Text2Speech(AbsTTSModel):
         self._check_ort_version(providers)
 
         # check if there is quantized model if use_quantized=True
-        if use_quantized and 'quantized_model_path' not in self.config.encoder.keys():
+        if use_quantized and 'quantized_model_path' not in self.config.tts_model.keys():
             # check if quantized model config is defined.
             raise RuntimeError(
                 'Configuration for quantized model is not defined.')
