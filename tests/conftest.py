@@ -3,7 +3,10 @@ import pytest
 from pathlib import Path
 
 from espnet_onnx.utils.config import get_config
-from espnet_onnx.export import ASRModelExport
+from espnet_onnx.export import (
+    ASRModelExport,
+    TTSModelExport
+)
 
 from espnet2.asr.decoder.abs_decoder import AbsDecoder
 from espnet2.asr.decoder.rnn_decoder import RNNDecoder
@@ -44,6 +47,14 @@ from espnet2.lm.seq_rnn_lm import SequentialRNNLM
 from espnet2.lm.transformer_lm import TransformerLM
 from espnet2.train.class_choices import ClassChoices
 
+from espnet2.tts.abs_tts import AbsTTS
+from espnet2.gan_tts.joint import JointText2Wav
+from espnet2.gan_tts.vits import VITS
+from espnet2.tts.fastspeech import FastSpeech
+from espnet2.tts.fastspeech2 import FastSpeech2
+from espnet2.tts.tacotron2 import Tacotron2
+from espnet2.tts.transformer import Transformer
+
 
 def pytest_addoption(parser):
     parser.addoption('--config_dir', action='store',
@@ -72,6 +83,11 @@ def get_config_path(request):
 @pytest.fixture
 def model_export():
     return ASRModelExport(Path.home() / ".cache" / "espnet_onnx")
+
+
+@pytest.fixture
+def model_export_tts():
+    return TTSModelExport(Path.home() / ".cache" / "espnet_onnx")
 
 
 @pytest.fixture
@@ -137,4 +153,22 @@ def lm_choices():
         ),
         type_check=AbsLM,
         default="seq_rnn",
+    )
+
+
+@pytest.fixture
+def tts_choices():
+    return ClassChoices(
+        "tts",
+        classes=dict(
+            tacotron2=Tacotron2,
+            transformer=Transformer,
+            fastspeech=FastSpeech,
+            fastspeech2=FastSpeech2,
+            # NOTE(kan-bayashi): available only for inference
+            vits=VITS,
+            joint_text2wav=JointText2Wav,
+        ),
+        type_check=AbsTTS,
+        default="tacotron2",
     )
