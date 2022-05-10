@@ -5,7 +5,6 @@ from typeguard import check_argument_types
 import os
 import glob
 from datetime import datetime
-import shutil
 import logging
 
 import numpy as np
@@ -13,10 +12,7 @@ import torch
 from onnxruntime.quantization import quantize_dynamic, QuantType
 
 from espnet2.bin.tts_inference import Text2Speech
-from espnet2.text.sentencepiece_tokenizer import SentencepiecesTokenizer
-from espnet_model_zoo.downloader import ModelDownloader
 from espnet_onnx.export.tts.models import get_tts_model
-get_vocoder = None
 from .get_config import (
     get_token_config,
     get_preprocess_config
@@ -46,7 +42,7 @@ class TTSModelExport:
         assert check_argument_types()
         if tag_name is None:
             tag_name = datetime.now().strftime("%Y%m%d_%H%M%S")
-        
+
         base_dir = self.cache_dir / tag_name.replace(' ', '-')
         export_dir = base_dir / 'full'
         export_dir.mkdir(parents=True, exist_ok=True)
@@ -83,28 +79,30 @@ class TTSModelExport:
     def export_from_pretrained(self, tag_name: str = None, zip_file: str = None, quantize: bool = False):
         assert check_argument_types()
         if ((tag_name is not None) and (zip_file is not None)) \
-            or ((tag_name is None) and (zip_file is None)):
-            raise RuntimeError('You should specify value for one of ["tag_name", "zip_file"]')
+                or ((tag_name is None) and (zip_file is None)):
+            raise RuntimeError(
+                'You should specify value for one of ["tag_name", "zip_file"]')
         _t = tag_name if tag_name is not None else zip_file
         model = Text2Speech.from_pretrained(_t)
         self.export(model, tag_name, quantize)
-    
+
     def set_export_config(self, **kwargs):
-        for k,v in kwargs.items():
+        for k, v in kwargs.items():
             self.export_config[k] = v
 
     def _create_config(self, model, path):
         ret = {}
         ret.update(preprocess=get_preprocess_config(model.preprocess_fn, path))
-        ret.update(token=get_token_config(model.preprocess_fn.token_id_converter))
+        ret.update(token=get_token_config(
+            model.preprocess_fn.token_id_converter))
         return ret
-    
+
     def _export_model(self, model, file_name, verbose, enc_size=None):
         if enc_size:
             dummy_input = model.get_dummy_inputs(enc_size)
         else:
             dummy_input = model.get_dummy_inputs()
-            
+
         torch.onnx.export(
             model,
             dummy_input,
@@ -121,7 +119,7 @@ class TTSModelExport:
         if verbose:
             logging.info(f'TTS model is saved in {file_name}')
         self._export_model(model, file_name, verbose)
-        
+
     # def _export_vocoder(self, model, path, verbose):
     #     file_name = os.path.join(path, 'vocoder.onnx')
     #     if verbose:

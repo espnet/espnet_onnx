@@ -18,7 +18,7 @@ class OnnxTextEncoder(nn.Module):
     def __init__(self, model):
         super().__init__()
         self.model = model
-    
+
     def forward(self, x, x_lengths):
         x = self.model.emb(x) * math.sqrt(self.model.attention_dim)
         x_mask = 1 - make_pad_mask(x_lengths).unsqueeze(1).type(torch.float32)
@@ -30,7 +30,6 @@ class OnnxTextEncoder(nn.Module):
         x = x.transpose(1, 2)
         stats = self.model.proj(x) * x_mask
         m, logs = stats.split(stats.size(1) // 2, dim=1)
-
         return x, m, logs, x_mask
 
 
@@ -43,7 +42,7 @@ class OnnxVITSGenerator(nn.Module):
         self.flow = model.flow
         self.duration_predictor = model.duration_predictor
         self.model = model
-    
+
     def forward(
         self,
         text: torch.Tensor,
@@ -61,6 +60,7 @@ class OnnxVITSGenerator(nn.Module):
         use_teacher_forcing: bool = False,
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Run inference.
+
         Args:
             text (Tensor): Input text index tensor (B, T_text,).
             text_lengths (Tensor): Text length tensor (B,).
@@ -76,10 +76,12 @@ class OnnxVITSGenerator(nn.Module):
             alpha (float): Alpha parameter to control the speed of generated speech.
             max_len (Optional[int]): Maximum length of acoustic feature sequence.
             use_teacher_forcing (bool): Whether to use teacher forcing.
+
         Returns:
             Tensor: Generated waveform tensor (B, T_wav).
             Tensor: Monotonic attention weight tensor (B, T_feats, T_text).
             Tensor: Duration tensor (B, T_text).
+
         """
         # encoder
         x, m_p, logs_p, x_mask = self.text_encoder(text, text_lengths)
@@ -89,7 +91,8 @@ class OnnxVITSGenerator(nn.Module):
             g = self.model.global_emb(sids.view(-1)).unsqueeze(-1)
         if self.model.spk_embed_dim is not None:
             # (B, global_channels, 1)
-            g_ = self.model.spemb_proj(F.normalize(spembs.unsqueeze(0))).unsqueeze(-1)
+            g_ = self.model.spemb_proj(F.normalize(
+                spembs.unsqueeze(0))).unsqueeze(-1)
             if g is None:
                 g = g_
             else:
@@ -104,7 +107,8 @@ class OnnxVITSGenerator(nn.Module):
 
         if use_teacher_forcing:
             # forward posterior encoder
-            z, m_q, logs_q, y_mask = self.posterior_encoder(feats, feats_lengths, g=g)
+            z, m_q, logs_q, y_mask = self.posterior_encoder(
+                feats, feats_lengths, g=g)
 
             # forward flow
             z_p = self.flow(z, y_mask, g=g)  # (B, H, T_feats)
@@ -136,7 +140,8 @@ class OnnxVITSGenerator(nn.Module):
             # (B, T_feats, T_text)
             neg_x_ent = neg_x_ent_1 + neg_x_ent_2 + neg_x_ent_3 + neg_x_ent_4
             # (B, 1, T_feats, T_text)
-            attn_mask = torch.unsqueeze(x_mask, 2) * torch.unsqueeze(y_mask, -1)
+            attn_mask = torch.unsqueeze(
+                x_mask, 2) * torch.unsqueeze(y_mask, -1)
             # monotonic attention weight: (B, 1, T_feats, T_text)
             attn = self.model.maximum_path(
                 neg_x_ent,
@@ -159,8 +164,10 @@ class OnnxVITSGenerator(nn.Module):
                 w = torch.exp(logw) * x_mask * alpha
                 dur = torch.ceil(w)
             y_lengths = torch.clamp_min(torch.sum(dur, [1, 2]), 1).long()
-            y_mask = 1 - make_pad_mask(y_lengths).unsqueeze(1).type(torch.float32)
-            attn_mask = torch.unsqueeze(x_mask, 2) * torch.unsqueeze(y_mask, -1)
+            y_mask = 1 - \
+                make_pad_mask(y_lengths).unsqueeze(1).type(torch.float32)
+            attn_mask = torch.unsqueeze(
+                x_mask, 2) * torch.unsqueeze(y_mask, -1)
             attn = self.model._generate_path(dur, attn_mask)
 
             # expand the length to match with the feature sequence
@@ -203,11 +210,11 @@ class OnnxVITSModel(nn.Module, AbsModel):
         self.alpha = alpha
         self.max_len = max_len
         self.predict_duration = predict_duration
-        
-        # fix RelPE
+
+        # fix RelPositionalEncoding
         self.model.generator.text_encoder.encoder.embed[0] = \
             get_pos_emb(self.model.generator.text_encoder.encoder.embed[0])
-        
+
     def forward(
         self,
         text: torch.Tensor,
@@ -221,7 +228,7 @@ class OnnxVITSModel(nn.Module, AbsModel):
     ):
         # setup
         text = text[None]
-        
+
         if self.use_teacher_forcing:
             assert feats is not None
             feats = feats[None].transpose(1, 2)
@@ -257,19 +264,19 @@ class OnnxVITSModel(nn.Module, AbsModel):
         feats = torch.randn(5, self.model.generator.posterior_encoder.input_conv.in_channels) \
             if self.use_teacher_forcing else None
         feats_length = torch.LongTensor([5]) if feats is not None else None
-        
+
         sids = torch.LongTensor([0]) \
             if self.model.generator.spks is not None else None
-        
+
         spembs = torch.randn(self.model.generator.spk_embed_dim) \
             if self.model.generator.spks is not None else None
-        
+
         lids = torch.LongTensor([0]) \
             if self.model.generator.langs is not None else None
-        
+
         duration = torch.randn(text.size(0)) \
             if self.predict_duration else None
-        
+
         return (text, text_length, feats, feats_length, sids, spembs, lids, duration)
 
     def get_input_names(self):
@@ -277,7 +284,7 @@ class OnnxVITSModel(nn.Module, AbsModel):
 
     def get_output_names(self):
         return ['wav', 'att_w', 'dur']
-    
+
     def get_dynamic_axes(self):
         return {
             'text': {0: 'text_length'},
@@ -287,7 +294,7 @@ class OnnxVITSModel(nn.Module, AbsModel):
                       1: 'att_w_text_length'},
             'dur': {0: 'dur_length'}
         }
-    
+
     def get_model_config(self, path):
         return {
             'model_type': 'VITS',

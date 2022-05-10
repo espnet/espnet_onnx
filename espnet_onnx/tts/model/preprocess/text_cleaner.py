@@ -1,4 +1,3 @@
-
 from typing import Collection
 
 from jaconv import jaconv

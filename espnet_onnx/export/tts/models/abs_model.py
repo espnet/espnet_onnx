@@ -16,7 +16,3 @@ class AbsModel(ABC):
 
     def get_model_config(self):
         raise NotImplementedError
-
-    def get_submodel(self):
-        return []
-    

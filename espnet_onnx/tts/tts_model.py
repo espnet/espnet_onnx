@@ -5,15 +5,11 @@ from typing import (
 )
 from pathlib import Path
 from typeguard import check_argument_types
-import warnings
 
-import os
-import logging
 import numpy as np
 import onnxruntime
 
 from espnet_onnx.tts.abs_tts_model import AbsTTSModel
-
 
 
 class Text2Speech(AbsTTSModel):
@@ -30,10 +26,10 @@ class Text2Speech(AbsTTSModel):
         assert check_argument_types()
         self._check_argument(tag_name, model_dir)
         self._load_config()
-        
+
         # check onnxruntime version and providers
         self._check_ort_version(providers)
-        
+
         # check if there is quantized model if use_quantized=True
         if use_quantized and 'quantized_model_path' not in self.config.encoder.keys():
             # check if quantized model config is defined.
@@ -42,25 +38,24 @@ class Text2Speech(AbsTTSModel):
 
         self._build_model(providers, use_quantized)
 
-
     def __call__(
         self,
         text: str,
         feats: np.ndarray = None,
         sids: np.ndarray = None,
-        spembs:np.ndarray = None,
+        spembs: np.ndarray = None,
         lids:  np.ndarray = None,
     ) -> Dict[str, np.ndarray]:
         """Inference
-        
+
         Args:
             data: Input speech data
-            
+
         Returns:
             Dict[str, np.ndarray]
         """
         assert check_argument_types()
-        
+
         # check argument
         options = dict()
         if self.tts_model.use_sids:
@@ -78,15 +73,16 @@ class Text2Speech(AbsTTSModel):
                 raise RuntimeError("Missing required argument: 'feats'")
             else:
                 options.update(feats=feats)
-        
+
         # preprocess text
         text = self.preprocess(text)
         output_dict = self.tts_model(text, options)
-        
+
         if output_dict.get("att_w") is not None:
-            duration, focus_rate = self.duration_calculator(output_dict["att_w"])
+            duration, focus_rate = self.duration_calculator(
+                output_dict["att_w"])
             output_dict.update(duration=duration, focus_rate=focus_rate)
-        
+
         # vocoder is currently not supported.
         # if self.vocoder is not None:
         #     if (
@@ -98,6 +94,5 @@ class Text2Speech(AbsTTSModel):
         #         input_feat = output_dict["feat_gen_denorm"]
         #     wav = self.vocoder(input_feat)
         #     output_dict.update(wav=wav)
-            
-        return output_dict
 
+        return output_dict

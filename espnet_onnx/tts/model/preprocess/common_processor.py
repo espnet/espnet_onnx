@@ -1,6 +1,7 @@
 import numpy as np
 from .text_cleaner import TextCleaner
 
+
 class CommonPreprocessor:
     def __init__(
         self,
