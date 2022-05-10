@@ -3,7 +3,7 @@ import pytest
 from pathlib import Path
 
 from espnet_onnx.utils.config import get_config
-from espnet_onnx.export import ModelExport
+from espnet_onnx.export import ASRModelExport
 
 from espnet2.asr.decoder.abs_decoder import AbsDecoder
 from espnet2.asr.decoder.rnn_decoder import RNNDecoder
@@ -71,7 +71,7 @@ def get_config_path(request):
 
 @pytest.fixture
 def model_export():
-    return ModelExport(Path.home() / ".cache" / "espnet_onnx")
+    return ASRModelExport(Path.home() / ".cache" / "espnet_onnx")
 
 
 @pytest.fixture
