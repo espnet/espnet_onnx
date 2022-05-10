@@ -38,7 +38,7 @@ from espnet_onnx.utils.config import (
 )
 
 
-class ModelExport:
+class ASRModelExport:
     def __init__(self, cache_dir: Union[Path, str] = None):
         assert check_argument_types()
         if cache_dir is None:
