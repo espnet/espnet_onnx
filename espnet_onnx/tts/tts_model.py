@@ -73,8 +73,11 @@ class Text2Speech(AbsTTSModel):
                 raise RuntimeError("Missing required argument: 'lids'")
             else:
                 options.update(lids=lids)
-        if feats is not None:
-            options.update(feats=feats)
+        if self.tts_model.use_feats:
+            if feats is None:
+                raise RuntimeError("Missing required argument: 'feats'")
+            else:
+                options.update(feats=feats)
         
         # preprocess text
         text = self.preprocess(text)

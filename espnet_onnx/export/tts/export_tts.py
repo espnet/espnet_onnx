@@ -34,6 +34,7 @@ class TTSModelExport:
             cache_dir = Path.home() / ".cache" / "espnet_onnx"
 
         self.cache_dir = Path(cache_dir)
+        self.export_config = dict()
 
     def export(
         self,
@@ -53,15 +54,15 @@ class TTSModelExport:
         model_config = self._create_config(model, export_dir)
 
         # export encoder
-        tts_model = get_tts_model(model)
+        tts_model = get_tts_model(model, self.export_config)
         self._export_tts(tts_model, export_dir, verbose)
         model_config.update(tts_model=tts_model.get_model_config(export_dir))
 
         # export vocoder
-        if model.vocoder is not None:
-            voc_model = get_vocoder(model.vocoder)
-            self._export_vocoder(voc_model, export_dir, verbose)
-            model_config.update(vocoder=voc_model.get_model_config(export_dir))
+        # if model.vocoder is not None:
+        #     voc_model = get_vocoder(model.vocoder)
+        #     self._export_vocoder(voc_model, export_dir, verbose)
+        #     model_config.update(vocoder=voc_model.get_model_config(export_dir))
 
         if quantize:
             quantize_dir = base_dir / 'quantize'
@@ -87,6 +88,10 @@ class TTSModelExport:
         _t = tag_name if tag_name is not None else zip_file
         model = Text2Speech.from_pretrained(_t)
         self.export(model, tag_name, quantize)
+    
+    def set_export_config(self, **kwargs):
+        for k,v in kwargs.items():
+            self.export_config[k] = v
 
     def _create_config(self, model, path):
         ret = {}
@@ -108,7 +113,7 @@ class TTSModelExport:
             opset_version=11,
             input_names=model.get_input_names(),
             output_names=model.get_output_names(),
-            dynamic_axes=model.get_dynamic_axes()
+            dynamic_axes=model.get_dynamic_axes(),
         )
 
     def _export_tts(self, model, path, verbose):
@@ -117,21 +122,11 @@ class TTSModelExport:
             logging.info(f'TTS model is saved in {file_name}')
         self._export_model(model, file_name, verbose)
         
-        # export submodels
-        for sm in model.get_submodel():
-            self._export_submodel(sm, path, verbose)
-
-    def _export_submodel(self, model, path, verbose):
-        file_name = os.path.join(path, model.get_model_name() + '.onnx')
-        if verbose:
-            logging.info(f'{model.get_model_name()} is saved in {file_name}')
-        self._export_model(model, file_name, verbose)
-
-    def _export_vocoder(self, model, path, verbose):
-        file_name = os.path.join(path, 'vocoder.onnx')
-        if verbose:
-            logging.info(f'Vocoder model is saved in {file_name}')
-        self._export_model(model, file_name, verbose, enc_size)
+    # def _export_vocoder(self, model, path, verbose):
+    #     file_name = os.path.join(path, 'vocoder.onnx')
+    #     if verbose:
+    #         logging.info(f'Vocoder model is saved in {file_name}')
+    #     self._export_model(model, file_name, verbose, enc_size)
 
     def _quantize_model(self, model_from, model_to, verbose):
         if verbose:

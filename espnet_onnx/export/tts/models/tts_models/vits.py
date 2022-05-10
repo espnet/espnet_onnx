@@ -1,149 +1,110 @@
 
 from typing import (
-    Union,
-    Tuple,
-    Optional
+    Optional,
+    Tuple
 )
 
 import math
-import warnings
-
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
-try:
-    from espnet2.gan_tts.vits.monotonic_align.core import maximum_path_c
-
-    is_cython_avalable = True
-except ImportError:
-    is_cython_avalable = False
-    warnings.warn(
-        "Cython version is not available. Fallback to 'EXPERIMETAL' numba version. "
-        "If you want to use the cython version, please build it as follows: "
-        "`cd espnet2/gan_tts/vits/monotonic_align; python setup.py build_ext --inplace`"
-    )
-    
-from espnet2.gan_tts.vits.monotonic_align import maximum_path_numba
-from espnet2.gan_tts.vits.flow import (
-    FlipFlow,
-    ConvFlow
-)
-from espnet.nets.pytorch_backend.nets_utils import make_non_pad_mask
 from espnet_onnx.export.asr.models.language_models.lm import get_pos_emb
+from espnet_onnx.utils.torch_function import make_pad_mask
 
-from ..abs_model import AbsModel, AbsSubModel
-
-def maximum_path(neg_x_ent: torch.Tensor, attn_mask: torch.Tensor, path: torch.Tensor) -> torch.Tensor:
-    """Calculate maximum path.
-    Args:
-        neg_x_ent (Tensor): Negative X entropy tensor (B, T_feats, T_text).
-        attn_mask (Tensor): Attention mask (B, T_feats, T_text).
-        path (Tensor): Path. np.zeros(neg_x_ent.shape)
-    Returns:
-        Tensor: Maximum path tensor (B, T_feats, T_text).
-    """
-    device, dtype = neg_x_ent.device, neg_x_ent.dtype
-    neg_x_ent = neg_x_ent.cpu().numpy().astype(np.float32)
-    t_t_max = attn_mask.sum(1)[:, 0].cpu().numpy().astype(np.int32)
-    t_s_max = attn_mask.sum(2)[:, 0].cpu().numpy().astype(np.int32)
-    if is_cython_avalable:
-        maximum_path_c(path, neg_x_ent, t_t_max, t_s_max)
-    else:
-        maximum_path_numba(path, neg_x_ent, t_t_max, t_s_max)
-
-    return torch.from_numpy(path).to(device=device, dtype=dtype)
+from ..abs_model import AbsModel
 
 
-class TextEncoder(nn.Module):
+class OnnxTextEncoder(nn.Module):
     def __init__(self, model):
         super().__init__()
-        self.attention_dim = model.attention_dim
-        self.emb = model.emb
-        self.encoder = model.encoder
-        self.encoder.embed[0] = get_pos_emb(self.encoder.embed[0])
-        self.proj = model.proj
+        self.model = model
     
-    def forward(self, text, x_mask):
-        x = self.emb(text) * math.sqrt(self.attention_dim)
+    def forward(self, x, x_lengths):
+        x = self.model.emb(x) * math.sqrt(self.model.attention_dim)
+        x_mask = 1 - make_pad_mask(x_lengths).unsqueeze(1).type(torch.float32)
         # encoder assume the channel last (B, T_text, attention_dim)
         # but mask shape shoud be (B, 1, T_text)
-        x, _ = self.encoder(x, x_mask)
+        x, _ = self.model.encoder(x, x_mask)
 
         # convert the channel first (B, attention_dim, T_text)
         x = x.transpose(1, 2)
-        stats = self.proj(x) * x_mask
+        stats = self.model.proj(x) * x_mask
         m, logs = stats.split(stats.size(1) // 2, dim=1)
 
-        return x, m, logs
-
-
-class PosteriorEncoder(nn.Module):
-    def __init__(self, model):
-        super().__init__()
-        self.input_conv = model.input_conv
-        self.encoder = model.encoder
-        self.proj = model.proj
-    
-    def forward(self, x, x_mask, g=None):
-        x = self.input_conv(x) * x_mask
-        x = self.encoder(x, x_mask, g=g)
-        stats = self.proj(x) * x_mask
-        m, logs = stats.split(stats.size(1) // 2, dim=1)
-        z = (m + torch.randn_like(m) * torch.exp(logs)) * x_mask
-        return z, m, logs
+        return x, m, logs, x_mask
 
 
 class OnnxVITSGenerator(nn.Module):
-    def __init__(self, model, use_teacher_forcing):
-        # HP
+    def __init__(self, model):
         super().__init__()
-        self.use_teacher_forcing = use_teacher_forcing
-
-        # models
-        self.posterior_encoder = PosteriorEncoder(model.posterior_encoder)
-        self.flow = model.flow
-        self._fix_flows() # remove torch.flip() from onnx model.
+        self.text_encoder = OnnxTextEncoder(model.text_encoder)
         self.decoder = model.decoder
+        self.posterior_encoder = model.posterior_encoder
+        self.flow = model.flow
         self.duration_predictor = model.duration_predictor
-        
-    def _fix_flows(self):
-        # since it seems utorch.flip contains a bug in onnx conversion.
-        # So I will flip weight/bias of conv to avoid torch.flip.
-        flip = False
-        new_flows = nn.ModuleList()
-        for f in self.flow.flows:
-            if isinstance(f, FlipFlow):
-                if not flip:
-                    flip = True
-            elif isinstance(f, ConvFlow) and flip:
-                f.input_conv.weight = \
-                    nn.Parameter(torch.flip(f.input_conv.weight, [1]))
-                new_flows.append(f)
-            else:
-                new_flows.append(f)
-        self.flow.flows = new_flows
-
+        self.model = model
+    
     def forward(
         self,
-        m_p: Optional[torch.Tensor],
-        logs_p: Optional[torch.Tensor],
-        g: torch.Tensor,
-        x_mask: torch.Tensor,
-        y_mask: torch.Tensor,
-        path: torch.Tensor,
-        z_mp: torch.Tensor = None,
+        text: torch.Tensor,
+        text_lengths: torch.Tensor,
         feats: Optional[torch.Tensor] = None,
+        feats_lengths: Optional[torch.Tensor] = None,
+        sids: Optional[torch.Tensor] = None,
+        spembs: Optional[torch.Tensor] = None,
+        lids: Optional[torch.Tensor] = None,
         dur: Optional[torch.Tensor] = None,
         noise_scale: float = 0.667,
         noise_scale_dur: float = 0.8,
         alpha: float = 1.0,
-        max_len: int = None
-    ):
-        if self.use_teacher_forcing:
+        max_len: Optional[int] = None,
+        use_teacher_forcing: bool = False,
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Run inference.
+        Args:
+            text (Tensor): Input text index tensor (B, T_text,).
+            text_lengths (Tensor): Text length tensor (B,).
+            feats (Tensor): Feature tensor (B, aux_channels, T_feats,).
+            feats_lengths (Tensor): Feature length tensor (B,).
+            sids (Optional[Tensor]): Speaker index tensor (B,) or (B, 1).
+            spembs (Optional[Tensor]): Speaker embedding tensor (B, spk_embed_dim).
+            lids (Optional[Tensor]): Language index tensor (B,) or (B, 1).
+            dur (Optional[Tensor]): Ground-truth duration (B, T_text,). If provided,
+                skip the prediction of durations (i.e., teacher forcing).
+            noise_scale (float): Noise scale parameter for flow.
+            noise_scale_dur (float): Noise scale parameter for duration predictor.
+            alpha (float): Alpha parameter to control the speed of generated speech.
+            max_len (Optional[int]): Maximum length of acoustic feature sequence.
+            use_teacher_forcing (bool): Whether to use teacher forcing.
+        Returns:
+            Tensor: Generated waveform tensor (B, T_wav).
+            Tensor: Monotonic attention weight tensor (B, T_feats, T_text).
+            Tensor: Duration tensor (B, T_text).
+        """
+        # encoder
+        x, m_p, logs_p, x_mask = self.text_encoder(text, text_lengths)
+        g = None
+        if self.model.spks is not None:
+            # (B, global_channels, 1)
+            g = self.model.global_emb(sids.view(-1)).unsqueeze(-1)
+        if self.model.spk_embed_dim is not None:
+            # (B, global_channels, 1)
+            g_ = self.model.spemb_proj(F.normalize(spembs.unsqueeze(0))).unsqueeze(-1)
+            if g is None:
+                g = g_
+            else:
+                g = g + g_
+        if self.model.langs is not None:
+            # (B, global_channels, 1)
+            g_ = self.model.lang_emb(lids.view(-1)).unsqueeze(-1)
+            if g is None:
+                g = g_
+            else:
+                g = g + g_
+
+        if use_teacher_forcing:
             # forward posterior encoder
-            z, m_q, logs_q = self.posterior_encoder(
-                feats, y_mask, g=g)
+            z, m_q, logs_q, y_mask = self.posterior_encoder(feats, feats_lengths, g=g)
 
             # forward flow
             z_p = self.flow(z, y_mask, g=g)  # (B, H, T_feats)
@@ -175,22 +136,32 @@ class OnnxVITSGenerator(nn.Module):
             # (B, T_feats, T_text)
             neg_x_ent = neg_x_ent_1 + neg_x_ent_2 + neg_x_ent_3 + neg_x_ent_4
             # (B, 1, T_feats, T_text)
-            attn_mask = torch.unsqueeze(
-                x_mask, 2) * torch.unsqueeze(y_mask, -1)
+            attn_mask = torch.unsqueeze(x_mask, 2) * torch.unsqueeze(y_mask, -1)
             # monotonic attention weight: (B, 1, T_feats, T_text)
-            attn = maximum_path(
+            attn = self.model.maximum_path(
                 neg_x_ent,
                 attn_mask.squeeze(1),
-                path,
             ).unsqueeze(1)
-            dur = attn.sum(2).squeeze(1)  # (B, 1, T_text) -> (B, T_text)
+            dur = attn.sum(2)  # (B, 1, T_text)
 
             # forward decoder with random segments
             wav = self.decoder(z * y_mask, g=g)
         else:
-            # duration, y_mask is computed outside this onnx model.
-            attn_mask = x_mask.unsqueeze(2) * y_mask.unsqueeze(-1)
-            attn = self._generate_path(dur, attn_mask, path)
+            # duration
+            if dur is None:
+                logw = self.duration_predictor(
+                    x,
+                    x_mask,
+                    g=g,
+                    inverse=True,
+                    noise_scale=noise_scale_dur,
+                )
+                w = torch.exp(logw) * x_mask * alpha
+                dur = torch.ceil(w)
+            y_lengths = torch.clamp_min(torch.sum(dur, [1, 2]), 1).long()
+            y_mask = 1 - make_pad_mask(y_lengths).unsqueeze(1).type(torch.float32)
+            attn_mask = torch.unsqueeze(x_mask, 2) * torch.unsqueeze(y_mask, -1)
+            attn = self.model._generate_path(dur, attn_mask)
 
             # expand the length to match with the feature sequence
             # (B, T_feats, T_text) x (B, T_text, H) -> (B, H, T_feats)
@@ -205,295 +176,120 @@ class OnnxVITSGenerator(nn.Module):
             ).transpose(1, 2)
 
             # decoder
-            z_p = m_p + z_mp * torch.exp(logs_p) * noise_scale
+            z_p = m_p + torch.randn_like(m_p) * torch.exp(logs_p) * noise_scale
             z = self.flow(z_p, y_mask, g=g, inverse=True)
             wav = self.decoder((z * y_mask)[:, :, :max_len], g=g)
-            
-        return wav.squeeze(1), attn.squeeze(1), dur
 
-    def _generate_path(self, dur, mask, path):
-        """
-        t_y = mask.shape[2]
-        path = torch.arange(t_y, dtype=dur.dtype)
-        """
-        b, _, t_y, t_x = mask.shape
-        cum_dur = torch.cumsum(dur.unsqueeze(1), -1)
-        cum_dur_flat = cum_dur.view(b * t_x)
-        path = (path.unsqueeze(0) < cum_dur_flat.unsqueeze(1)).type(torch.float32)
-        path = path.view(b, t_x, t_y)
-        # path will be like (t_x = 3, t_y = 5):
-        # [[[1., 1., 0., 0., 0.],      [[[1., 1., 0., 0., 0.],
-        #   [1., 1., 1., 1., 0.],  -->   [0., 0., 1., 1., 0.],
-        #   [1., 1., 1., 1., 1.]]]       [0., 0., 0., 0., 1.]]]
-        path = (path * F.pad(path, [0, 0, 1, 0, 0, 0])[:, :-1]).type(torch.float32)
-        return path.unsqueeze(1).transpose(2, 3) * mask
+        return wav.squeeze(1), attn.squeeze(1), dur.squeeze(1)
 
 
-class OnnxVITSModel (nn.Module, AbsModel):
-    def __init__(self, model, use_teacher_forcing: bool = False):
+class OnnxVITSModel(nn.Module, AbsModel):
+    def __init__(
+        self,
+        model,
+        noise_scale: float = 0.667,
+        noise_scale_dur: float = 0.8,
+        alpha: float = 1.0,
+        max_len: int = None,
+        use_teacher_forcing: bool = False,
+        predict_duration: bool = False
+    ):
         super().__init__()
         self.model = model
-        self.generator = OnnxVITSGenerator(model.generator, use_teacher_forcing)
+        self.generator = OnnxVITSGenerator(model.generator)
         self.use_teacher_forcing = use_teacher_forcing
-        self.require_sids = model.generator.spks is not None
-        self.require_lids = model.generator.langs is not None
-        self.noise_scale = 0.667
-        self.noise_scale_dur = 0.8
-        self.alpha = 1.0
-        self.y_mask_length = 0
-        self.max_len = None
-
+        self.noise_scale = noise_scale
+        self.noise_scale_dur = noise_scale_dur
+        self.alpha = alpha
+        self.max_len = max_len
+        self.predict_duration = predict_duration
+        
+        # fix RelPE
+        self.model.generator.text_encoder.encoder.embed[0] = \
+            get_pos_emb(self.model.generator.text_encoder.encoder.embed[0])
+        
     def forward(
         self,
-        m_p: Optional[torch.Tensor],
-        logs_p: Optional[torch.Tensor],
-        g: torch.Tensor,
-        x_mask: torch.Tensor,
-        y_mask: torch.Tensor,
-        path: torch.Tensor,
-        z_mp: torch.Tensor = None,
+        text: torch.Tensor,
+        text_lengths: torch.Tensor,
         feats: Optional[torch.Tensor] = None,
+        feats_lengths: Optional[torch.Tensor] = None,
+        sids: Optional[torch.Tensor] = None,
+        spembs: Optional[torch.Tensor] = None,
+        lids: Optional[torch.Tensor] = None,
         durations: Optional[torch.Tensor] = None,
     ):
-        if not self.use_teacher_forcing:
-            assert durations is not None
-
+        # setup
+        text = text[None]
+        
         if self.use_teacher_forcing:
-            # feats
             assert feats is not None
             feats = feats[None].transpose(1, 2)
-
-        wav, att_w, dur = self.generator(
-            m_p=m_p,
-            logs_p=logs_p,
-            g=g,
-            path=path,
-            x_mask=x_mask,
-            y_mask=y_mask,
-            feats=feats,
-            dur=durations,
-            z_mp=z_mp,
-            noise_scale=self.noise_scale,
-            noise_scale_dur=self.noise_scale_dur,
-            alpha=self.alpha,
-            max_len=self.max_len,
-        )
-        return wav.view(-1), att_w[0], durations
+            wav, att_w, dur = self.generator(
+                text=text,
+                text_lengths=text_lengths,
+                feats=feats,
+                feats_lengths=feats_lengths,
+                sids=sids,
+                spembs=spembs,
+                lids=lids,
+                max_len=self.max_len,
+                use_teacher_forcing=self.use_teacher_forcing,
+            )
+        else:
+            wav, att_w, dur = self.generator(
+                text=text,
+                text_lengths=text_lengths,
+                sids=sids,
+                spembs=spembs,
+                lids=lids,
+                dur=durations,
+                noise_scale=self.noise_scale,
+                noise_scale_dur=self.noise_scale_dur,
+                alpha=self.alpha,
+                max_len=self.max_len,
+            )
+        return dict(wav=wav.view(-1), att_w=att_w[0], duration=dur[0])
 
     def get_dummy_inputs(self):
-        ret = []
-        # _text = torch.LongTensor([0, 1]).unsqueeze(0)
-        _text_lengths = torch.tensor(
-            [2],
-            dtype=torch.long,
-        )
-        m_p = torch.randn(1, self.model.generator.text_encoder.attention_dim, _text_lengths)
-        logs_p = torch.randn(1, self.model.generator.text_encoder.attention_dim, _text_lengths)
-        x_mask = make_non_pad_mask(_text_lengths).unsqueeze(1).type(torch.float32)
-        if self.require_sids and self.require_lids:
-            g = torch.randn(1, self.model.generator.global_emb.embedding_dim, 1)
-        else: g = None
+        text = torch.LongTensor([0, 1])
+        text_length = torch.LongTensor([text.size(0)])
+        feats = torch.randn(5, self.model.generator.posterior_encoder.input_conv.in_channels) \
+            if self.use_teacher_forcing else None
+        feats_length = torch.LongTensor([5]) if feats is not None else None
         
-        ret += [m_p, logs_p, g, x_mask]
+        sids = torch.LongTensor([0]) \
+            if self.model.generator.spks is not None else None
         
-        if self.use_teacher_forcing:
-            feats = torch.randn(1,
-                self.generator.posterior_encoder.input_conv.in_channels, text.size(1))
-            feats_lengths = text_lengths
-            y_mask = make_non_pad_mask(feats_lengths).unsqueeze(1).type(torch.float32)
-            self.y_mask_length = int(feats_lengths)
-            path = torch.zeros(1, feats_lengths, text_lengths)
-            ret += [y_mask, path, None, feats, None]
-        else:
-            x = torch.randn(1, self.generator.duration_predictor.pre.in_channels, _text_lengths)
-            _logw = self.generator.duration_predictor(x, x_mask, inverse=True, noise_scale=self.noise_scale_dur)
-            _w = torch.exp(_logw) * x_mask * self.alpha
-            dur = torch.ceil(_w)
-            _y_length = torch.clamp_min(
-                torch.sum(dur, [1,2]), 1
-            ).long()
-            y_mask = make_non_pad_mask(_y_length).unsqueeze(1).type(torch.float32)
-            self.y_mask_length = int(_y_length)
-            _attn_mask = torch.unsqueeze(x_mask, 2) * torch.unsqueeze(y_mask, -1)
-            path = torch.arange(_attn_mask.shape[2])
-            z_mp = torch.randn(1, self.model.generator.text_encoder.attention_dim, y_mask.shape[2])
-            ret += [y_mask, path, z_mp, None, dur]
-
-        return tuple(ret)
+        spembs = torch.randn(self.model.generator.spk_embed_dim) \
+            if self.model.generator.spks is not None else None
+        
+        lids = torch.LongTensor([0]) \
+            if self.model.generator.langs is not None else None
+        
+        duration = torch.randn(text.size(0)) \
+            if self.predict_duration else None
+        
+        return (text, text_length, feats, feats_length, sids, spembs, lids, duration)
 
     def get_input_names(self):
-        return ['m_p', 'logs_p', 'x_mask', 'y_mask', 'path', 'z_mp', 'durations', 'feats']
+        return ['text', 'text_length', 'feats', 'feats_length', 'sids', 'spembs', 'lids', 'duration']
 
     def get_output_names(self):
-        return ['wav', 'att_w', 'out_duration']
-
-    def get_dynamic_axes(self):
-        ret = {}
-        ret.update({
-            'm_p': { 2: 'm_length' },
-            'z_mp': { 2: 'zm_length' },
-            'logs_p': { 2: 'logs_length' },
-            'x_mask': { 2: 'x_mask_length'},
-            'y_mask': { 2: 'y_mask_length'},
-            'wav': {0: 'wav_length'},
-            'att_w': {1: 'att_w_length'}
-        })
-        if self.use_teacher_forcing:
-            ret.update({
-                'feats': { 2: 'feats_length' },
-                'path': { 
-                    1: 'path_height',
-                    2: 'path_width'
-                }
-            })
-        else:
-            ret.update({
-                'path': { 0: 'path_width'},
-                'durations': {2: 'duration_length'}
-            })
-        
-        return ret
+        return ['wav', 'att_w', 'dur']
     
-    def get_submodel(self):
-        # VITS requires to separate DurationEstimator into another onnx model.
-        return [DurationPredictor(
-            self.model.generator,
-            self.model.generator.text_encoder,
-            noise_scale=self.noise_scale_dur
-        )]
-
+    def get_dynamic_axes(self):
+        return {
+            'text': {0: 'text_length'},
+            'feats': {0: 'feats_length'},
+            'wav': {0: 'wav_length'},
+            'att_w': {0: 'att_w_feat_length',
+                      1: 'att_w_text_length'},
+            'dur': {0: 'dur_length'}
+        }
+    
     def get_model_config(self, path):
         return {
-            'model_path': str(path / 'tts_model.onnx'),
             'model_type': 'VITS',
-            'use_teacher_forcing': self.use_teacher_forcing,
-            'submodel': {
-                'duration_predictor': {
-                    'model_path': str(path / 'duration_predictor.onnx'),
-                    'noise_scale': self.noise_scale,
-                },
-                "alpha": self.alpha
-            }
+            'model_path': str(path / 'tts_model.onnx')
         }
-
-
-class DurationPredictor(nn.Module, AbsSubModel):
-    def __init__(self, model, text_encoder, noise_scale=1.0):
-        # sub model for 
-        super().__init__()
-        self.duration_predictor = model.duration_predictor
-        self.text_encoder = TextEncoder(text_encoder)
-        self.noise_scale = noise_scale
-        self.spks = model.spks
-        self.spk_embed_dim = model.spk_embed_dim
-        self.langs = model.langs
-        flows = list(reversed(self.duration_predictor.flows))
-        self.flows = flows[:-2] + [flows[-1]]
-        self._fix_flows()
-        
-        if hasattr(model, 'global_conv'):
-            self.global_emb = model.global_emb
-        if hasattr(model, 'spemb_proj'):
-            self.spemb_proj = model.spemb_proj
-        if hasattr(model, 'lang_emb'):
-            self.lang_emb = model.lang_emb
-
-    def _fix_flows(self):
-        # since it seems utorch.flip contains a bug in onnx conversion.
-        # So I will flip weight/bias of conv to avoid torch.flip.
-        flip = False
-        new_flows = nn.ModuleList()
-        for f in self.flows:
-            if isinstance(f, FlipFlow):
-                if not flip:
-                    flip = True
-            elif isinstance(f, ConvFlow) and flip:
-                f.input_conv.weight = \
-                    nn.Parameter(torch.flip(f.input_conv.weight, [1]))
-                new_flows.append(f)
-            else:
-                new_flows.append(f)
-        self.flows = new_flows
-
-    def forward(self, text, x_mask, z, sids, spembs, lids):
-        x, m_p, logs_p = self.text_encoder(text, x_mask)
-        g = None
-        if self.spks is not None:
-            # (B, global_channels, 1)
-            g = self.global_emb(sids.view(-1)).unsqueeze(-1)
-        if self.spk_embed_dim is not None:
-            # (B, global_channels, 1)
-            g_ = self.spemb_proj(F.normalize(
-                spembs.unsqueeze(0))).unsqueeze(-1)
-            if g is None:
-                g = g_
-            else:
-                g = g + g_
-        if self.langs is not None:
-            # (B, global_channels, 1)
-            g_ = self.lang_emb(lids.view(-1)).unsqueeze(-1)
-            if g is None:
-                g = g_
-            else:
-                g = g + g_
-
-        x = self.duration_predictor.pre(x)
-        if g is not None:
-            x = x + self.duration_predictor.global_conv(g)
-        x = self.duration_predictor.dds(x, x_mask)
-        x = self.duration_predictor.proj(x) * x_mask
-        
-        for flow in self.flows:
-            z = flow(z, x_mask, g=x, inverse=True)
-            
-        z0, z1 = z.split(1, 1)
-        logw = z0
-        return logw, m_p, logs_p, g
-
-    def get_dummy_inputs(self):
-        ret = []
-        # text = [0, 1]
-        x = torch.LongTensor([0, 1]).unsqueeze(0)
-        _text_lengths = torch.tensor(
-            [2],
-            dtype=torch.long,
-        )
-        x_mask = make_non_pad_mask(_text_lengths).unsqueeze(1).type(torch.float32)
-        z = torch.randn(1, 2, _text_lengths)* self.noise_scale
-        ret += [x, x_mask, z]
-        
-        if self.spks is not None:
-            sids = torch.LongTensor([0]).unsqueeze(0)
-            spemb = torch.randn(1, self.generator.spemb_proj.in_features)
-            ret += [sids, spemb]
-        else:
-            ret += [None, None]
-        
-        if self.langs is not None:
-            lids = torch.LongTensor([0]).unsqueeze(0)
-            ret += [lids]
-        else:
-            ret += [None]
-        
-        return tuple(ret)
-    
-    def get_input_names(self):
-        return ['text', 'x_mask', 'z', 'sids', 'spemb', 'lids']
-
-    def get_output_names(self):
-        if (self.spks is not None) and (self.langs is not None):
-            return ['logw', 'm_p', 'logs_p', 'g']
-        else:
-            return ['logw', 'm_p', 'logs_p']
-
-    def get_dynamic_axes(self):
-        return {
-            'text': {1: 'text_length'},
-            'x_mask': { 2: 'x_mask_length'},
-            'z': {2: 'z_length'},
-            'm_p': {2: 'm_length'},
-            'logs_p': {2: 'logs_length'},
-        }
-
-    def get_model_name(self):
-        return 'duration_predictor'
