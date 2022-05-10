@@ -17,26 +17,6 @@
 | ------------------------------------------ | --------- |
 | ParallelWaveGAN                            | x         |
 
-**feats_extractl**
-
-| arch name       | supported |
-| --------------- | --------- |
-| LogMelFbank | x         |
-| LogSpectrogram   | x        |
-| LinearSpectrogram   | x         |
-
-**pitch_extract**
-
-| arch name       | supported |
-| --------------- | --------- |
-| Dio | x         |
-
-**energy_extract**
-
-| arch name    | supported |
-| ------------ | --------- |
-| Energy    | x         |
-
 **PositionalEmbedding**
 
 | arch name                   | supported |
@@ -46,10 +26,4 @@
 | LegacyRelPositionalEncoding | ◯         |
 | RelPositionalEncoding       | ◯         |
 | StreamPositionalEncoding    | ◯         |
-
-**normalize**
-
-| arch name               | supported |
-| ----------------------- | --------- |
-| GlobalMVN                   | ◯         |
 
