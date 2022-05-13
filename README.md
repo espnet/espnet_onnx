@@ -9,10 +9,6 @@
 Utility library to easily export espnet models to onnx format.
 There is no need to install PyTorch or ESPNet on your machine if you already have exported files!
 
-**Note**
-
-Currently TTS is not supported.
-
 ## Install
 
 1. `espnet_onnx` can be installed with pip
