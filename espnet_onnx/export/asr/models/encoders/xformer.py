@@ -12,7 +12,7 @@ from espnet2.asr.frontend.default import DefaultFrontend
 from espnet2.layers.global_mvn import GlobalMVN
 from espnet2.layers.utterance_mvn import UtteranceMVN
 
-from espnet_onnx.utils.function import make_pad_mask
+from espnet_onnx.utils.torch_function import make_pad_mask
 from ..language_models.embed import Embedding
 from ..abs_model import AbsModel
 
@@ -23,7 +23,8 @@ class XformerEncoder(nn.Module, AbsModel):
         self.embed = Embedding(model.embed)
         self.model = model
 
-    def forward(self, feats, mask):
+    def forward(self, feats, feats_length):
+        mask = 1 - make_pad_mask(feats_length).unsqueeze(1)
         if (
             isinstance(self.model.embed, Conv2dSubsampling)
             or isinstance(self.model.embed, Conv2dSubsampling2)
@@ -49,12 +50,11 @@ class XformerEncoder(nn.Module, AbsModel):
 
     def get_dummy_inputs(self):
         feats = torch.randn(1, 100, 80)
-        mask = torch.from_numpy(make_pad_mask(
-            np.array([feats.shape[1]]))[:, None, :])
-        return (feats, mask)
+        feats_lengths = torch.LongTensor([feats.size(1)])
+        return (feats, feats_lengths)
 
     def get_input_names(self):
-        return ['feats', 'mask']
+        return ['feats', 'feats_length']
 
     def get_output_names(self):
         return ['encoder_out', 'encoder_out_lens']
@@ -64,8 +64,8 @@ class XformerEncoder(nn.Module, AbsModel):
             'feats': {
                 1: 'feats_length'
             },
-            'mask': {
-                2: 'mask_length'
+            'encoder_out': {
+                1: 'enc_out_length'
             }
         }
 
