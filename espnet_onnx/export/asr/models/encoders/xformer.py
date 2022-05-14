@@ -18,11 +18,18 @@ from espnet_onnx.utils.abs_model import AbsExportModel
 
 
 class XformerEncoder(nn.Module, AbsExportModel):
-    def __init__(self, model, max_seq_len=512, **kwargs):
+    def __init__(
+        self,
+        model,
+        max_seq_len=512,
+        feats_dim=80, 
+        **kwargs
+    ):
         super().__init__()
         self.embed = Embedding(model.embed, max_seq_len)
         self.model = model
         self.make_pad_mask = MakePadMask(max_seq_len)
+        self.feats_dim = feats_dim
 
     def forward(self, feats, feats_length):
         mask = 1 - self.make_pad_mask(feats_length).unsqueeze(1)
@@ -50,7 +57,7 @@ class XformerEncoder(nn.Module, AbsExportModel):
         return self.model.encoders[0].size
 
     def get_dummy_inputs(self):
-        feats = torch.randn(1, 100, 80)
+        feats = torch.randn(1, 100, self.feats_dim)
         feats_lengths = torch.LongTensor([feats.size(1)])
         return (feats, feats_lengths)
 

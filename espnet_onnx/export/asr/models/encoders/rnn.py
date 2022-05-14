@@ -130,10 +130,11 @@ class RNNEncoderLayer(nn.Module):
 
 
 class RNNEncoder(nn.Module, AbsExportModel):
-    def __init__(self, model, **kwargs):
+    def __init__(self, model, feats_dim=80, **kwargs):
         super().__init__()
         self.model = model
         self.enc = nn.ModuleList()
+        self.feats_dim = feats_dim
         for e in model.enc:
             self.enc.append(RNNEncoderLayer(e))
 
@@ -148,7 +149,7 @@ class RNNEncoder(nn.Module, AbsExportModel):
         return self.model._output_size
 
     def get_dummy_inputs(self):
-        feats = torch.randn(1, 100, 80)
+        feats = torch.randn(1, 100, self.feats_dim)
         feats_length = torch.LongTensor([feats.size(1)])
         return (feats, feats_length)
 

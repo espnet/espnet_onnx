@@ -29,6 +29,7 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
     def __init__(
         self,
         model,
+        feats_dim=80,
         **kwargs
     ):
         super().__init__()
@@ -54,6 +55,9 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
         self.overlap_size = self.block_size - self.hop_size
         self.offset = self.block_size - self.look_ahead - self.hop_size
         self.xscale = model.pos_enc.xscale
+        
+        # for export configuration
+        self.feats_dim = feats_dim
 
     def output_size(self) -> int:
         return self._output_size
@@ -124,7 +128,7 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
         return self._output_size
 
     def get_dummy_inputs(self):
-        n_feats = 80
+        n_feats = self.feats_dim
         xs_pad = torch.randn(1, self.hop_size*self.subsample, n_feats)
         mask = torch.ones(1, 1, self.block_size + 2, self.block_size + 2)
         o = self.compute_embed(xs_pad)
