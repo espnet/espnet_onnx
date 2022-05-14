@@ -290,7 +290,7 @@ class BatchBeamSearch(BeamSearch):
                     ),
                 )
             )
-            
+
             running_hyps.yseq.resize(yseq_eos.shape, refcheck=False)
             running_hyps.yseq[:] = yseq_eos
             running_hyps.length[:] = yseq_eos.shape[1]
@@ -298,7 +298,8 @@ class BatchBeamSearch(BeamSearch):
         # add ended hypotheses to a final list, and removed them from current hypotheses
         # (this will be a probmlem, number of hyps < beam)
         is_eos = (
-            running_hyps.yseq[np.arange(n_batch), (running_hyps.length - 1).astype(np.int64)]
+            running_hyps.yseq[np.arange(
+                n_batch), (running_hyps.length - 1).astype(np.int64)]
             == self.eos
         )
         for b in np.transpose(np.nonzero(is_eos)).reshape(-1):
