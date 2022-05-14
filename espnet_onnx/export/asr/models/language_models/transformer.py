@@ -7,6 +7,7 @@ from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsamplin
 
 from espnet_onnx.utils.function import subsequent_mask
 from ..abs_model import AbsModel
+from .embed import Embedding
 
 
 class TransformerLM(nn.Module):
@@ -54,7 +55,7 @@ class TransformerLM(nn.Module):
         return ['y'] \
             + ['out_cache_%d' % i for i in range(len(self.encoder.encoders))]
 
-    def get_dynamix_axes(self):
+    def get_dynamic_axes(self):
         ret = {
             'tgt': {
                 0: 'tgt_batch',
