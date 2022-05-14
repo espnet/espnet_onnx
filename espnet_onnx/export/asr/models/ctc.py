@@ -4,10 +4,10 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from .abs_model import AbsModel
+from espnet_onnx.utils.abs_model import AbsExportModel
 
 
-class CTC(nn.Module, AbsModel):
+class CTC(nn.Module, AbsExportModel):
     def __init__(self, model):
         super().__init__()
         self.model = model

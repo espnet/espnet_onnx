@@ -6,11 +6,11 @@ import torch.nn as nn
 from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling
 
 from espnet_onnx.utils.function import subsequent_mask
-from ..abs_model import AbsModel
+from espnet_onnx.utils.abs_model import AbsExportModel
 from .embed import Embedding
 
 
-class TransformerLM(nn.Module):
+class TransformerLM(nn.Module, AbsExportModel):
     def __init__(self, model):
         super().__init__()
         self.embed = Embedding(model.embed)

@@ -108,7 +108,7 @@ class TTSModelExport:
             dummy_input,
             file_name,
             verbose=verbose,
-            opset_version=11,
+            opset_version=15,
             input_names=model.get_input_names(),
             output_names=model.get_output_names(),
             dynamic_axes=model.get_dynamic_axes(),

@@ -3,10 +3,10 @@ import os
 import torch
 import torch.nn as nn
 
-from ..abs_model import AbsModel
+from espnet_onnx.utils.abs_model import AbsExportModel
 
 
-class SequentialRNNLM(nn.Module, AbsModel):
+class SequentialRNNLM(nn.Module, AbsExportModel):
     def __init__(self, model):
         super().__init__()
         self.encoder = model.encoder

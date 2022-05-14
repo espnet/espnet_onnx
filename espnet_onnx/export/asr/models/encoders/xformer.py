@@ -14,10 +14,10 @@ from espnet2.layers.utterance_mvn import UtteranceMVN
 
 from espnet_onnx.utils.torch_function import make_pad_mask
 from ..language_models.embed import Embedding
-from ..abs_model import AbsModel
+from espnet_onnx.utils.abs_model import AbsExportModel
 
 
-class XformerEncoder(nn.Module, AbsModel):
+class XformerEncoder(nn.Module, AbsExportModel):
     def __init__(self, model):
         super().__init__()
         self.embed = Embedding(model.embed)

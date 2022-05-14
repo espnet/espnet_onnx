@@ -20,10 +20,10 @@ from espnet2.asr.frontend.default import DefaultFrontend
 from espnet2.layers.global_mvn import GlobalMVN
 from espnet2.layers.utterance_mvn import UtteranceMVN
 
-from ..abs_model import AbsModel
+from espnet_onnx.utils.abs_model import AbsExportModel
 
 
-class ContextualBlockXformerEncoder(nn.Module, AbsModel):
+class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
     """Contextual Block Conformer encoder module.
     """
     def __init__(

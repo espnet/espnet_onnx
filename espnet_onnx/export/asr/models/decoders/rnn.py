@@ -9,7 +9,7 @@ from espnet.nets.pytorch_backend.rnn.attentions import NoAtt
 
 from espnet_onnx.utils.function import make_pad_mask
 from .attention import get_attention, OnnxNoAtt
-from ..abs_model import AbsModel
+from espnet_onnx.utils.abs_model import AbsExportModel
 
 
 def _apply_attention_constraint(
@@ -30,7 +30,7 @@ def _apply_attention_constraint(
     return e
 
 
-class PreDecoder(nn.Module, AbsModel):
+class PreDecoder(nn.Module, AbsExportModel):
     def __init__(self, model):
         super().__init__()
         if isinstance(model, NoAtt):
@@ -68,7 +68,7 @@ class PreDecoder(nn.Module, AbsModel):
         }
 
 
-class RNNDecoder(nn.Module, AbsModel):
+class RNNDecoder(nn.Module, AbsExportModel):
     def __init__(self, model):
         super().__init__()
         self.embed = model.embed

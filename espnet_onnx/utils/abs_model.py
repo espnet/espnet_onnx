@@ -64,3 +64,20 @@ class AbsModel(ABC):
                 'Inference will be executed on the CPU. Please provide gpu providers. Read `How to use GPU on espnet_onnx` in readme in detail.')
 
         logging.info(f'Providers [{" ,".join(providers)}] detected.')
+
+
+class AbsExportModel(ABC):
+    def forward(self, *args, **kwargs):
+        raise NotImplementedError
+
+    def get_input_names(self):
+        raise NotImplementedError
+
+    def get_output_names(self):
+        raise NotImplementedError
+
+    def get_dynamix_axes(self):
+        return {}
+
+    def get_model_config(self):
+        raise NotImplementedError

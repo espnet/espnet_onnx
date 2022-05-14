@@ -17,7 +17,7 @@ from espnet2.asr.frontend.default import DefaultFrontend
 from espnet2.layers.global_mvn import GlobalMVN
 from espnet2.layers.utterance_mvn import UtteranceMVN
 
-from ..abs_model import AbsModel
+from espnet_onnx.utils.abs_model import AbsExportModel
 
 
 class OnnxRNNP(nn.Module):
@@ -129,7 +129,7 @@ class RNNEncoderLayer(nn.Module):
         return self.layer(*args, **kwargs)
 
 
-class RNNEncoder(nn.Module, AbsModel):
+class RNNEncoder(nn.Module, AbsExportModel):
     def __init__(self, model):
         super().__init__()
         self.model = model

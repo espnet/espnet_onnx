@@ -10,8 +10,7 @@ import torch.nn as nn
 
 from espnet_onnx.export.asr.models.language_models.embed import get_pos_emb
 from espnet_onnx.utils.torch_function import make_pad_mask
-
-from ..abs_model import AbsModel
+from espnet_onnx.utils.abs_model import AbsExportModel
 
 
 class OnnxTextEncoder(nn.Module):
@@ -190,7 +189,7 @@ class OnnxVITSGenerator(nn.Module):
         return wav.squeeze(1), attn.squeeze(1), dur.squeeze(1)
 
 
-class OnnxVITSModel(nn.Module, AbsModel):
+class OnnxVITSModel(nn.Module, AbsExportModel):
     def __init__(
         self,
         model,

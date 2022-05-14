@@ -7,10 +7,10 @@ from espnet2.asr.decoder.transformer_decoder import TransformerDecoder
 
 from espnet_onnx.utils.function import subsequent_mask
 from ..language_models.embed import Embedding
-from ..abs_model import AbsModel
+from espnet_onnx.utils.abs_model import AbsExportModel
 
 
-class XformerDecoder(nn.Module, AbsModel):
+class XformerDecoder(nn.Module, AbsExportModel):
     def __init__(self, model):
         super().__init__()
         self.embed = Embedding(model.embed)
