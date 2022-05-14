@@ -9,10 +9,13 @@ from typeguard import check_argument_types
 import numpy as np
 import onnxruntime
 
-from espnet_onnx.tts.abs_tts_model import AbsTTSModel
+from espnet_onnx.utils.abs_model import AbsModel
+from espnet_onnx.tts.model.preprocess.common_processor import CommonPreprocessor
+from espnet_onnx.tts.model.duration_calculator import DurationCalculator
+from espnet_onnx.tts.model.tts_model import get_tts_model
 
 
-class Text2Speech(AbsTTSModel):
+class Text2Speech(AbsModel):
     """Wrapper class for espnet2.asr.bin.tts_inference.Text2Speech
 
     """
@@ -37,6 +40,22 @@ class Text2Speech(AbsTTSModel):
                 'Configuration for quantized model is not defined.')
 
         self._build_model(providers, use_quantized)
+    
+    def _build_model(self, providers, use_quantized):
+        # build tts model such as vits
+        self.tts_model = get_tts_model(
+            self.config.tts_model, providers, use_quantized)
+
+        self._build_tokenizer()
+        self._build_token_converter()
+        self.preprocess = CommonPreprocessor(
+            tokenizer=self.tokenizer,
+            token_id_converter=self.converter,
+            cleaner_config=self.config.text_cleaner,
+        )
+        self.duration_calculator = DurationCalculator()
+        # vocoder is currently not supported
+        # self.vocoder is get_vocoder()
 
     def __call__(
         self,

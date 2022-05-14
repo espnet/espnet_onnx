@@ -107,14 +107,3 @@ class Speech2Text(AbsASRModel):
             results.append((text, token, token_int, hyp))
 
         return results
-
-    def _check_ort_version(self, providers: List[str]):
-        # check cpu
-        if onnxruntime.get_device() == 'CPU' and 'CPUExecutionProvider' not in providers:
-            raise RuntimeError('If you want to use GPU, then follow `How to use GPU on espnet_onnx` chapter in readme to install onnxruntime-gpu.')
-        
-        # check GPU
-        if onnxruntime.get_device() == 'GPU' and providers == ['CPUExecutionProvider']:
-            warnings.warn('Inference will be executed on the CPU. Please provide gpu providers. Read `How to use GPU on espnet_onnx` in readme in detail.')
-        
-        logging.info(f'Providers [{" ,".join(providers)}] detected.')
