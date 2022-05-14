@@ -59,7 +59,7 @@ class SequentialRNNLM(nn.Module, AbsModel):
         else:
             return ['y', 'out_hidden1']
 
-    def get_dynamix_axes(self):
+    def get_dynamic_axes(self):
         ret = {
             'x': {
                 0: 'x_batch',
