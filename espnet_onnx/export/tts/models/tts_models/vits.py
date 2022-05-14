@@ -8,7 +8,7 @@ import math
 import torch
 import torch.nn as nn
 
-from espnet_onnx.export.asr.models.language_models.lm import get_pos_emb
+from espnet_onnx.export.asr.models.language_models.embed import get_pos_emb
 from espnet_onnx.utils.torch_function import make_pad_mask
 
 from ..abs_model import AbsModel

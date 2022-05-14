@@ -93,16 +93,15 @@ class ASRModelExport:
         model_config.update(ctc=ctc_model.get_model_config(export_dir))
 
         # export lm
-        export_lm = False
+        lm_model = None
         if not model.asr_model.use_transducer_decoder:
-            if 'lm' in model.beam_search.full_scorers.keys():
-                export_lm = True
+            if 'lm' in model.beam_search.scorers.keys():
+                lm_model = get_lm(model.beam_search.scorers['lm'])
         else:
             if model.beam_search_transducer.use_lm:
-                export_lm = True
+                lm_model = get_lm(model.beam_search_transducer.lm)
         
-        if export_lm:
-            lm_model = get_lm(model.beam_search.full_scorers['lm'])
+        if lm_model is not None:
             self._export_lm(lm_model, export_dir, verbose)
             model_config.update(lm=lm_model.get_model_config(export_dir))
         else:
@@ -131,10 +130,7 @@ class ASRModelExport:
     
     def export_from_zip(self, path: Union[Path, str], tag_name: str, quantize: bool = False):
         assert check_argument_types()
-        cache_dir = Path(path).parent
-        d = ModelDownloader(cache_dir)
-        model_config = d.unpack_local_file(path)
-        model = Speech2Text(**model_config)
+        model = Speech2Text.from_pretrained(path)
         self.export(model, tag_name, quantize)
 
     def _create_config(self, model, path):
@@ -171,7 +167,7 @@ class ASRModelExport:
             dummy_input,
             file_name,
             verbose=verbose,
-            opset_version=11,
+            opset_version=15,
             input_names=model.get_input_names(),
             output_names=model.get_output_names(),
             dynamic_axes=model.get_dynamic_axes()

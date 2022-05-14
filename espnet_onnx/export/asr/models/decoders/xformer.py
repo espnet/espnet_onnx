@@ -6,7 +6,7 @@ import torch.nn as nn
 from espnet2.asr.decoder.transformer_decoder import TransformerDecoder
 
 from espnet_onnx.utils.function import subsequent_mask
-from ..language_models.lm import Embedding
+from ..language_models.embed import Embedding
 from ..abs_model import AbsModel
 
 

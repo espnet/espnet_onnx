@@ -13,7 +13,7 @@ from espnet2.layers.global_mvn import GlobalMVN
 from espnet2.layers.utterance_mvn import UtteranceMVN
 
 from espnet_onnx.utils.function import make_pad_mask
-from ..language_models.lm import Embedding
+from ..language_models.embed import Embedding
 from ..abs_model import AbsModel
 
 

@@ -7,6 +7,7 @@
 
 import math
 import torch
+import torch.nn as nn
 
 from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling
 from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling2
