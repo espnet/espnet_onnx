@@ -18,10 +18,10 @@ from espnet_model_zoo.downloader import ModelDownloader
 from .models import (
     get_encoder,
     get_decoder,
+    get_lm,
     RNNDecoder,
     PreDecoder,
     CTC,
-    LanguageModel,
     JointNetwork,
 )
 from .get_config import (
@@ -102,7 +102,7 @@ class ASRModelExport:
                 export_lm = True
         
         if export_lm:
-            lm_model = LanguageModel(model.beam_search.full_scorers['lm'])
+            lm_model = get_lm(model.beam_search.full_scorers['lm'])
             self._export_lm(lm_model, export_dir, verbose)
             model_config.update(lm=lm_model.get_model_config(export_dir))
         else:

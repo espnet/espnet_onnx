@@ -1,5 +1,4 @@
 from .ctc import CTC
-from .lm import LanguageModel
 from .joint_network import JointNetwork
 
 # encoder
@@ -22,6 +21,12 @@ from .decoders.rnn import (
 from .decoders.xformer import XformerDecoder
 from .decoders.transducer import TransducerDecoder
 
+# lm
+from espnet2.lm.seq_rnn_lm import SequentialRNNLM as espnetSequentialRNNLM
+from espnet2.lm.transformer_lm import TransformerLM as espnetTransformerLM
+from .language_models.seq_rnn import SequentialRNNLM
+from .language_models.transformer import TransformerLM
+
 
 def get_encoder(model):
     if isinstance(model, espnetRNNEncoder) or isinstance(model, espnetVGGRNNEncoder):
@@ -39,3 +44,10 @@ def get_decoder(model):
         return TransducerDecoder(model)
     else:
         return XformerDecoder(model)
+
+
+def get_lm(model):
+    if isinstance(model, espnetSequentialRNNLM):
+        return SequentialRNNLM(model)
+    elif isinstance(model, espnetTransformerLM):
+        return TransformerLM(model)
