@@ -10,36 +10,15 @@ from pathlib import Path
 import numpy as np
 import torch
 import onnxruntime as ort
-from espnet2.lm.espnet_model import ESPnetLanguageModel
 
-from espnet_onnx.export.asr.models import (
-    get_encoder,
-    get_decoder,
-    RNNDecoder,
-    PreDecoder,
-    CTC,
-    LanguageModel
-)
-from espnet_onnx.asr.model.decoders.rnn import RNNDecoder
-from espnet_onnx.asr.model.decoders.xformer import XformerDecoder
-from espnet_onnx.asr.model.decoders.transducer import TransducerDecoder
-from espnet_onnx.asr.model.lms.seqrnn_lm import SequentialRNNLM
-from espnet_onnx.asr.model.lms.transformer_lm import TransformerLM
-from espnet_onnx.utils.function import (
-    subsequent_mask,
-    make_pad_mask,
-    mask_fill
-)
+from espnet_onnx.asr.model.decoder import get_decoder
+from espnet_onnx.asr.model.lm import get_lm
 from espnet_onnx.utils.config import get_config
 from .forward_utils import (
-    rnn_onnx_enc,
-    rnn_torch_dec,
-    rnn_onnx_dec,
-    xformer_onnx_enc,
-    xformer_onnx_dec,
-    xformer_torch_dec,
-    td_torch_dec,
-    td_onnx_dec,
+    run_onnx_enc,
+    run_rnn_dec,
+    run_xformer_dec,
+    run_trans_dec,
 )
 
 encoder_cases = [
@@ -103,105 +82,105 @@ def get_predec_models(dec_type):
 
 
 @pytest.mark.parametrize('enc_type, feat_lens', encoder_cases)
-def test_infer_encoder(enc_type, feat_lens, load_config,
-                       model_export, frontend_choices, encoder_choices):
+def test_infer_encoder(enc_type, feat_lens, load_config, get_class):
     model_dir = CACHE_DIR / 'encoder' / f'./cache_{enc_type}'
     model_config = load_config(enc_type, model_type='encoder')
+    
     # prepare input_dim from frontend
-    frontend_class = frontend_choices.get_class(model_config.frontend)
-    frontend = frontend_class(**model_config.frontend_conf.dic)
+    frontend = get_class(
+        'frontend',
+        model_config.frontend,
+        model_config.frontend_conf
+    )
     input_size = frontend.output_size()
+    
     # prepare encoder model
-    encoder_class = encoder_choices.get_class(model_config.encoder)
-    encoder_espnet = encoder_class(input_size=input_size, **
-                                   model_config.encoder_conf.dic)
+    encoder_espnet = get_class(
+        'encoder',
+        model_config.encoder,
+        model_config.encoder_conf,
+        input_size=input_size
+    )
     encoder_espnet.load_state_dict(torch.load(str(model_dir / 'encoder.pth')))
     encoder_espnet.eval()
     encoder_onnx = ort.InferenceSession(str(model_dir / 'encoder.onnx'), providers=PROVIDERS)
+    
     # test output
     for fl in feat_lens:
         dummy_input = torch.randn(1, fl, input_size)  # (B, L, D)
         # compute torch model
-        with torch.no_grad():
-            torch_out = encoder_espnet(dummy_input, torch.Tensor([fl]))
+        torch_out = encoder_espnet(dummy_input, torch.Tensor([fl]))
         if type(torch_out) == tuple:
             torch_out = torch_out[0]
         # compute onnx model
-        if enc_type[:3] == 'rnn':
-            onnx_out = rnn_onnx_enc(encoder_onnx, dummy_input.numpy())
-        else:
-            onnx_out = xformer_onnx_enc(encoder_onnx, dummy_input.numpy())
+        onnx_out = run_onnx_enc(encoder_onnx, dummy_input.numpy(), enc_type)
         check_output(torch_out, onnx_out)
 
 
 @pytest.mark.parametrize('dec_type, feat_lens', decoder_cases)
-def test_infer_decoder(dec_type, feat_lens, load_config, model_export, decoder_choices):
+def test_infer_decoder(dec_type, feat_lens, load_config, get_class):
     model_dir = CACHE_DIR / 'decoder' / f'./cache_{dec_type}'
     model_config = load_config(dec_type, model_type='decoder')
-    # prepare encoder model
-    decoder_class = decoder_choices.get_class(model_config.decoder)
-    if dec_type == 'transducer':
-        decoder_espnet = decoder_class(
-            vocab_size=32000,
-            **model_config.decoder_conf.dic,
-        )
+    
+    # prepare decoder model
+    if model_config.decoder == 'transducer':
+        kwargs = { 'vocab_size': 32000, 'embed_pad': 0 }
     else:
-        decoder_espnet = decoder_class(
-            vocab_size=32000,
-            encoder_output_size=512,
-            **model_config.decoder_conf.dic,
-        )
+        kwargs = { 'vocab_size': 32000, 'encoder_output_size': 512 }
+    decoder_espnet = get_class(
+        'decoder',
+        model_config.decoder,
+        model_config.decoder_conf,
+        **kwargs
+    )
     decoder_espnet.load_state_dict(torch.load(str(model_dir / 'decoder.pth')))
     decoder_espnet.eval()
-    if dec_type[:3] == 'rnn':
-        decoder_onnx = RNNDecoder(get_config(model_dir / 'config.yaml'), providers=PROVIDERS)
-    elif dec_type == 'transducer':
-        decoder_onnx = TransducerDecoder(get_config(model_dir / 'config.yaml'), providers=PROVIDERS)
-    else:
-        decoder_onnx = XformerDecoder(get_config(model_dir / 'config.yaml'), providers=PROVIDERS)
+    decoder_onnx = get_decoder(get_config(model_dir / 'config.yaml'), providers=PROVIDERS)
+    
+    # test output
     for fl in feat_lens:
         dummy_input = torch.randn(1, fl, 512)
+        dummy_yseq = torch.LongTensor([0, 1])
         if dec_type[:3] == 'rnn':
-            with torch.no_grad():
-                torch_out = rnn_torch_dec(decoder_espnet, dummy_input)
-                onnx_out = rnn_onnx_dec(decoder_onnx, dummy_input.numpy())
+            torch_out = run_rnn_dec(decoder_espnet, dummy_input, dummy_yseq)
+            onnx_out = run_rnn_dec(decoder_onnx, dummy_input.numpy(), dummy_yseq.numpy())
+            
         elif dec_type == 'transducer':
-            dummy_input = torch.LongTensor([0, 1]).unsqueeze(0)
+            dummy_yseq = dummy_yseq.unsqueeze(0)
             h = torch.randn(1, 1, 512)
-            with torch.no_grad():
-                torch_out = td_torch_dec(decoder_espnet, dummy_input, h)
-                onnx_out = td_onnx_dec(decoder_onnx, dummy_input.numpy(), h.numpy())
+            torch_out = run_trans_dec(decoder_espnet, dummy_yseq, h, 'torch')
+            onnx_out = run_trans_dec(decoder_onnx, dummy_yseq.numpy(), h.numpy(), 'onnx')
+            
         else:
-            with torch.no_grad():
-                torch_out = xformer_torch_dec(decoder_espnet, dummy_input)
-                onnx_out = xformer_onnx_dec(decoder_onnx, dummy_input.numpy())
+            dummy_yseq = dummy_yseq.unsqueeze(0)
+            torch_out = run_xformer_dec(decoder_espnet, dummy_input, dummy_yseq, 'torch')
+            onnx_out = run_xformer_dec(decoder_onnx, dummy_input.numpy(), dummy_yseq.numpy(), 'onnx')
 
         check_output(torch_out, onnx_out)
 
 
 @pytest.mark.parametrize('lm_type, feat_lens', lm_cases)
-def test_infer_lm(lm_type, feat_lens, load_config, model_export, lm_choices):
+def test_infer_lm(lm_type, feat_lens, load_config, get_class):
     model_dir = CACHE_DIR / 'lm' / f'./cache_{lm_type}'
     model_config = load_config(lm_type, model_type='lm')
+    
     # prepare language model
-    lm_class = lm_choices.get_class(model_config.lm)
-    lm = lm_class(vocab_size=32000, **model_config.lm_conf.dic)
-    torch_model = ESPnetLanguageModel(
-        lm=lm, vocab_size=32000, **model_config.model_conf.dic)
-    torch_model.lm.load_state_dict(torch.load(str(model_dir / 'lm.pth')))
-    torch_model.lm.eval()
-    # create onnx wrapper and export
-    lm_config = get_config(model_dir / 'config.yaml')
-    if lm_config.lm_type == 'SequentialRNNLM':
-        onnx_model = SequentialRNNLM(lm_config, providers=PROVIDERS)
-    else:
-        onnx_model = TransformerLM(lm_config, providers=PROVIDERS)
+    torch_model = get_class(
+        'lm',
+        model_config.lm,
+        model_config.lm_conf,
+        vocab_size=32000,
+    )
+    torch_model.load_state_dict(torch.load(str(model_dir / 'lm.pth')))
+    torch_model.eval()
+    onnx_model = get_lm(get_config(model_dir / 'config.yaml'), providers=PROVIDERS)
+    
     # test output
     for fl in feat_lens:
         dummy_input = torch.randn(1, fl, 512)
         tgt = torch.LongTensor([0, 1]).unsqueeze(0)
-        with torch.no_grad():
-            torch_out, _ = torch_model.lm.batch_score(tgt, [None], dummy_input)
+        
+        torch_out, _ = torch_model.batch_score(tgt, [None], dummy_input)
         onnx_out, _ = onnx_model.batch_score(
             tgt.numpy(), [None], dummy_input.numpy())
         check_output(torch_out, onnx_out)

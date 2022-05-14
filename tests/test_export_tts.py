@@ -14,17 +14,27 @@ tts_cases = [
 ]
 
 
-@pytest.mark.parametrize('tts_type, cls', tts_cases)
-def test_export_tts(tts_type, cls, load_config, model_export_tts,
-                    tts_choices):
-    model_config = load_config(tts_type, model_type='tts')
-    tts_class = tts_choices.get_class(model_config.tts)
-    tts = tts_class(idim=78, odim=513, **model_config.tts_conf.dic)
-    tts_wrapper = cls(tts)
-
-    export_dir = Path(model_export_tts.cache_dir) / 'test' / \
-        'tts' / f'./cache_{tts_type}'
+def save_model(torch_model, onnx_model, model_export, model_type, model_name):
+    export_dir = Path(model_export.cache_dir) / 'test' / \
+        model_type / f'./cache_{model_name}'
     export_dir.mkdir(parents=True, exist_ok=True)
-    model_export_tts._export_tts(tts_wrapper, export_dir, verbose=False)
-    torch.save(tts.state_dict(), str(export_dir / 'tts.pth'))
+    
+    if model_type == 'tts':
+        model_export._export_tts(onnx_model, export_dir, verbose=False)
+    
+    torch.save(torch_model.state_dict(), str(export_dir / f'{model_type}.pth'))
+    return export_dir
+
+
+@pytest.mark.parametrize('tts_type, cls', tts_cases)
+def test_export_tts(tts_type, cls, load_config, model_export_tts, get_class):
+    model_config = load_config(tts_type, model_type='tts')
+    tts = get_class(
+        'tts',
+        model_config.tts,
+        model_config.tts_conf,
+        idim=78, odim=513
+    )
+    tts_wrapper = cls(tts)
+    export_dir = save_model(tts, tts_wrapper, model_export_tts, 'tts', tts_type)
     assert os.path.isfile(os.path.join(export_dir, 'tts_model.onnx'))
