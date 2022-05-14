@@ -11,9 +11,9 @@ from espnet_onnx.utils.abs_model import AbsExportModel
 
 
 class XformerDecoder(nn.Module, AbsExportModel):
-    def __init__(self, model):
+    def __init__(self, model, max_seq_len=512, **kwargs):
         super().__init__()
-        self.embed = Embedding(model.embed)
+        self.embed = Embedding(model.embed, max_seq_len)
         self.model = model
 
     def forward(self, tgt, tgt_mask, memory, cache):

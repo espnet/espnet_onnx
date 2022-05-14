@@ -28,7 +28,8 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
     """
     def __init__(
         self,
-        model
+        model,
+        **kwargs
     ):
         super().__init__()
         self.model = model

@@ -130,7 +130,7 @@ class RNNEncoderLayer(nn.Module):
 
 
 class RNNEncoder(nn.Module, AbsExportModel):
-    def __init__(self, model):
+    def __init__(self, model, **kwargs):
         super().__init__()
         self.model = model
         self.enc = nn.ModuleList()

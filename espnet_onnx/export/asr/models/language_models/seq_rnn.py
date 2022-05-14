@@ -7,7 +7,7 @@ from espnet_onnx.utils.abs_model import AbsExportModel
 
 
 class SequentialRNNLM(nn.Module, AbsExportModel):
-    def __init__(self, model):
+    def __init__(self, model, **kwargs):
         super().__init__()
         self.encoder = model.encoder
         self.rnn = model.rnn

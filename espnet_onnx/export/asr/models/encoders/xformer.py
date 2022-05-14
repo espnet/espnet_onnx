@@ -12,19 +12,20 @@ from espnet2.asr.frontend.default import DefaultFrontend
 from espnet2.layers.global_mvn import GlobalMVN
 from espnet2.layers.utterance_mvn import UtteranceMVN
 
-from espnet_onnx.utils.torch_function import make_pad_mask
+from espnet_onnx.utils.torch_function import MakePadMask
 from ..language_models.embed import Embedding
 from espnet_onnx.utils.abs_model import AbsExportModel
 
 
 class XformerEncoder(nn.Module, AbsExportModel):
-    def __init__(self, model):
+    def __init__(self, model, max_seq_len=512, **kwargs):
         super().__init__()
-        self.embed = Embedding(model.embed)
+        self.embed = Embedding(model.embed, max_seq_len)
         self.model = model
+        self.make_pad_mask = MakePadMask(max_seq_len)
 
     def forward(self, feats, feats_length):
-        mask = 1 - make_pad_mask(feats_length).unsqueeze(1)
+        mask = 1 - self.make_pad_mask(feats_length).unsqueeze(1)
         if (
             isinstance(self.model.embed, Conv2dSubsampling)
             or isinstance(self.model.embed, Conv2dSubsampling2)

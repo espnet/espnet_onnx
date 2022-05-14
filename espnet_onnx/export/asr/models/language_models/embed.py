@@ -22,17 +22,17 @@ from espnet.nets.pytorch_backend.transformer.embedding import (
 )
 
 
-def get_pos_emb(pos_emb):
+def get_pos_emb(pos_emb, max_seq_len=512):
     if isinstance(pos_emb, LegacyRelPositionalEncoding):
-        return OnnxLegacyRelPositionalEncoding(pos_emb)
+        return OnnxLegacyRelPositionalEncoding(pos_emb, max_seq_len)
     elif isinstance(pos_emb, ScaledPositionalEncoding):
-        return OnnxScaledPositionalEncoding(pos_emb)
+        return OnnxScaledPositionalEncoding(pos_emb, max_seq_len)
     elif isinstance(pos_emb, RelPositionalEncoding):
-        return OnnxRelPositionalEncoding(pos_emb)
+        return OnnxRelPositionalEncoding(pos_emb, max_seq_len)
     elif isinstance(pos_emb, PositionalEncoding):
-        return OnnxPositionalEncoding(pos_emb)
+        return OnnxPositionalEncoding(pos_emb, max_seq_len)
     elif isinstance(pos_emb, StreamPositionalEncoding):
-        return OnnxStreamPositionalEncoding(pos_emb)
+        return OnnxStreamPositionalEncoding(pos_emb, max_seq_len)
     elif (isinstance(pos_emb, nn.Sequential) and len(pos_emb) == 0) \
         or (isinstance(pos_emb, Conv2dSubsamplingWOPosEnc)):
         return pos_emb
@@ -41,10 +41,9 @@ def get_pos_emb(pos_emb):
 
 
 class Embedding(nn.Module):
-    def __init__(self, model):
+    def __init__(self, model, max_seq_len=512):
         super().__init__()
         self.model = model
-
         if not isinstance(model, nn.Embedding):
             if (
                 isinstance(model, Conv2dSubsampling)
@@ -52,9 +51,9 @@ class Embedding(nn.Module):
                 or isinstance(model, Conv2dSubsampling6)
                 or isinstance(model, Conv2dSubsampling8)
             ):
-                self.model.out[-1] = get_pos_emb(model.out[-1])
+                self.model.out[-1] = get_pos_emb(model.out[-1], max_seq_len)
             else:
-                self.model[-1] = get_pos_emb(model[-1])
+                self.model[-1] = get_pos_emb(model[-1], max_seq_len)
 
     def forward(self, x, mask=None):
         if mask is None:
@@ -98,20 +97,20 @@ class OnnxPositionalEncoding(torch.nn.Module):
     Args:
         d_model (int): Embedding dimension.
         dropout_rate (float): Dropout rate.
-        max_len (int): Maximum input length.
+        max_seq_len (int): Maximum input length.
         reverse (bool): Whether to reverse the input position. Only for
         the class LegacyRelPositionalEncoding. We remove it in the current
         class RelPositionalEncoding.
     """
 
-    def __init__(self, model, max_len=512, reverse=False):
+    def __init__(self, model, max_seq_len=512, reverse=False):
         """Construct an PositionalEncoding object."""
         super(OnnxPositionalEncoding, self).__init__()
         self.d_model = model.d_model
         self.reverse = model.reverse
         self.xscale = math.sqrt(self.d_model)
         self.pe = None
-        self.extend_pe(torch.tensor(0.0).expand(1, max_len))
+        self.extend_pe(torch.tensor(0.0).expand(1, max_seq_len))
         self._register_load_state_dict_pre_hook(_pre_hook)
 
     def extend_pe(self, x):
@@ -157,13 +156,13 @@ class OnnxScaledPositionalEncoding(OnnxPositionalEncoding):
     Args:
         d_model (int): Embedding dimension.
         dropout_rate (float): Dropout rate.
-        max_len (int): Maximum input length.
+        max_seq_len (int): Maximum input length.
 
     """
 
-    def __init__(self, model, max_len=512):
+    def __init__(self, model, max_seq_len=512):
         """Initialize class."""
-        super().__init__(model, max_len)
+        super().__init__(model, max_seq_len)
         self.alpha = torch.nn.Parameter(torch.tensor(1.0))
 
     def reset_parameters(self):
@@ -194,14 +193,14 @@ class OnnxLegacyRelPositionalEncoding(OnnxPositionalEncoding):
     Args:
         d_model (int): Embedding dimension.
         dropout_rate (float): Dropout rate.
-        max_len (int): Maximum input length.
+        max_seq_len (int): Maximum input length.
 
     """
 
-    def __init__(self, model, max_len=512):
+    def __init__(self, model, max_seq_len=512):
         """Initialize class."""
         super().__init__(
-            model, max_len,
+            model, max_seq_len,
             reverse=True
         )
 
@@ -231,17 +230,17 @@ class OnnxRelPositionalEncoding(torch.nn.Module):
     Args:
         d_model (int): Embedding dimension.
         dropout_rate (float): Dropout rate.
-        max_len (int): Maximum input length.
+        max_seq_len (int): Maximum input length.
 
     """
 
-    def __init__(self, model, max_len=512):
+    def __init__(self, model, max_seq_len=512):
         """Construct an PositionalEncoding object."""
         super(OnnxRelPositionalEncoding, self).__init__()
         self.d_model = model.d_model
         self.xscale = math.sqrt(self.d_model)
         self.pe = None
-        self.extend_pe(torch.tensor(0.0).expand(1, max_len))
+        self.extend_pe(torch.tensor(0.0).expand(1, max_seq_len))
 
     def extend_pe(self, x):
         """Reset the positional encodings."""
@@ -296,7 +295,7 @@ class OnnxStreamPositionalEncoding(torch.nn.Module):
     """Streaming Positional encoding.
 
     """
-    def __init__(self, model, max_len=5000):
+    def __init__(self, model, max_seq_len=5000):
         """Construct an PositionalEncoding object."""
         super(StreamPositionalEncoding, self).__init__()
         
@@ -305,9 +304,8 @@ class OnnxStreamPositionalEncoding(torch.nn.Module):
         self.pe = None
         # Hold as attribute to export as config parameter,
         # in order to raise an error when start_idx + x.size(1)
-        # exceeds the max_len
-        self.max_len = max_len
-        tmp = torch.tensor(0.0).expand(1, max_len)
+        # exceeds the max_seq_len
+        tmp = torch.tensor(0.0).expand(1, max_seq_len)
         self.extend_pe(tmp.size(1), tmp.device, tmp.dtype)
         self._register_load_state_dict_pre_hook(_pre_hook)
 

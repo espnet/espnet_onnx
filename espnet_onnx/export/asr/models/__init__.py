@@ -28,26 +28,26 @@ from .language_models.seq_rnn import SequentialRNNLM
 from .language_models.transformer import TransformerLM
 
 
-def get_encoder(model):
+def get_encoder(model, export_config):
     if isinstance(model, espnetRNNEncoder) or isinstance(model, espnetVGGRNNEncoder):
-        return RNNEncoder(model)
+        return RNNEncoder(model, **export_config)
     elif isinstance(model, espnetContextualTransformer) or isinstance(model, espnetContextualConformer):
-        return ContextualBlockXformerEncoder(model)
+        return ContextualBlockXformerEncoder(model, **export_config)
     else:
-        return XformerEncoder(model)
+        return XformerEncoder(model, **export_config)
 
 
-def get_decoder(model):
+def get_decoder(model, export_config):
     if isinstance(model, espnetRNNDecoder):
-        return RNNDecoder(model)
+        return RNNDecoder(model, **export_config)
     elif isinstance(model, espnetTransducerDecoder):
-        return TransducerDecoder(model)
+        return TransducerDecoder(model, **export_config)
     else:
-        return XformerDecoder(model)
+        return XformerDecoder(model, **export_config)
 
 
-def get_lm(model):
+def get_lm(model, export_config):
     if isinstance(model, espnetSequentialRNNLM):
-        return SequentialRNNLM(model)
+        return SequentialRNNLM(model, **export_config)
     elif isinstance(model, espnetTransformerLM):
-        return TransformerLM(model)
+        return TransformerLM(model, **export_config)

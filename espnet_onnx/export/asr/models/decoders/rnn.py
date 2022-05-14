@@ -69,7 +69,7 @@ class PreDecoder(nn.Module, AbsExportModel):
 
 
 class RNNDecoder(nn.Module, AbsExportModel):
-    def __init__(self, model):
+    def __init__(self, model, **kwargs):
         super().__init__()
         self.embed = model.embed
         self.model = model
