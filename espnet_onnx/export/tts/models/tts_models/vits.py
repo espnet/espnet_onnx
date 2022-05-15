@@ -14,11 +14,11 @@ from espnet_onnx.utils.abs_model import AbsExportModel
 
 
 class OnnxTextEncoder(nn.Module):
-    def __init__(self, model, make_pad_mask):
+    def __init__(self, model, make_pad_mask, max_seq_len):
         super().__init__()
         self.model = model
         # fix RelPositionalEncoding
-        self.model.encoder.embed[0] = get_pos_emb(self.model.encoder.embed[0], max_len)
+        self.model.encoder.embed[0] = get_pos_emb(self.model.encoder.embed[0], max_seq_len)
         self.make_pad_mask = make_pad_mask
 
     def forward(self, x, x_lengths):
@@ -47,7 +47,7 @@ class OnnxVITSGenerator(nn.Module):
     ):
         super().__init__()
         self.make_pad_mask = MakePadMask(max_seq_len)
-        self.text_encoder = OnnxTextEncoder(model.text_encoder, self.make_pad_mask)
+        self.text_encoder = OnnxTextEncoder(model.text_encoder, self.make_pad_mask, max_seq_len)
         self.decoder = model.decoder
         self.posterior_encoder = model.posterior_encoder
         self.flow = model.flow
@@ -57,6 +57,7 @@ class OnnxVITSGenerator(nn.Module):
         self.noise_scale_dur = noise_scale_dur
         self.alpha = alpha
         self.use_teacher_forcing = use_teacher_forcing
+        self.max_seq_len = max_seq_len
 
     def forward(
         self,
@@ -194,7 +195,7 @@ class OnnxVITSGenerator(nn.Module):
             # decoder
             z_p = m_p + torch.randn_like(m_p) * torch.exp(logs_p) * self.noise_scale
             z = self.flow(z_p, y_mask, g=g, inverse=True)
-            wav = self.decoder((z * y_mask)[:, :, :self.max_len], g=g)
+            wav = self.decoder((z * y_mask)[:, :, :self.max_seq_len], g=g)
 
         return wav.squeeze(1), attn.squeeze(1), dur.squeeze(1)
 
@@ -221,6 +222,7 @@ class OnnxVITSModel(nn.Module, AbsExportModel):
             alpha,
             use_teacher_forcing
         )
+        self.use_teacher_forcing = use_teacher_forcing
         self.predict_duration = predict_duration
 
 

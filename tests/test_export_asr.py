@@ -96,7 +96,7 @@ def test_export_encoder(enc_type, load_config, model_export, get_class):
     )
     
     # create encoder onnx wrapper and export
-    enc_wrapper = get_encoder(encoder)
+    enc_wrapper = get_encoder(encoder, {})
     export_dir = save_model(encoder, enc_wrapper, model_export, 'encoder', enc_type)
     
     if enc_type in ('contextual_block_conformer', 'contextual_block_transformer'):
@@ -124,7 +124,7 @@ def test_export_decoder(dec_type, load_config, model_export, get_class):
         model_config.decoder_conf,
         **kwargs
     )
-    dec_wrapper = get_decoder(decoder)
+    dec_wrapper = get_decoder(decoder, {})
     export_dir = save_model(decoder, dec_wrapper, model_export, 'decoder', dec_type)
     
     if dec_type[:3] == 'rnn':
@@ -146,7 +146,7 @@ def test_export_lm(lm_type, load_config, model_export, get_class):
         model_config.lm_conf,
         vocab_size=32000,
     )
-    lm_wrapper = get_lm(lm)
+    lm_wrapper = get_lm(lm, {})
     export_dir = save_model(lm, lm_wrapper, model_export, 'lm', lm_type)
     
     lm_config = {'lm': lm_wrapper.get_model_config(export_dir)}
