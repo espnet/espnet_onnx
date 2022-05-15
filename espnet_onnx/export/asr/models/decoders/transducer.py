@@ -6,14 +6,14 @@ import torch.nn as nn
 from espnet2.asr.transducer.transducer_decoder import TransducerDecoder
 
 from espnet_onnx.utils.function import subsequent_mask
-from ..language_models.lm import Embedding
-from ..abs_model import AbsModel
+from ..language_models.embed import Embedding
+from espnet_onnx.utils.abs_model import AbsExportModel
 
 
-class TransducerDecoder(nn.Module, AbsModel):
-    def __init__(self, model):
+class TransducerDecoder(nn.Module, AbsExportModel):
+    def __init__(self, model, max_seq_len=512, **kwargs):
         super().__init__()
-        self.embed = Embedding(model.embed)
+        self.embed = Embedding(model.embed, max_seq_len)
         self.decoder = model.decoder
         self.dlayers = model.dlayers
         self.dunits = model.dunits

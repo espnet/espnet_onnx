@@ -65,18 +65,8 @@ def pytest_addoption(parser):
 @pytest.fixture
 def load_config(request):
     config_dir = request.config.getoption('--config_dir')
-
     def _method(config_name, model_type='encoder'):
         return get_config(os.path.join(config_dir, model_type, config_name + '.yml'))
-    return _method
-
-
-@pytest.fixture
-def get_config_path(request):
-    config_dir = request.config.getoption('--config_dir')
-
-    def _method(config_name, model_type='encoder'):
-        return os.path.join(config_dir, model_type, config_name + '.yml')
     return _method
 
 
@@ -90,9 +80,8 @@ def model_export_tts():
     return TTSModelExport(Path.home() / ".cache" / "espnet_onnx")
 
 
-@pytest.fixture
-def frontend_choices():
-    return ClassChoices(
+class_choices = {
+    'frontend': ClassChoices(
         name="frontend",
         classes=dict(
             default=DefaultFrontend,
@@ -102,12 +91,8 @@ def frontend_choices():
         ),
         type_check=AbsFrontend,
         default="default",
-    )
-
-
-@pytest.fixture
-def encoder_choices():
-    return ClassChoices(
+    ),
+    'encoder': ClassChoices(
         "encoder",
         classes=dict(
             conformer=ConformerEncoder,
@@ -122,12 +107,8 @@ def encoder_choices():
         ),
         type_check=AbsEncoder,
         default="rnn",
-    )
-
-
-@pytest.fixture
-def decoder_choices():
-    return ClassChoices(
+    ),
+    'decoder': ClassChoices(
         "decoder",
         classes=dict(
             transformer=TransformerDecoder,
@@ -140,12 +121,8 @@ def decoder_choices():
         ),
         type_check=AbsDecoder,
         default="rnn",
-    )
-
-
-@pytest.fixture
-def lm_choices():
-    return ClassChoices(
+    ),
+    'lm': ClassChoices(
         "lm",
         classes=dict(
             seq_rnn=SequentialRNNLM,
@@ -153,12 +130,8 @@ def lm_choices():
         ),
         type_check=AbsLM,
         default="seq_rnn",
-    )
-
-
-@pytest.fixture
-def tts_choices():
-    return ClassChoices(
+    ),
+    'tts': ClassChoices(
         "tts",
         classes=dict(
             tacotron2=Tacotron2,
@@ -172,3 +145,13 @@ def tts_choices():
         type_check=AbsTTS,
         default="tacotron2",
     )
+}
+
+
+@pytest.fixture
+def get_class():
+    def _method(model_type, class_name, class_config, **kwargs):
+        cc = class_choices[model_type]
+        selected_class = cc.get_class(class_name)
+        return selected_class(**kwargs, **class_config.dic)
+    return _method

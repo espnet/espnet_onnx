@@ -89,10 +89,10 @@ class TTSModelExport:
     def set_export_config(self, **kwargs):
         for k, v in kwargs.items():
             self.export_config[k] = v
-
+    
     def _create_config(self, model, path):
         ret = {}
-        ret.update(preprocess=get_preprocess_config(model.preprocess_fn, path))
+        ret.update(get_preprocess_config(model.preprocess_fn, path))
         ret.update(token=get_token_config(
             model.preprocess_fn.token_id_converter))
         return ret
@@ -108,7 +108,7 @@ class TTSModelExport:
             dummy_input,
             file_name,
             verbose=verbose,
-            opset_version=11,
+            opset_version=15,
             input_names=model.get_input_names(),
             output_names=model.get_output_names(),
             dynamic_axes=model.get_dynamic_axes(),

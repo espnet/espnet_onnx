@@ -8,20 +8,22 @@ import math
 import torch
 import torch.nn as nn
 
-from espnet_onnx.export.asr.models.language_models.lm import get_pos_emb
-from espnet_onnx.utils.torch_function import make_pad_mask
-
-from ..abs_model import AbsModel
+from espnet_onnx.export.asr.models.language_models.embed import get_pos_emb
+from espnet_onnx.utils.torch_function import MakePadMask
+from espnet_onnx.utils.abs_model import AbsExportModel
 
 
 class OnnxTextEncoder(nn.Module):
-    def __init__(self, model):
+    def __init__(self, model, make_pad_mask, max_seq_len):
         super().__init__()
         self.model = model
+        # fix RelPositionalEncoding
+        self.model.encoder.embed[0] = get_pos_emb(self.model.encoder.embed[0], max_seq_len)
+        self.make_pad_mask = make_pad_mask
 
     def forward(self, x, x_lengths):
         x = self.model.emb(x) * math.sqrt(self.model.attention_dim)
-        x_mask = 1 - make_pad_mask(x_lengths).unsqueeze(1).type(torch.float32)
+        x_mask = 1 - self.make_pad_mask(x_lengths).unsqueeze(1)
         # encoder assume the channel last (B, T_text, attention_dim)
         # but mask shape shoud be (B, 1, T_text)
         x, _ = self.model.encoder(x, x_mask)
@@ -34,14 +36,28 @@ class OnnxTextEncoder(nn.Module):
 
 
 class OnnxVITSGenerator(nn.Module):
-    def __init__(self, model):
+    def __init__(
+        self,
+        model,
+        max_seq_len: int = None,
+        noise_scale: float = 0.667,
+        noise_scale_dur: float = 0.8,
+        alpha: float = 1.0,
+        use_teacher_forcing: bool = False
+    ):
         super().__init__()
-        self.text_encoder = OnnxTextEncoder(model.text_encoder)
+        self.make_pad_mask = MakePadMask(max_seq_len)
+        self.text_encoder = OnnxTextEncoder(model.text_encoder, self.make_pad_mask, max_seq_len)
         self.decoder = model.decoder
         self.posterior_encoder = model.posterior_encoder
         self.flow = model.flow
         self.duration_predictor = model.duration_predictor
         self.model = model
+        self.noise_scale = noise_scale
+        self.noise_scale_dur = noise_scale_dur
+        self.alpha = alpha
+        self.use_teacher_forcing = use_teacher_forcing
+        self.max_seq_len = max_seq_len
 
     def forward(
         self,
@@ -53,11 +69,6 @@ class OnnxVITSGenerator(nn.Module):
         spembs: Optional[torch.Tensor] = None,
         lids: Optional[torch.Tensor] = None,
         dur: Optional[torch.Tensor] = None,
-        noise_scale: float = 0.667,
-        noise_scale_dur: float = 0.8,
-        alpha: float = 1.0,
-        max_len: Optional[int] = None,
-        use_teacher_forcing: bool = False,
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Run inference.
 
@@ -105,7 +116,7 @@ class OnnxVITSGenerator(nn.Module):
             else:
                 g = g + g_
 
-        if use_teacher_forcing:
+        if self.use_teacher_forcing:
             # forward posterior encoder
             z, m_q, logs_q, y_mask = self.posterior_encoder(
                 feats, feats_lengths, g=g)
@@ -159,13 +170,12 @@ class OnnxVITSGenerator(nn.Module):
                     x_mask,
                     g=g,
                     inverse=True,
-                    noise_scale=noise_scale_dur,
+                    noise_scale=self.noise_scale_dur,
                 )
-                w = torch.exp(logw) * x_mask * alpha
+                w = torch.exp(logw) * x_mask * self.alpha
                 dur = torch.ceil(w)
             y_lengths = torch.clamp_min(torch.sum(dur, [1, 2]), 1).long()
-            y_mask = 1 - \
-                make_pad_mask(y_lengths).unsqueeze(1).type(torch.float32)
+            y_mask = 1 - self.make_pad_mask(y_lengths).unsqueeze(1)
             attn_mask = torch.unsqueeze(
                 x_mask, 2) * torch.unsqueeze(y_mask, -1)
             attn = self.model._generate_path(dur, attn_mask)
@@ -183,37 +193,38 @@ class OnnxVITSGenerator(nn.Module):
             ).transpose(1, 2)
 
             # decoder
-            z_p = m_p + torch.randn_like(m_p) * torch.exp(logs_p) * noise_scale
+            z_p = m_p + torch.randn_like(m_p) * torch.exp(logs_p) * self.noise_scale
             z = self.flow(z_p, y_mask, g=g, inverse=True)
-            wav = self.decoder((z * y_mask)[:, :, :max_len], g=g)
+            wav = self.decoder((z * y_mask)[:, :, :self.max_seq_len], g=g)
 
         return wav.squeeze(1), attn.squeeze(1), dur.squeeze(1)
 
 
-class OnnxVITSModel(nn.Module, AbsModel):
+class OnnxVITSModel(nn.Module, AbsExportModel):
     def __init__(
         self,
         model,
         noise_scale: float = 0.667,
         noise_scale_dur: float = 0.8,
         alpha: float = 1.0,
-        max_len: int = None,
+        max_seq_len: int = 512,
         use_teacher_forcing: bool = False,
-        predict_duration: bool = False
+        predict_duration: bool = True,
+        **kwargs
     ):
         super().__init__()
         self.model = model
-        self.generator = OnnxVITSGenerator(model.generator)
+        self.generator = OnnxVITSGenerator(
+            model.generator,
+            max_seq_len,
+            noise_scale,
+            noise_scale_dur,
+            alpha,
+            use_teacher_forcing
+        )
         self.use_teacher_forcing = use_teacher_forcing
-        self.noise_scale = noise_scale
-        self.noise_scale_dur = noise_scale_dur
-        self.alpha = alpha
-        self.max_len = max_len
         self.predict_duration = predict_duration
 
-        # fix RelPositionalEncoding
-        self.model.generator.text_encoder.encoder.embed[0] = \
-            get_pos_emb(self.model.generator.text_encoder.encoder.embed[0])
 
     def forward(
         self,
@@ -240,8 +251,6 @@ class OnnxVITSModel(nn.Module, AbsModel):
                 sids=sids,
                 spembs=spembs,
                 lids=lids,
-                max_len=self.max_len,
-                use_teacher_forcing=self.use_teacher_forcing,
             )
         else:
             wav, att_w, dur = self.generator(
@@ -251,10 +260,6 @@ class OnnxVITSModel(nn.Module, AbsModel):
                 spembs=spembs,
                 lids=lids,
                 dur=durations,
-                noise_scale=self.noise_scale,
-                noise_scale_dur=self.noise_scale_dur,
-                alpha=self.alpha,
-                max_len=self.max_len,
             )
         return dict(wav=wav.view(-1), att_w=att_w[0], duration=dur[0])
 
@@ -275,7 +280,7 @@ class OnnxVITSModel(nn.Module, AbsModel):
             if self.model.generator.langs is not None else None
 
         duration = torch.randn(text.size(0)) \
-            if self.predict_duration else None
+            if not self.predict_duration else None
 
         return (text, text_length, feats, feats_length, sids, spembs, lids, duration)
 
@@ -289,6 +294,7 @@ class OnnxVITSModel(nn.Module, AbsModel):
         return {
             'text': {0: 'text_length'},
             'feats': {0: 'feats_length'},
+            'duration': {0: 'duration_length'},
             'wav': {0: 'wav_length'},
             'att_w': {0: 'att_w_feat_length',
                       1: 'att_w_text_length'},

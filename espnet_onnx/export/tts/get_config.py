@@ -41,9 +41,13 @@ def get_tokenizer_config(model, path):
 
 
 def get_preprocess_config(model, path):
-    return {
-        'text_cleaner': {
-            'cleaner_types': model.text_cleaner.cleaner_types[0]
-        },
-        'tokenizer': get_tokenizer_config(model.tokenizer, path)
-    }
+    ret = {}
+    if model.text_cleaner is not None:
+        ret.update({'text_cleaner': {
+                'cleaner_types': model.text_cleaner.cleaner_types[0]
+        }})
+    else:
+        ret.update({'text_cleaner': None})
+        
+    ret.update({'tokenizer': get_tokenizer_config(model.tokenizer, path)})
+    return ret

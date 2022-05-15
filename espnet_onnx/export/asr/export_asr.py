@@ -18,10 +18,10 @@ from espnet_model_zoo.downloader import ModelDownloader
 from .models import (
     get_encoder,
     get_decoder,
+    get_lm,
     RNNDecoder,
     PreDecoder,
     CTC,
-    LanguageModel,
     JointNetwork,
 )
 from .get_config import (
@@ -45,6 +45,7 @@ class ASRModelExport:
             cache_dir = Path.home() / ".cache" / "espnet_onnx"
 
         self.cache_dir = Path(cache_dir)
+        self.export_config = {}
 
     def export(
         self,
@@ -67,14 +68,14 @@ class ASRModelExport:
         model_config = self._create_config(model, export_dir)
 
         # export encoder
-        enc_model = get_encoder(model.asr_model.encoder)
+        enc_model = get_encoder(model.asr_model.encoder, self.export_config)
         enc_out_size = enc_model.get_output_size()
         self._export_encoder(enc_model, export_dir, verbose)
         model_config.update(encoder=enc_model.get_model_config(
             model.asr_model, export_dir))
 
         # export decoder
-        dec_model = get_decoder(model.asr_model.decoder)
+        dec_model = get_decoder(model.asr_model.decoder, self.export_config)
         self._export_decoder(dec_model, enc_out_size, export_dir, verbose)
         model_config.update(decoder=dec_model.get_model_config(export_dir))
         
@@ -93,16 +94,15 @@ class ASRModelExport:
         model_config.update(ctc=ctc_model.get_model_config(export_dir))
 
         # export lm
-        export_lm = False
+        lm_model = None
         if not model.asr_model.use_transducer_decoder:
-            if 'lm' in model.beam_search.full_scorers.keys():
-                export_lm = True
+            if 'lm' in model.beam_search.scorers.keys():
+                lm_model = get_lm(model.beam_search.scorers['lm'], self.export_config)
         else:
             if model.beam_search_transducer.use_lm:
-                export_lm = True
+                lm_model = get_lm(model.beam_search_transducer.lm, self.export_config)
         
-        if export_lm:
-            lm_model = LanguageModel(model.beam_search.full_scorers['lm'])
+        if lm_model is not None:
             self._export_lm(lm_model, export_dir, verbose)
             model_config.update(lm=lm_model.get_model_config(export_dir))
         else:
@@ -131,11 +131,12 @@ class ASRModelExport:
     
     def export_from_zip(self, path: Union[Path, str], tag_name: str, quantize: bool = False):
         assert check_argument_types()
-        cache_dir = Path(path).parent
-        d = ModelDownloader(cache_dir)
-        model_config = d.unpack_local_file(path)
-        model = Speech2Text(**model_config)
+        model = Speech2Text.from_pretrained(path)
         self.export(model, tag_name, quantize)
+    
+    def set_export_config(self, **kwargs):
+        for k, v in kwargs.items():
+            self.export_config[k] = v
 
     def _create_config(self, model, path):
         ret = {}
@@ -171,7 +172,7 @@ class ASRModelExport:
             dummy_input,
             file_name,
             verbose=verbose,
-            opset_version=11,
+            opset_version=15,
             input_names=model.get_input_names(),
             output_names=model.get_output_names(),
             dynamic_axes=model.get_dynamic_axes()

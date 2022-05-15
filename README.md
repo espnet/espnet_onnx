@@ -52,6 +52,23 @@ m.export_from_zip(
 )
 ```
 
+3. You can set some configuration for export. The available configurations are shown in the details for each models.
+
+- [Details for ASR models and configurations](./docs/ASRModelDetail.md)
+- [Details for TTS models and configurations](./docs/TTSModelDetail.md)
+
+```python
+from espnet_onnx.export import ASRModelExport
+
+m = ASRModelExport()
+# Set maximum sequence length to 3000
+m.set_export_config(max_seq_len=3000)
+m.export_from_zip(
+  'path/to/the/zipfile',
+  tag_name='tag_name_for_zipped_model',
+)
+```
+
 #### Inference
 
 1. For inference, `tag_name` or `model_dir` is used to load onnx file. `tag_name` has to be defined in `tag_config.yaml`

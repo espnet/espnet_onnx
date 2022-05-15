@@ -17,7 +17,7 @@ from espnet2.asr.frontend.default import DefaultFrontend
 from espnet2.layers.global_mvn import GlobalMVN
 from espnet2.layers.utterance_mvn import UtteranceMVN
 
-from ..abs_model import AbsModel
+from espnet_onnx.utils.abs_model import AbsExportModel
 
 
 class OnnxRNNP(nn.Module):
@@ -129,11 +129,12 @@ class RNNEncoderLayer(nn.Module):
         return self.layer(*args, **kwargs)
 
 
-class RNNEncoder(nn.Module, AbsModel):
-    def __init__(self, model):
+class RNNEncoder(nn.Module, AbsExportModel):
+    def __init__(self, model, feats_dim=80, **kwargs):
         super().__init__()
         self.model = model
         self.enc = nn.ModuleList()
+        self.feats_dim = feats_dim
         for e in model.enc:
             self.enc.append(RNNEncoderLayer(e))
 
@@ -148,7 +149,7 @@ class RNNEncoder(nn.Module, AbsModel):
         return self.model._output_size
 
     def get_dummy_inputs(self):
-        feats = torch.randn(1, 100, 80)
+        feats = torch.randn(1, 100, self.feats_dim)
         feats_length = torch.LongTensor([feats.size(1)])
         return (feats, feats_length)
 
