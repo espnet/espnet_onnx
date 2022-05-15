@@ -52,10 +52,10 @@ m.export_from_zip(
 )
 ```
 
-3. You can set some configuration for export. The available configurations are shown in the following document.
+3. You can set some configuration for export. The available configurations are shown in the details for each models.
 
-- [Available export configuration for ASR](./docs/ASRExportConfig.md)
-- [Available export configuration for TTS](./docs/TTSExportConfig.md)
+- [Details for ASR models and configurations](./docs/ASRModelDetail.md)
+- [Details for TTS models and configurations](./docs/TTSModelDetail.md)
 
 ```python
 from espnet_onnx.export import ASRModelExport
