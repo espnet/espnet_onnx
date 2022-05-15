@@ -137,11 +137,11 @@ There is no configuration available.
 | input name | detail                                                       | shape                              | dtype   | dynamic dim |
 | ---------- | ------------------------------------------------------------ | ---------------------------------- | ------- | ----------- |
 | vy         | Input sequence                                               | `(1, seq_len)`                     | int64   | 1           |
-| z*prev*{i} | List of caches. The length equals to number of decoders.     | List[`(1, hidden_size)`]           | float32 | -           |
-| c*prev*{i} | List of caches. The length equals to number of decoders.     | List[`(1, hidden_size)`]           | float32 | -           |
-| a*prev*{i} | List of caches. The length equals to number of attentions.   | \*1                                | float32 | \*1         |
+| z\_prev\_{i} | List of caches. The length equals to number of decoders.     | List[`(1, hidden_size)`]           | float32 | -           |
+| c\_prev\_{i} | List of caches. The length equals to number of decoders.     | List[`(1, hidden_size)`]           | float32 | -           |
+| a\_prev\_{i} | List of caches. The length equals to number of attentions.   | \*1                                | float32 | \*1         |
 | pceh\_{i}  | List of caches. pceh stands for `pre_computed_enc_h`         | \*2                                | float32 | 1           |
-| enc*h*{i}  | List of caches. The length equals to number of attentions.   | `(1, feat_length, enc_size)`       | float32 | 1           |
+| enc\_h\_{i}  | List of caches. The length equals to number of attentions.   | `(1, feat_length, enc_size)`       | float32 | 1           |
 | mask\_{i}  | List of mask. The length equals to number of attentions. \*3 | List[`(feat_length, feat_length)`] | float32 | 0, 1        |
 
 - \*1: The shape and dynamic axes of `a_prev_{i}` depends on the attention type.
@@ -173,10 +173,10 @@ There is no configuration available.
 | output name | detail                                                    | shape                                  | dtype   | dynamic dim |
 | ----------- | --------------------------------------------------------- | -------------------------------------- | ------- | ----------- |
 | logp        | Output feature of decoder.                                | `(1, feats_length, decoder_feats_dim)` | float32 | 1           |
-| c*list*{i}  | This argument should be an input of the next `c_prev_{i}` | List[`(1, hidden_size)`]               | float32 | -           |
-| z*list*{i}  | This argument should be an input of the next `z_prev_{i}` | List[`(1, hidden_size)`]               | float32 | -           |
+| c\_list\_{i}  | This argument should be an input of the next `c_prev_{i}` | List[`(1, hidden_size)`]               | float32 | -           |
+| z\_list\_{i}  | This argument should be an input of the next `z_prev_{i}` | List[`(1, hidden_size)`]               | float32 | -           |
 | att_w \*1   | This argument should be an input of the next `a_prev_{i}` | \*1                                    | float32 | -           |
-| att*w*{i}   | This argument should be an input of the next `a_prev_{i}` | \*1                                    | float32 | -           |
+| att\_w\_{i}   | This argument should be an input of the next `a_prev_{i}` | \*1                                    | float32 | -           |
 
 - \*1: When `num_enc == 1`, then output name is `att_w`, otherwise `att_w_{i}`. The shape is as the same with model input.
 
