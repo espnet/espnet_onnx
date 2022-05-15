@@ -173,15 +173,9 @@ class RNNDecoder(BatchScorerInterface):
         )
 
     def create_input_dic(self, vy, x, state):
-        if self.rnn_type == 'lstm':
-            ret = {
-                'vy': vy.astype(np.int64),
-            }
-        else:
-            ret = {
-                'vy': vy.astype(np.int64),
-                'x': x,
-            }
+        ret = {
+            'vy': vy.astype(np.int64),
+        }
         ret.update({
             'z_prev_%d' % d: state['z_prev'][d]
             for d in range(self.decoder_length)

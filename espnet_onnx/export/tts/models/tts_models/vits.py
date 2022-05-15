@@ -208,7 +208,7 @@ class OnnxVITSModel(nn.Module, AbsExportModel):
         alpha: float = 1.0,
         max_seq_len: int = 512,
         use_teacher_forcing: bool = False,
-        predict_duration: bool = False,
+        predict_duration: bool = True,
         **kwargs
     ):
         super().__init__()
@@ -278,7 +278,7 @@ class OnnxVITSModel(nn.Module, AbsExportModel):
             if self.model.generator.langs is not None else None
 
         duration = torch.randn(text.size(0)) \
-            if self.predict_duration else None
+            if not self.predict_duration else None
 
         return (text, text_length, feats, feats_length, sids, spembs, lids, duration)
 
@@ -292,6 +292,7 @@ class OnnxVITSModel(nn.Module, AbsExportModel):
         return {
             'text': {0: 'text_length'},
             'feats': {0: 'feats_length'},
+            'duration': {0: 'duration_length'},
             'wav': {0: 'wav_length'},
             'att_w': {0: 'att_w_feat_length',
                       1: 'att_w_text_length'},
