@@ -1,13 +1,48 @@
 import os
+import math
 
 import torch
 import torch.nn as nn
 
 from espnet2.asr.decoder.transformer_decoder import TransformerDecoder
+from espnet.nets.pytorch_backend.transformer.attention import MultiHeadedAttention
 
 from espnet_onnx.utils.function import subsequent_mask
 from ..language_models.embed import Embedding
 from espnet_onnx.utils.abs_model import AbsExportModel
+
+
+class OnnxMultiHeadedAttention(nn.Module):
+    def __init__(self, model):
+        super().__init__()
+        self.d_k = model.d_k
+        self.h = model.h
+        self.linear_q = model.linear_q
+        self.linear_k = model.linear_k
+        self.linear_v = model.linear_v
+        self.linear_out = model.linear_out
+        self.attn = model.attn
+        self.dropout = model.dropout
+        self.model = model
+    
+    def forward(self, query, key, value, mask):
+        q, k, v = self.forward_qkv(query, key, value)
+        scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(self.d_k)
+        return self.model.forward_attention(v, scores, mask)
+
+    def transpose_for_scores(self, x: torch.Tensor) -> torch.Tensor:
+        new_x_shape = x.size()[:-1] + (self.h, self.d_k)
+        x = x.view(new_x_shape)
+        return x.permute(0, 2, 1, 3)
+
+    def forward_qkv(self, query, key, value):
+        q = self.linear_q(query)
+        k = self.linear_k(key)
+        v = self.linear_v(value)
+        q = self.transpose_for_scores(q)
+        k = self.transpose_for_scores(k)
+        v = self.transpose_for_scores(v)
+        return q, k, v
 
 
 class XformerDecoder(nn.Module, AbsExportModel):
@@ -15,6 +50,14 @@ class XformerDecoder(nn.Module, AbsExportModel):
         super().__init__()
         self.embed = Embedding(model.embed, max_seq_len)
         self.model = model
+        # replace multihead attention module into customized module.
+        for d in self.model.decoders:
+            # d is DecoderLayer
+            if isinstance(d.self_attn, MultiHeadedAttention):
+                d.self_attn = OnnxMultiHeadedAttention(d.self_attn)
+            if isinstance(d.src_attn, MultiHeadedAttention):
+                d.src_attn = OnnxMultiHeadedAttention(d.src_attn)
+        
 
     def forward(self, tgt, tgt_mask, memory, cache):
         x = self.embed(tgt)
