@@ -4,16 +4,22 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling
-from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling2
-from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling6
-from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling8
+from espnet.nets.pytorch_backend.transformer.subsampling import (
+    Conv2dSubsampling,
+    Conv2dSubsampling2,
+    Conv2dSubsampling6,
+    Conv2dSubsampling8
+)
 from espnet2.asr.frontend.default import DefaultFrontend
 from espnet2.layers.global_mvn import GlobalMVN
 from espnet2.layers.utterance_mvn import UtteranceMVN
 
+from espnet.nets.pytorch_backend.transformer.attention import MultiHeadedAttention
+from ..multihead_att import OnnxMultiHeadedAttention
+
 from espnet_onnx.utils.torch_function import MakePadMask
 from ..language_models.embed import Embedding
+from .encoder_layer import OnnxEncoderLayer
 from espnet_onnx.utils.abs_model import AbsExportModel
 
 
@@ -28,11 +34,28 @@ class XformerEncoder(nn.Module, AbsExportModel):
         super().__init__()
         self.embed = Embedding(model.embed, max_seq_len)
         self.model = model
-        self.make_pad_mask = MakePadMask(max_seq_len)
+        self.make_pad_mask = MakePadMask(max_seq_len, flip=False)
         self.feats_dim = feats_dim
+        # replace multihead attention module into customized module.
+        for i, d in enumerate(self.model.encoders):
+            # d is EncoderLayer
+            if isinstance(d.self_attn, MultiHeadedAttention):
+                d.self_attn = OnnxMultiHeadedAttention(d.self_attn)
+            self.model.encoders[i] = OnnxEncoderLayer(d)
+            
+        self.eval()
+    
+    def prepare_mask(self, mask):
+        if len(mask.shape) == 2:
+            mask = 1 - mask[:, None, None, :]
+        elif len(mask.shape) == 3:
+            mask = 1 - mask[:, None, :]
+        
+        return mask * -10000.0
+            
 
     def forward(self, feats, feats_length):
-        mask = 1 - self.make_pad_mask(feats_length).unsqueeze(1)
+        mask = self.make_pad_mask(feats_length) # (B, T)
         if (
             isinstance(self.model.embed, Conv2dSubsampling)
             or isinstance(self.model.embed, Conv2dSubsampling2)
@@ -40,10 +63,11 @@ class XformerEncoder(nn.Module, AbsExportModel):
             or isinstance(self.model.embed, Conv2dSubsampling8)
         ):
             xs_pad, mask = self.embed(feats, mask)
-            xs_pad = xs_pad[0]
         else:
             xs_pad = self.embed(feats)
 
+        mask = self.prepare_mask(mask)
+        
         xs_pad, masks = self.model.encoders(xs_pad, mask)
         if isinstance(xs_pad, tuple):
             xs_pad = xs_pad[0]
