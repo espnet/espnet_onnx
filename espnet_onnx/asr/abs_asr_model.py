@@ -14,7 +14,18 @@ from espnet_onnx.asr.beam_search.batch_beam_search import BatchBeamSearch
 from espnet_onnx.asr.beam_search.beam_search_transducer import BeamSearchTransducer
 
 
-class AbsASRModel(AbsModel): 
+class AbsASRModel(AbsModel):
+    def _check_flags(self, use_quantized, use_optimized):
+        if use_quantized and 'quantized_model_path' not in self.config.encoder.keys():
+            # check if quantized model config is defined.
+            raise RuntimeError(
+                'Configuration for quantized model is not defined.')
+        
+        if use_optimized and 'optimized_model_path' not in self.config.encoder.keys():
+            # check if optimized model config is defined.
+            raise RuntimeError(
+                'Configuration for optimized model is not defined.')
+
     def _build_beam_search(self, scorers, weights):
         if self.config.transducer.use_transducer_decoder:
             self.beam_search = BeamSearchTransducer(
@@ -43,9 +54,9 @@ class AbsASRModel(AbsModel):
                     f"fall back to non-batch implementation."
                 )
     
-    def _build_model(self, providers, use_quantized):
-        self.encoder = get_encoder(self.config.encoder, providers, use_quantized)
-        decoder = get_decoder(self.config.decoder, providers, use_quantized)
+    def _build_model(self, providers, use_quantized, use_optimized):
+        self.encoder = get_encoder(self.config.encoder, providers, use_quantized, use_optimized)
+        decoder = get_decoder(self.config.decoder, providers, use_quantized, use_optimized)
         scorers = {'decoder': decoder}
         weights = {}
         if not self.config.transducer.use_transducer_decoder:
@@ -63,7 +74,7 @@ class AbsASRModel(AbsModel):
             joint_network = JointNetwork(self.config.joint_network, providers, use_quantized)
             scorers.update(joint_network=joint_network)
             
-        lm = get_lm(self.config, providers, use_quantized)
+        lm = get_lm(self.config, providers, use_quantized, use_optimized)
         if lm is not None:
             scorers.update(lm=lm)
             weights.update(lm=self.config.weights.lm)

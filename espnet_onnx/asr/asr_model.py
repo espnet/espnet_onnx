@@ -26,6 +26,7 @@ class Speech2Text(AbsASRModel):
                  model_dir: Union[Path, str] = None,
                  providers: List[str] = ['CPUExecutionProvider'],
                  use_quantized: bool = False,
+                 use_optimized: bool = False,
                  ):
         assert check_argument_types()
         self._check_argument(tag_name, model_dir)
@@ -38,12 +39,9 @@ class Speech2Text(AbsASRModel):
         if self.config.encoder.enc_type == 'ContextualXformerEncoder':
             raise RuntimeError('Onnx model is built for streaming. Use StreamingSpeech2Text instead.')
 
-        if use_quantized and 'quantized_model_path' not in self.config.encoder.keys():
-            # check if quantized model config is defined.
-            raise RuntimeError(
-                'Configuration for quantized model is not defined.')
-
-        self._build_model(providers, use_quantized)
+        # check quantize and optimize model
+        self._check_flags(use_quantized, use_optimized)
+        self._build_model(providers, use_quantized, use_optimized)
         
         if self.config.transducer.use_transducer_decoder:
             self.start_idx = 1

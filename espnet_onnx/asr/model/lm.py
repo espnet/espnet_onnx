@@ -4,10 +4,11 @@ from espnet_onnx.asr.model.lms.seqrnn_lm import SequentialRNNLM
 from espnet_onnx.asr.model.lms.transformer_lm import TransformerLM
 
 
-def get_lm(config: Config, providers: List[str], use_quantized: bool = False):
+def get_lm(config: Config, providers: List[str], use_quantized: bool = False,
+                use_optimized: bool = False):
     if config.lm.use_lm:
         if config.lm.lm_type == 'SequentialRNNLM':
             return SequentialRNNLM(config.lm, providers, use_quantized)
         elif config.lm.lm_type == 'TransformerLM':
-            return TransformerLM(config.lm, providers, use_quantized)
+            return TransformerLM(config.lm, providers, use_quantized, use_optimized)
     return None

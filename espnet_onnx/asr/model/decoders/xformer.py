@@ -19,7 +19,8 @@ class XformerDecoder(BatchScorerInterface):
         self,
         config: Config,
         providers: List[str],
-        use_quantized: bool = False
+        use_quantized: bool = False,
+        use_optimized: bool = False
     ):
         """Onnx support for espnet2.asr.decoder.transformer_decoder
 
@@ -30,6 +31,11 @@ class XformerDecoder(BatchScorerInterface):
         if use_quantized:
             self.decoder = onnxruntime.InferenceSession(
                 config.quantized_model_path,
+                providers=providers
+            )
+        elif use_optimized:
+            self.decoder = onnxruntime.InferenceSession(
+                config.optimized_model_path,
                 providers=providers
             )
         else:
