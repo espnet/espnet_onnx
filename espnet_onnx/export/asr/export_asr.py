@@ -72,11 +72,11 @@ class ASRModelExport:
         model_config = self._create_config(model, export_dir)
 
         # export encoder
-        # enc_model = get_encoder(model.asr_model.encoder, self.export_config)
-        # enc_out_size = enc_model.get_output_size()
-        # self._export_encoder(enc_model, export_dir, verbose)
-        # model_config.update(encoder=enc_model.get_model_config(
-        #     model.asr_model, export_dir))
+        enc_model = get_encoder(model.asr_model.encoder, self.export_config)
+        enc_out_size = enc_model.get_output_size()
+        self._export_encoder(enc_model, export_dir, verbose)
+        model_config.update(encoder=enc_model.get_model_config(
+            model.asr_model, export_dir))
 
         # # export decoder
         # dec_model = get_decoder(model.asr_model.decoder, self.export_config)
@@ -93,9 +93,9 @@ class ASRModelExport:
             model_config.update(joint_network=joint_network.get_model_config(export_dir))
 
         # export ctc
-        # ctc_model = CTC(model.asr_model.ctc.ctc_lo)
-        # self._export_ctc(ctc_model, enc_out_size, export_dir, verbose)
-        # model_config.update(ctc=ctc_model.get_model_config(export_dir))
+        ctc_model = CTC(model.asr_model.ctc.ctc_lo)
+        self._export_ctc(ctc_model, enc_out_size, export_dir, verbose)
+        model_config.update(ctc=ctc_model.get_model_config(export_dir))
 
         # export lm
         lm_model = None
@@ -115,15 +115,16 @@ class ASRModelExport:
         if optimize:
             optimize_dir = base_dir / f'optimized_gpu-{self.export_config["use_gpu"]}_fp16-{self.export_config["float16"]}'
             optimize_dir.mkdir(exist_ok=True)
-            # if enc_model.is_optimizable():
-            #     self._optimize_model(enc_model, export_dir / 'encoder.onnx', optimize_dir, verbose)
+            if enc_model.is_optimizable():
+                self._optimize_model(enc_model, export_dir / 'encoder.onnx', optimize_dir / 'encoder.opt.onnx')
+                model_config['encoder']['optimized_model_path'] = str(optimize_dir / 'encoder.opt.onnx')
             
             # if dec_model.is_optimizable():
             #     self._optimize_model(dec_model, export_dir / 'decoder.onnx', optimize_dir, verbose)
             
             if lm_model is not None and lm_model.is_optimizable():
                 self._optimize_model(lm_model, export_dir / 'lm.onnx', optimize_dir / 'lm.opt.onnx')
-                model_config['lm']['optimized_path'] = str(optimize_dir / 'lm.opt.onnx')
+                model_config['lm']['optimized_model_path'] = str(optimize_dir / 'lm.opt.onnx')
 
         if quantize:
             quantize_dir = base_dir / 'quantize'
