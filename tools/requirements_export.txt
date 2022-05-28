@@ -11,3 +11,4 @@ espnet
 espnet_model_zoo
 onnx
 espnet_tts_frontend
+coloredlogs

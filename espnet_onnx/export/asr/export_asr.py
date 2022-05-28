@@ -37,6 +37,9 @@ from espnet_onnx.utils.config import (
     update_model_path
 )
 
+from espnet_onnx.export.optimize.fusion_options import FusionOptions
+from espnet_onnx.export.optimize.optimizer import optimize_model
+
 
 class ASRModelExport:
     def __init__(self, cache_dir: Union[Path, str] = None):
@@ -52,6 +55,7 @@ class ASRModelExport:
         model: Speech2Text,
         tag_name: str = None,
         quantize: bool = False,
+        optimize: bool = False,
         verbose: bool = False,
     ):
         assert check_argument_types()
@@ -68,16 +72,16 @@ class ASRModelExport:
         model_config = self._create_config(model, export_dir)
 
         # export encoder
-        enc_model = get_encoder(model.asr_model.encoder, self.export_config)
-        enc_out_size = enc_model.get_output_size()
-        self._export_encoder(enc_model, export_dir, verbose)
-        model_config.update(encoder=enc_model.get_model_config(
-            model.asr_model, export_dir))
+        # enc_model = get_encoder(model.asr_model.encoder, self.export_config)
+        # enc_out_size = enc_model.get_output_size()
+        # self._export_encoder(enc_model, export_dir, verbose)
+        # model_config.update(encoder=enc_model.get_model_config(
+        #     model.asr_model, export_dir))
 
-        # export decoder
-        dec_model = get_decoder(model.asr_model.decoder, self.export_config)
-        self._export_decoder(dec_model, enc_out_size, export_dir, verbose)
-        model_config.update(decoder=dec_model.get_model_config(export_dir))
+        # # export decoder
+        # dec_model = get_decoder(model.asr_model.decoder, self.export_config)
+        # self._export_decoder(dec_model, enc_out_size, export_dir, verbose)
+        # model_config.update(decoder=dec_model.get_model_config(export_dir))
         
         # export joint_network if transducer decoder is used.
         if model.asr_model.use_transducer_decoder:
@@ -89,9 +93,9 @@ class ASRModelExport:
             model_config.update(joint_network=joint_network.get_model_config(export_dir))
 
         # export ctc
-        ctc_model = CTC(model.asr_model.ctc.ctc_lo)
-        self._export_ctc(ctc_model, enc_out_size, export_dir, verbose)
-        model_config.update(ctc=ctc_model.get_model_config(export_dir))
+        # ctc_model = CTC(model.asr_model.ctc.ctc_lo)
+        # self._export_ctc(ctc_model, enc_out_size, export_dir, verbose)
+        # model_config.update(ctc=ctc_model.get_model_config(export_dir))
 
         # export lm
         lm_model = None
@@ -107,11 +111,28 @@ class ASRModelExport:
             model_config.update(lm=lm_model.get_model_config(export_dir))
         else:
             model_config.update(lm=dict(use_lm=False))
+        
+        if optimize:
+            optimize_dir = base_dir / f'optimized_gpu-{self.export_config["use_gpu"]}_fp16-{self.export_config["float16"]}'
+            optimize_dir.mkdir(exist_ok=True)
+            # if enc_model.is_optimizable():
+            #     self._optimize_model(enc_model, export_dir / 'encoder.onnx', optimize_dir, verbose)
+            
+            # if dec_model.is_optimizable():
+            #     self._optimize_model(dec_model, export_dir / 'decoder.onnx', optimize_dir, verbose)
+            
+            if lm_model is not None and lm_model.is_optimizable():
+                self._optimize_model(lm_model, export_dir / 'lm.onnx', optimize_dir / 'lm.opt.onnx')
+                model_config['lm']['optimized_path'] = str(optimize_dir / 'lm.opt.onnx')
 
         if quantize:
             quantize_dir = base_dir / 'quantize'
             quantize_dir.mkdir(exist_ok=True)
-            qt_config = self._quantize_model(export_dir, quantize_dir, verbose)
+            if optimize:
+                qt_config = self._quantize_model(optimize_dir, quantize_dir, optimize, verbose)
+            else:
+                qt_config = self._quantize_model(export_dir, quantize_dir, optimize, verbose)
+                
             for m in qt_config.keys():
                 if 'predecoder' in m:
                     model_idx = int(m.split('_')[1])
@@ -124,15 +145,29 @@ class ASRModelExport:
         save_config(model_config, config_name)
         update_model_path(tag_name, base_dir)
 
-    def export_from_pretrained(self, tag_name: str, quantize: bool = False):
+    def export_from_pretrained(
+        self,
+        tag_name: str,
+        quantize: bool = False,
+        optimize: bool = False,
+    ):
         assert check_argument_types()
         model = Speech2Text.from_pretrained(tag_name)
-        self.export(model, tag_name, quantize)
+        self.export(model, tag_name, quantize, optimize)
     
-    def export_from_zip(self, path: Union[Path, str], tag_name: str, quantize: bool = False):
+    def export_from_zip(
+        self,
+        path: Union[Path, str],
+        tag_name: str,
+        quantize: bool = False,
+        optimize: bool = False,
+    ):
         assert check_argument_types()
-        model = Speech2Text.from_pretrained(path)
-        self.export(model, tag_name, quantize)
+        cache_dir = Path(path).parent
+        d = ModelDownloader(cache_dir)
+        model_config = d.unpack_local_file(path)
+        model = Speech2Text(**model_config)
+        self.export(model, tag_name, quantize, optimize)
     
     def set_export_config(self, **kwargs):
         for k, v in kwargs.items():
@@ -248,7 +283,7 @@ class ASRModelExport:
             if verbose:
                 logging.info(f'Matrix for position encoding was copied into {path}.')
 
-    def _quantize_model(self, model_from, model_to, verbose):
+    def _quantize_model(self, model_from, model_to, optimize, verbose):
         if verbose:
             logging.info(f'Quantized model is saved in {model_to}.')
         ret = {}
@@ -262,5 +297,25 @@ class ASRModelExport:
                 op_types_to_quantize=['Attention', 'MatMul']
             )
             ret[basename] = export_file
-            os.remove(os.path.join(model_from, basename + '-opt.onnx'))
+            if optimize:
+                os.remove(os.path.join(model_from, basename + '.onnx'))
+            else:
+                os.remove(os.path.join(model_from, basename + '-opt.onnx'))
         return ret
+
+    def _optimize_model(self, model, model_from, model_to):
+        optimization_options = FusionOptions()
+        
+        optimizer = optimize_model(
+            str(model_from),
+            model.num_heads,
+            model.hidden_size,
+            optimization_options=optimization_options,
+            use_gpu=self.export_config['use_gpu'],
+            only_onnxruntime=self.export_config['only_onnxruntime'],
+        )
+        
+        if self.export_config['float16']:
+            optimizer.convert_float_to_float16(keep_io_types=True)
+
+        optimizer.save_model_to_file(str(model_to), False)

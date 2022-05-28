@@ -81,3 +81,6 @@ class AbsExportModel(ABC):
 
     def get_model_config(self):
         raise NotImplementedError
+
+    def is_optimizable(self):
+        return False

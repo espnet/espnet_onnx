@@ -24,7 +24,9 @@ class XformerDecoder(nn.Module, AbsExportModel):
                 d.self_attn = OnnxMultiHeadedAttention(d.self_attn)
             if isinstance(d.src_attn, MultiHeadedAttention):
                 d.src_attn = OnnxMultiHeadedAttention(d.src_attn)
-        
+                
+        self.num_heads = model.decoders[0].self_attn.h
+        self.hidden_size = model.decoders[0].self_attn.linear_out.out_features
 
     def forward(self, tgt, tgt_mask, memory, cache):
         x = self.embed(tgt)
@@ -47,6 +49,9 @@ class XformerDecoder(nn.Module, AbsExportModel):
             for _ in range(len(self.model.decoders))
         ]
         return (tgt, tgt_mask, enc_out, cache)
+
+    def is_optimizable(self):
+        return True
 
     def get_input_names(self):
         return ['tgt', 'tgt_mask', 'memory'] \

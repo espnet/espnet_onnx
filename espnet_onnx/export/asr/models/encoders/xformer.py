@@ -15,11 +15,11 @@ from espnet2.layers.global_mvn import GlobalMVN
 from espnet2.layers.utterance_mvn import UtteranceMVN
 
 from espnet.nets.pytorch_backend.transformer.attention import MultiHeadedAttention
-from ..multihead_att import OnnxMultiHeadedAttention
 
 from espnet_onnx.utils.torch_function import MakePadMask
 from ..language_models.embed import Embedding
-from .encoder_layer import OnnxEncoderLayer
+from ..encoder_layer import OnnxEncoderLayer
+from ..multihead_att import OnnxMultiHeadedAttention
 from espnet_onnx.utils.abs_model import AbsExportModel
 
 
@@ -42,8 +42,9 @@ class XformerEncoder(nn.Module, AbsExportModel):
             if isinstance(d.self_attn, MultiHeadedAttention):
                 d.self_attn = OnnxMultiHeadedAttention(d.self_attn)
             self.model.encoders[i] = OnnxEncoderLayer(d)
-            
-        self.eval()
+        
+        self.num_heads = model.encoders[0].self_attn.h
+        self.hidden_size = model.encoders[0].self_attn.linear_out.out_features
     
     def prepare_mask(self, mask):
         if len(mask.shape) == 2:
@@ -52,7 +53,6 @@ class XformerEncoder(nn.Module, AbsExportModel):
             mask = 1 - mask[:, None, :]
         
         return mask * -10000.0
-            
 
     def forward(self, feats, feats_length):
         mask = self.make_pad_mask(feats_length) # (B, T)
@@ -79,6 +79,9 @@ class XformerEncoder(nn.Module, AbsExportModel):
 
     def get_output_size(self):
         return self.model.encoders[0].size
+
+    def is_optimizable(self):
+        return True
 
     def get_dummy_inputs(self):
         feats = torch.randn(1, 100, self.feats_dim)
