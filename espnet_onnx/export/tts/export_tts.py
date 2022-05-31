@@ -30,7 +30,7 @@ class TTSModelExport:
             cache_dir = Path.home() / ".cache" / "espnet_onnx"
 
         self.cache_dir = Path(cache_dir)
-        self.export_config = dict()
+        self.export_config = {}
 
     def export(
         self,
@@ -56,7 +56,7 @@ class TTSModelExport:
 
         # export vocoder
         # if model.vocoder is not None:
-        #     voc_model = get_vocoder(model.vocoder)
+        #     voc_model = PWGVocoder(model.vocoder, self.export_config)
         #     self._export_vocoder(voc_model, export_dir, verbose)
         #     model_config.update(vocoder=voc_model.get_model_config(export_dir))
 
@@ -65,27 +65,22 @@ class TTSModelExport:
             quantize_dir.mkdir(exist_ok=True)
             qt_config = self._quantize_model(export_dir, quantize_dir, verbose)
             for m in qt_config.keys():
-                if 'predecoder' in m:
-                    model_idx = int(m.split('_')[1])
-                    model_config['decoder']['predecoder'][model_idx].update(
-                        quantized_model_path=qt_config[m])
-                else:
-                    model_config[m].update(quantized_model_path=qt_config[m])
+                model_config[m].update(quantized_model_path=qt_config[m])
 
         config_name = base_dir / 'config.yaml'
         save_config(model_config, config_name)
         update_model_path(tag_name, base_dir)
 
-    def export_from_pretrained(self, tag_name: str = None, zip_file: str = None, quantize: bool = False):
+    def export_from_pretrained(self, tag_name: str, quantize: bool = False):
         assert check_argument_types()
-        if ((tag_name is not None) and (zip_file is not None)) \
-                or ((tag_name is None) and (zip_file is None)):
-            raise RuntimeError(
-                'You should specify value for one of ["tag_name", "zip_file"]')
-        _t = tag_name if tag_name is not None else zip_file
-        model = Text2Speech.from_pretrained(_t)
+        model = Text2Speech.from_pretrained(tag_name)
         self.export(model, tag_name, quantize)
-
+    
+    def export_from_zip(self, path: Union[Path, str], tag_name: str, quantize: bool = False):
+        assert check_argument_types()
+        model = Text2Speech.from_pretrained(path)
+        self.export(model, tag_name, quantize)
+    
     def set_export_config(self, **kwargs):
         for k, v in kwargs.items():
             self.export_config[k] = v
