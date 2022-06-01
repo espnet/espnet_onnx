@@ -76,12 +76,10 @@ class OnnxFastSpeech2(nn.Module, AbsExportModel):
         model,
         max_seq_len: int = 512,
         alpha: float = 1.0,
-        use_teacher_forcing: bool = False,
         **kwargs
     ):
         super().__init__()
         # HPs
-        self.use_teacher_forcing = use_teacher_forcing
         self.odim = model.odim
         self.use_gst = model.use_gst
         self.spks = model.spks
@@ -116,7 +114,7 @@ class OnnxFastSpeech2(nn.Module, AbsExportModel):
 
     def _source_mask(self, ilens):
         x_masks = 1 - self.make_pad_mask(ilens)
-        return x_masks
+        return x_masks.unsqueeze(-2)
 
     def _integrate_with_spk_embed(
         self, hs: torch.Tensor, spembs: torch.Tensor
@@ -142,12 +140,9 @@ class OnnxFastSpeech2(nn.Module, AbsExportModel):
         sids: Optional[torch.Tensor] = None,
         spembs: torch.Tensor = None,
         lids: Optional[torch.Tensor] = None,
-        durations: Optional[torch.Tensor] = None,
-        pitch: Optional[torch.Tensor] = None,
-        energy: Optional[torch.Tensor] = None
     ):
         x, y = text, feats
-        spemb, d, p, e = spembs, durations, pitch, energy
+        spemb = spembs
 
         # add eos at the last of sequence
         x = F.pad(x, [0, 1], "constant", self.eos)
@@ -160,29 +155,14 @@ class OnnxFastSpeech2(nn.Module, AbsExportModel):
         if spemb is not None:
             spembs = spemb.unsqueeze(0)
 
-        if self.use_teacher_forcing:
-            # use groundtruth of duration, pitch, and energy
-            ds, ps, es = d.unsqueeze(0), p.unsqueeze(0), e.unsqueeze(0)
-            _, outs, d_outs, p_outs, e_outs = self._forward(
-                xs,
-                text_length,
-                ys,
-                ds=ds,
-                ps=ps,
-                es=es,
-                spembs=spembs,
-                sids=sids,
-                lids=lids,
-            )  # (1, T_feats, odim)
-        else:
-            _, outs, d_outs, p_outs, e_outs = self._forward(
-                xs,
-                text_length,
-                ys,
-                spembs=spembs,
-                sids=sids,
-                lids=lids,
-            )  # (1, T_feats, odim)
+        _, outs, d_outs, p_outs, e_outs = self._forward(
+            xs,
+            text_length,
+            ys,
+            spembs=spembs,
+            sids=sids,
+            lids=lids,
+        )  # (1, T_feats, odim)
 
         return dict(
             feat_gen=outs[0],

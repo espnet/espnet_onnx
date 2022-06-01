@@ -14,7 +14,7 @@ from typing import Optional
 import librosa
 import numpy as np
 from typeguard import check_argument_types
-
+from packaging.version import parse as V
 from espnet_onnx.utils.config import Config
 
 EPS = 1e-10
@@ -71,16 +71,34 @@ def griffin_lim(
     """
     # assert the size of input linear spectrogram
     assert spc.shape[1] == n_fft // 2 + 1
-    # use librosa's fast Grriffin-Lim algorithm
-    spc = np.abs(spc.T)
-    y = librosa.griffinlim(
-        S=spc,
-        n_iter=n_iter,
-        hop_length=n_shift,
-        win_length=win_length,
-        window=window,
-        center=True if spc.shape[1] > 1 else False,
-    )
+    if V(librosa.__version__) >= V("0.7.0"):
+        # use librosa's fast Grriffin-Lim algorithm
+        spc = np.abs(spc.T)
+        y = librosa.griffinlim(
+            S=spc,
+            n_iter=n_iter,
+            hop_length=n_shift,
+            win_length=win_length,
+            window=window,
+            center=True if spc.shape[1] > 1 else False,
+        )
+    else:
+        # use slower version of Grriffin-Lim algorithm
+        logging.warning(
+            "librosa version is old. use slow version of Grriffin-Lim algorithm."
+            "if you want to use fast Griffin-Lim, please update librosa via "
+            "`source ./path.sh && pip install librosa==0.7.0`."
+        )
+        cspc = np.abs(spc).astype(np.complex).T
+        angles = np.exp(2j * np.pi * np.random.rand(*cspc.shape))
+        y = librosa.istft(cspc * angles, n_shift, win_length, window=window)
+        for i in range(n_iter):
+            angles = np.exp(
+                1j
+                * np.angle(librosa.stft(y, n_fft, n_shift, win_length, window=window))
+            )
+            y = librosa.istft(cspc * angles, n_shift, win_length, window=window)
+
     return y
 
 
@@ -127,6 +145,8 @@ class Spectrogram2Waveform(object):
             window=config.window,
             n_iter=config.n_iter,
         )
+        if config.n_mels is not None:
+            self.params.update(fs=config.fs, n_mels=config.n_mels, fmin=config.fmin, fmax=config.fmax)
 
     def __repr__(self):
         retval = f"{self.__class__.__name__}("
