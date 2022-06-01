@@ -50,23 +50,21 @@ class VITS:
         feats: np.ndarray = None,
         sids: np.ndarray = None,
         spembs:  np.ndarray = None,
-        lids:  np.ndarray = None,
-        duration:  np.ndarray = None
+        lids:  np.ndarray = None
     ):
         output_names = ['wav', 'att_w', 'dur']
         input_dict = self.get_input_dict(
-            text, feats, sids, spembs, lids, duration)
+            text, feats, sids, spembs, lids)
         wav, att_w, dur = self.model.run(output_names, input_dict)
         return dict(wav=wav, att_w=att_w, dur=dur)
 
-    def get_input_dict(self, text, feats, sids, spembs, lids, duration):
+    def get_input_dict(self, text, feats, sids, spembs, lids):
         ret = {'text': text, 'text_length': np.array(
             [len(text)], dtype=np.int64)}
         ret = self._set_input_dict(ret, 'feats', feats)
         ret = self._set_input_dict(ret, 'sids', sids)
         ret = self._set_input_dict(ret, 'spembs', spembs)
         ret = self._set_input_dict(ret, 'lids', lids)
-        ret = self._set_input_dict(ret, 'duration', duration)
         return ret
 
     def _set_input_dict(self, dic, key, value):
