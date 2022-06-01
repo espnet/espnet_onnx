@@ -18,13 +18,29 @@ class OnnxLengthRegurator(nn.Module):
     def __init__(self, alpha):
         super().__init__()
         self.alpha = alpha
+        # The maximum length of the make_pad_mask is the 
+        # maximum value of the duration.
+        self.make_pad_mask = MakePadMask(512)
+        self.zero = torch.LongTensor([0])
     
     def forward(self, x, dur):
         # This class assumes that the batch size of x
         # should be 1.
         if self.alpha != 1.0:
             dur = torch.round(ds.float() * alpha).long()
-        return torch.repeat_interleave(x, dur[0], dim=1)
+        dur = dur[0]
+        ma = torch.cumsum(
+            torch.cat((dur, self.zero), dim=0),
+            dim=0
+        )
+        mb = torch.cumsum(
+            torch.cat((self.zero, dur), dim=0),
+            dim=0
+        )
+        _m = self.make_pad_mask(mb)
+        _m[0] = 1
+        mask = ((1 - self.make_pad_mask(ma)) * _m)[:-1]
+        return torch.matmul(x.transpose(1, 2), mask).transpose(1, 2)
 
 
 class OnnxReferenceEncoder(nn.Module):
