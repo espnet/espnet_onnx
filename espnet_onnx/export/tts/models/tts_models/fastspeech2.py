@@ -116,7 +116,6 @@ class OnnxFastSpeech2(nn.Module, AbsExportModel):
 
     def _source_mask(self, ilens):
         x_masks = 1 - self.make_pad_mask(ilens)
-        # return x_masks.unsqueeze(-2)
         return x_masks
 
     def _integrate_with_spk_embed(
@@ -152,6 +151,7 @@ class OnnxFastSpeech2(nn.Module, AbsExportModel):
 
         # add eos at the last of sequence
         x = F.pad(x, [0, 1], "constant", self.eos)
+        text_length += 1
 
         # setup batch axis
         xs, ys = x.unsqueeze(0), None
@@ -196,10 +196,6 @@ class OnnxFastSpeech2(nn.Module, AbsExportModel):
         xs: torch.Tensor,
         ilens: torch.Tensor,
         ys: Optional[torch.Tensor] = None,
-        olens: Optional[torch.Tensor] = None,
-        ds: Optional[torch.Tensor] = None,
-        ps: Optional[torch.Tensor] = None,
-        es: Optional[torch.Tensor] = None,
         spembs: Optional[torch.Tensor] = None,
         sids: Optional[torch.Tensor] = None,
         lids: Optional[torch.Tensor] = None,
@@ -256,7 +252,7 @@ class OnnxFastSpeech2(nn.Module, AbsExportModel):
 
     def get_dummy_inputs(self):
         text = torch.LongTensor([0, 1])
-        text_length = torch.LongTensor([text.shape[0]+1])
+        text_length = torch.LongTensor([text.shape[0]])
         feats = torch.randn(10, self.odim) \
             if self.use_gst else None
 
@@ -269,19 +265,10 @@ class OnnxFastSpeech2(nn.Module, AbsExportModel):
         lids = torch.LongTensor([0]) \
             if self.langs is not None else None
 
-        duration = torch.LongTensor([5,6]) \
-            if not self.use_teacher_forcing else None
-
-        pitch = torch.randn(3, 1) \
-            if not self.use_teacher_forcing else None
-
-        energy = torch.randn(3, 1) \
-            if not self.use_teacher_forcing else None
-
-        return (text, text_length, feats, sids, spembs, lids, duration, pitch, energy)
+        return (text, text_length, feats, sids, spembs, lids)
 
     def get_input_names(self):
-        return ['text', 'text_length', 'feats', 'sids', 'spembs', 'lids', 'duration', 'pitch', 'energy']
+        return ['text', 'text_length', 'feats', 'sids', 'spembs', 'lids']
 
     def get_output_names(self):
         return ['feat_gen', 'out_duration', 'out_pitch', 'out_energy']
@@ -291,12 +278,6 @@ class OnnxFastSpeech2(nn.Module, AbsExportModel):
             'text': {0: 'text_length'},
             'feats': {0: 'feats_length'},
         }
-        if self.use_teacher_forcing:
-            ret.update({
-                'duration': {0: 'duration_length'},
-                'pitch': {0: 'pitch_length'},
-                'energy': {0: 'energy_length'}
-            })
         return ret
 
     def get_model_config(self, path):

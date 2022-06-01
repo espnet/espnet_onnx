@@ -12,10 +12,14 @@ import torch
 from onnxruntime.quantization import quantize_dynamic, QuantType
 
 from espnet2.bin.tts_inference import Text2Speech
-from espnet_onnx.export.tts.models import get_tts_model
+from espnet_onnx.export.tts.models import (
+    get_tts_model,
+    get_vocoder
+)
 from .get_config import (
     get_token_config,
-    get_preprocess_config
+    get_preprocess_config,
+    get_vocoder_config
 )
 from espnet_onnx.utils.config import (
     save_config,
@@ -55,10 +59,13 @@ class TTSModelExport:
         model_config.update(tts_model=tts_model.get_model_config(export_dir))
 
         # export vocoder
-        # if model.vocoder is not None:
-        #     voc_model = PWGVocoder(model.vocoder, self.export_config)
-        #     self._export_vocoder(voc_model, export_dir, verbose)
-        #     model_config.update(vocoder=voc_model.get_model_config(export_dir))
+        if model.vocoder is not None:
+            voc_model, require_export = get_vocoder(model.vocoder, self.export_config)
+            if require_export:
+                self._export_vocoder(voc_model, export_dir, verbose)
+                model_config.update(vocoder=voc_model.get_model_config(export_dir))
+            else:
+                model_config.update(vocoder=get_vocoder_config(voc_model))
 
         if quantize:
             quantize_dir = base_dir / 'quantize'

@@ -51,3 +51,14 @@ def get_preprocess_config(model, path):
         
     ret.update({'tokenizer': get_tokenizer_config(model.tokenizer, path)})
     return ret
+
+
+def get_vocoder_config(model):
+    ret = {
+        'vocoder_type': 'Spectrogram2Waveform',
+    }
+    ret.update(model.params)
+    return ret
+    
+    
+    

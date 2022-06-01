@@ -8,9 +8,11 @@ import logging
 import onnxruntime
 import warnings
 
+from espnet_onnx.utils.abs_model import AbsModel
 from espnet_onnx.tts.model.preprocess.common_processor import CommonPreprocessor
 from espnet_onnx.tts.model.duration_calculator import DurationCalculator
 from espnet_onnx.tts.model.tts_model import get_tts_model
+from espnet_onnx.tts.model.vocoders.griffin_lim import Spectrogram2Waveform
 from espnet_onnx.utils.config import (
     get_config,
     get_tag_config
@@ -19,7 +21,7 @@ from espnet_onnx.asr.postprocess.build_tokenizer import build_tokenizer
 from espnet_onnx.asr.postprocess.token_id_converter import TokenIDConverter
 
 
-class AbsTTSModel(ABC):
+class AbsTTSModel(AbsModel):
 
     def _check_argument(self, tag_name, model_dir):
         self.model_dir = model_dir
@@ -40,17 +42,26 @@ class AbsTTSModel(ABC):
         self.config = get_config(config_file)
 
     def _build_tokenizer(self):
-        if self.config.preprocess.tokenizer.token_type is None:
+        if self.config.tokenizer.token_type is None:
             self.tokenizer = None
-        elif self.config.preprocess.tokenizer.token_type == 'bpe':
+        elif self.config.tokenizer.token_type == 'bpe':
             self.tokenizer = build_tokenizer(
-                'bpe', self.config.preprocess.tokenizer.bpemodel)
+                'bpe', self.config.tokenizer.bpemodel)
         else:
             self.tokenizer = build_tokenizer(
-                **self.config.preprocess.tokenizer.dic)
+                **self.config.tokenizer.dic)
 
     def _build_token_converter(self):
         self.converter = TokenIDConverter(token_list=self.config.token.list)
+    
+    def _build_vocoder(self, providers, use_quantized):
+        self.vocoder = None
+        if self.config.vocoder.vocoder_type == 'Spectrogram2Waveform':
+            self.vocoder = Spectrogram2Waveform(self.config.vocoder)
+        elif self.config.vocoder.vocoder_type == 'PWGVocoder':
+            raise RuntimeError('Currently, PWGVocoder is not supported.')
+        else:
+            raise RuntimeError(f'vocoder type {self.config.vocoder_type} is not supported.')
 
     def _build_model(self, providers, use_quantized):
         # build tts model such as vits
@@ -62,11 +73,10 @@ class AbsTTSModel(ABC):
         self.preprocess = CommonPreprocessor(
             tokenizer=self.tokenizer,
             token_id_converter=self.converter,
-            cleaner_config=self.config.preprocess.text_cleaner,
+            cleaner_config=self.config.text_cleaner,
         )
         self.duration_calculator = DurationCalculator()
-        # vocoder is currently not supported
-        # self.vocoder is get_vocoder()
+        self._build_vocoder(providers, use_quantized)
 
     def _check_ort_version(self, providers: List[str]):
         # check cpu

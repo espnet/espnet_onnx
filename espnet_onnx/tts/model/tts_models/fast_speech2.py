@@ -40,6 +40,7 @@ class FastSpeech2:
             )
 
         self.input_names = [d.name for d in self.model.get_inputs()]
+        self.output_names = ['feat_gen', 'out_duration', 'out_pitch', 'out_energy']
         self.use_sids = 'sids' in self.input_names
         self.use_lids = 'lids' in self.input_names
         self.use_feats = 'feats' in self.input_names
@@ -50,23 +51,20 @@ class FastSpeech2:
         feats: np.ndarray = None,
         sids: np.ndarray = None,
         spembs:  np.ndarray = None,
-        lids:  np.ndarray = None,
-        duration:  np.ndarray = None
+        lids:  np.ndarray = None
     ):
-        output_names = ['wav', 'att_w', 'dur']
         input_dict = self.get_input_dict(
-            text, feats, sids, spembs, lids, duration)
-        wav, att_w, dur = self.model.run(output_names, input_dict)
-        return dict(wav=wav, att_w=att_w, dur=dur)
+            text, feats, sids, spembs, lids)
+        feat_gen, dur, pitch, energy = self.model.run(self.output_names, input_dict)
+        return dict(feat_gen=feat_gen, dur=dur, pitch=pitch, energy=energy)
 
-    def get_input_dict(self, text, feats, sids, spembs, lids, duration):
+    def get_input_dict(self, text, feats, sids, spembs, lids):
         ret = {'text': text, 'text_length': np.array(
             [len(text)], dtype=np.int64)}
         ret = self._set_input_dict(ret, 'feats', feats)
         ret = self._set_input_dict(ret, 'sids', sids)
         ret = self._set_input_dict(ret, 'spembs', spembs)
         ret = self._set_input_dict(ret, 'lids', lids)
-        ret = self._set_input_dict(ret, 'duration', duration)
         return ret
 
     def _set_input_dict(self, dic, key, value):
