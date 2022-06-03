@@ -54,13 +54,13 @@ class TTSModelExport:
         model_config = self._create_config(model, export_dir)
 
         # export encoder
-        tts_model = get_tts_model(model, self.export_config)
+        tts_model = get_tts_model(model.model.tts, self.export_config)
         self._export_tts(tts_model, export_dir, verbose)
         model_config.update(tts_model=tts_model.get_model_config(export_dir))
 
         # export vocoder
-        if model.vocoder is not None:
-            voc_model, require_export = get_vocoder(model.vocoder, self.export_config)
+        voc_model, require_export = get_vocoder(model, self.export_config)
+        if voc_model is not None:
             if require_export:
                 self._export_vocoder(voc_model, export_dir, verbose)
                 model_config.update(vocoder=voc_model.get_model_config(export_dir))
@@ -122,11 +122,11 @@ class TTSModelExport:
             logging.info(f'TTS model is saved in {file_name}')
         self._export_model(model, file_name, verbose)
 
-    # def _export_vocoder(self, model, path, verbose):
-    #     file_name = os.path.join(path, 'vocoder.onnx')
-    #     if verbose:
-    #         logging.info(f'Vocoder model is saved in {file_name}')
-    #     self._export_model(model, file_name, verbose, enc_size)
+    def _export_vocoder(self, model, path, verbose):
+        file_name = os.path.join(path, 'vocoder.onnx')
+        if verbose:
+            logging.info(f'Vocoder model is saved in {file_name}')
+        self._export_model(model, file_name, verbose)
 
     def _quantize_model(self, model_from, model_to, verbose):
         if verbose:
