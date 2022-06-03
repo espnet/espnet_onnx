@@ -12,6 +12,7 @@ from espnet_onnx.utils.abs_model import AbsModel
 from espnet_onnx.tts.model.preprocess.common_processor import CommonPreprocessor
 from espnet_onnx.tts.model.duration_calculator import DurationCalculator
 from espnet_onnx.tts.model.tts_model import get_tts_model
+from espnet_onnx.tts.model.vocoders.vocoder import Vocoder
 from espnet_onnx.tts.model.vocoders.griffin_lim import Spectrogram2Waveform
 from espnet_onnx.utils.config import (
     get_config,
@@ -58,8 +59,10 @@ class AbsTTSModel(AbsModel):
         self.vocoder = None
         if self.config.vocoder.vocoder_type == 'Spectrogram2Waveform':
             self.vocoder = Spectrogram2Waveform(self.config.vocoder)
-        elif self.config.vocoder.vocoder_type == 'PWGVocoder':
+        elif self.config.vocoder.vocoder_type == 'PretrainedPWGVocoder':
             raise RuntimeError('Currently, PWGVocoder is not supported.')
+        elif self.config.vocoder.vocoder_type == 'OnnxVocoder':
+            self.vocoder = Vocoder(self.config.vocoder, providers, use_quantized)
         else:
             raise RuntimeError(f'vocoder type {self.config.vocoder_type} is not supported.')
 

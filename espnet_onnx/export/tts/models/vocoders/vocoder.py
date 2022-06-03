@@ -52,6 +52,6 @@ class OnnxVocoder(nn.Module, AbsExportModel):
 
     def get_model_config(self, path):
         return {
-            'model_type': 'Vocoder',
+            'vocoder_type': 'OnnxVocoder',
             'model_path': str(path / 'vocoder.onnx')
         }

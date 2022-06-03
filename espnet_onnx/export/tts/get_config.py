@@ -57,7 +57,8 @@ def get_vocoder_config(model):
     ret = {
         'vocoder_type': 'Spectrogram2Waveform',
     }
-    ret.update(model.params)
+    if hasattr(model, 'params'):
+        ret.update(model.params)
     return ret
     
     
