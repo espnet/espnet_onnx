@@ -86,6 +86,7 @@ class OnnxFastSpeech2(nn.Module, AbsExportModel):
         self.langs = model.langs
         self.spk_embed_dim = model.spk_embed_dim
         self.eos = model.eos
+        self.model_name = 'fast_speech2'
         if self.spk_embed_dim is not None:
             self.spk_embed_integration_type = model.spk_embed_integration_type
             if self.spk_embed_integration_type == "add":
@@ -263,6 +264,6 @@ class OnnxFastSpeech2(nn.Module, AbsExportModel):
     def get_model_config(self, path):
         return {
             'model_type': 'FastSpeech2',
-            'model_path': str(path / 'tts_model.onnx'),
+            'model_path': str(path / f'{self.model_name}.onnx'),
             'eos': self.eos,
         }

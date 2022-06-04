@@ -161,7 +161,7 @@ class ASRModelExport:
         ret.update(tokenizer=get_tokenizer_config(model.tokenizer, path))
         return ret
     
-    def _export_model(self, model, file_name, verbose, enc_size=None):
+    def _export_model(self, model, verbose, path, enc_size=None):
         if enc_size:
             dummy_input = model.get_dummy_inputs(enc_size)
         else:
@@ -170,58 +170,43 @@ class ASRModelExport:
         torch.onnx.export(
             model,
             dummy_input,
-            file_name,
+            os.path.join(path, f'{model.model_name}.onnx'),
             verbose=verbose,
             opset_version=15,
             input_names=model.get_input_names(),
             output_names=model.get_output_names(),
             dynamic_axes=model.get_dynamic_axes()
         )
+        
+        # export submodel if required
+        if hasattr(model, 'submodel'):
+            for i, sm in enumerate(model.submodel):
+                self._export_model(sm, verbose, path, enc_size)
 
     def _export_encoder(self, model, path, verbose):
-        file_name = os.path.join(path, 'encoder.onnx')
         if verbose:
             logging.info(f'Encoder model is saved in {file_name}')
-        self._export_model(model, file_name, verbose)
+        self._export_model(model, verbose, path)
 
     def _export_decoder(self, model, enc_size, path, verbose):
-        file_name = os.path.join(path, 'decoder.onnx')
         if verbose:
             logging.info(f'Decoder model is saved in {file_name}')
-        self._export_model(model, file_name, verbose, enc_size)
-        
-        # if decoder is RNNDecoder, then export predecoders
-        if isinstance(model, RNNDecoder):
-            self._export_predecoder(model, path, verbose)
-
-    def _export_predecoder(self, model, path, verbose):
-        if verbose:
-            logging.info(f'Pre-Decoder model is saved in {path}.' \
-                + f'There should be {len(model.model.att_list)} files.')
-            
-        for i, att in enumerate(model.model.att_list):
-            att_model = PreDecoder(att)
-            if att_model.require_onnx():
-                file_name = os.path.join(path, f'predecoder_{i}.onnx')
-                self._export_model(att_model, file_name, verbose)
+        self._export_model(model, verbose, path, enc_size)
 
     def _export_ctc(self, model, enc_size, path, verbose):
-        file_name = os.path.join(path, 'ctc.onnx')
         if verbose:
             logging.info(f'CTC model is saved in {file_name}')
-        self._export_model(model, file_name, verbose, enc_size)
+        self._export_model(model, verbose, path, enc_size)
 
     def _export_lm(self, model, path, verbose):
-        file_name = os.path.join(path, 'lm.onnx')
         if verbose:
             logging.info(f'LM model is saved in {file_name}')
-        self._export_model(model, file_name, verbose)
+        self._export_model(model, verbose, path)
     
     def _export_joint_network(self, model, path, verbose):
-        file_name = os.path.join(path, 'joint_network.onnx')
         if verbose:
             logging.info(f'JointNetwork model is saved in {file_name}')
-        self._export_model(model, file_name, verbose)
+        self._export_model(model, verbose, path)
         
     def _copy_files(self, model, path, verbose):
         # copy stats file

@@ -15,6 +15,7 @@ class SequentialRNNLM(nn.Module, AbsExportModel):
         self.decoder = model.decoder
         self.nlayers = model.nlayers
         self.nhid = model.nhid
+        self.model_name = 'seq_rnnlm'
 
     def forward(self, y, hidden1, hidden2=None):
         # batch_score function.
@@ -89,7 +90,7 @@ class SequentialRNNLM(nn.Module, AbsExportModel):
     def get_model_config(self, path):
         return {
             "use_lm": True,
-            "model_path": os.path.join(path, "lm.onnx"),
+            "model_path": os.path.join(path, f'{self.model_name}.onnx'),
             "lm_type": "SequentialRNNLM",
             "rnn_type": self.rnn_type,
             "nhid": self.nhid,

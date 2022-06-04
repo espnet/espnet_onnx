@@ -15,6 +15,7 @@ class XformerDecoder(nn.Module, AbsExportModel):
         super().__init__()
         self.embed = Embedding(model.embed, max_seq_len)
         self.model = model
+        self.model_name = 'xformer_decoder'
 
     def forward(self, tgt, tgt_mask, memory, cache):
         x = self.embed(tgt)
@@ -78,10 +79,9 @@ class XformerDecoder(nn.Module, AbsExportModel):
         return ret
 
     def get_model_config(self, path):
-        file_name = os.path.join(path, 'decoder.onnx')
         return {
             "dec_type": "XformerDecoder",
-            "model_path": file_name,
+            "model_path": os.path.join(path, f'{self.model_name}.onnx'),
             "n_layers": len(self.model.decoders),
             "odim": self.model.decoders[0].size
         }

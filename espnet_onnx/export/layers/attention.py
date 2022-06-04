@@ -15,7 +15,8 @@ from espnet.nets.pytorch_backend.rnn.attentions import (
     AttMultiHeadDot,
     AttMultiHeadAdd,
     AttMultiHeadLoc,
-    AttMultiHeadMultiResLoc
+    AttMultiHeadMultiResLoc,
+    AttForward
 )
 
 
@@ -44,6 +45,35 @@ def get_attention(model):
         raise ValueError('not supported.')
     elif isinstance(model, AttMultiHeadMultiResLoc):
         raise ValueError('not supported.')
+
+
+def require_tanh(model):
+    if isinstance(model, NoAtt):
+        return False
+    elif isinstance(model, AttDot):
+        return True
+    elif isinstance(model, AttAdd):
+        return False
+    elif isinstance(model, AttLoc):
+        return False
+    elif isinstance(model, AttLoc2D):
+        raise ValueError('Currently AttLoc2D is not supported.')
+    elif isinstance(model, AttLocRec):
+        raise ValueError('not supported.')
+    elif isinstance(model, AttCov):
+        return False
+    elif isinstance(model, AttCovLoc):
+        return False
+    elif isinstance(model, AttMultiHeadDot):
+        raise ValueError('not supported.')
+    elif isinstance(model, AttMultiHeadAdd):
+        raise ValueError('not supported.')
+    elif isinstance(model, AttMultiHeadLoc):
+        raise ValueError('not supported.')
+    elif isinstance(model, AttMultiHeadMultiResLoc):
+        raise ValueError('not supported.')
+    elif isinstance(model, AttForward):
+        raise False
 
 
 class OnnxNoAtt(torch.nn.Module):
@@ -185,7 +215,6 @@ class OnnxAttLoc(nn.Module):
         enc_h,
         mask,
         scaling=2.0,
-        last_attended_idx=None,
         backward_window=1,
         forward_window=3,
     ):
@@ -214,10 +243,10 @@ class OnnxAttLoc(nn.Module):
         e = e + mask
 
         # apply monotonic attention constraint (mainly for TTS)
-        if last_attended_idx is not None:
-            e = _apply_attention_constraint(
-                e, last_attended_idx, backward_window, forward_window
-            )
+        # if last_attended_idx is not None:
+        #     e = _apply_attention_constraint(
+        #         e, last_attended_idx, backward_window, forward_window
+        #     )
 
         w = F.softmax(scaling * e, dim=1)
 
@@ -411,8 +440,69 @@ class OnnxAttCovLoc(torch.nn.Module):
         return c, att_prev
 
 
+class AttForward(torch.nn.Module):
+    def __init__(self, model):
+        super().__init__()
+        self.model = model
 
+        self.dunits = model.dunits
+        self.att_dim = model.att_dim
+        self.att_type = 'att_for'
 
+    def forward(
+        self,
+        dec_z,
+        att_prev,
+        pre_compute_enc_h,
+        enc_h,
+        mask,
+        scaling=2.0,
+        last_attended_idx=None,
+        backward_window=1,
+        forward_window=3,
+    ):
+        """AttForward forward
+        """
+        batch = 1
 
+        # att_prev: utt x frame -> utt x 1 x 1 x frame
+        # -> utt x att_conv_chans x 1 x frame
+        att_conv = self.model.loc_conv(att_prev.view(batch, 1, 1, self.model.h_length))
+        # att_conv: utt x att_conv_chans x 1 x frame -> utt x frame x att_conv_chans
+        att_conv = att_conv.squeeze(2).transpose(1, 2)
+        # att_conv: utt x frame x att_conv_chans -> utt x frame x att_dim
+        att_conv = self.model.mlp_att(att_conv)
 
+        # dec_z_tiled: utt x frame x att_dim
+        dec_z_tiled = self.model.mlp_dec(dec_z).unsqueeze(1)
+
+        # dot with gvec
+        # utt x frame x att_dim -> utt x frame
+        e = self.model.gvec(
+            torch.tanh(pre_compute_enc_h + dec_z_tiled + att_conv)
+        ).squeeze(2)
+
+        # NOTE: consider zero padding when compute w.
+        e = e + mask
+
+        # apply monotonic attention constraint (mainly for TTS)
+        if last_attended_idx is not None:
+            e = _apply_attention_constraint(
+                e, last_attended_idx, backward_window, forward_window
+            )
+
+        w = F.softmax(scaling * e, dim=1)
+
+        # forward attention
+        att_prev_shift = F.pad(att_prev, (1, 0))[:, :-1]
+        w = (att_prev + att_prev_shift) * w
+        # NOTE: clamp is needed to avoid nan gradient
+        w = F.normalize(torch.clamp(w, 1e-6), p=1, dim=1)
+
+        # weighted sum over flames
+        # utt x hdim
+        # NOTE use bmm instead of sum(*)
+        c = torch.sum(enc_h * w.unsqueeze(-1), dim=1)
+
+        return c, w
 

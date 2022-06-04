@@ -1,5 +1,6 @@
 from espnet2.gan_tts.vits import VITS as espnetVITSModel
 from espnet2.tts.fastspeech2.fastspeech2 import FastSpeech2 as espnetFastSpeech2
+from espnet2.tts.tacotron2.tacotron2 import Tacotron2 as espnetTacotron2
 from espnet2.gan_tts.joint.joint_text2wav import JointText2Wav as espnetJointText2Wav
 from .tts_models.vits import OnnxVITSModel
 from .tts_models.fastspeech2 import OnnxFastSpeech2
@@ -20,6 +21,12 @@ def get_tts_model(model, export_config):
     
     elif isinstance(model, espnetFastSpeech2):
         return OnnxFastSpeech2(model, **export_config)
+    
+    elif isinstance(model, espnetTacotron2):
+        return [
+            OnnxTacotron2Encoder(model, **export_config),
+            OnnxTacotron2Decoder(model, **export_config)
+        ]   
     
     elif isinstance(model, espnetJointText2Wav):
         return get_tts_model(model.generator['text2mel'], export_config)

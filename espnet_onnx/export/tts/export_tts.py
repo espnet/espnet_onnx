@@ -99,7 +99,7 @@ class TTSModelExport:
             model.preprocess_fn.token_id_converter))
         return ret
 
-    def _export_model(self, model, file_name, verbose, enc_size=None):
+    def _export_model(self, model, verbose, path, enc_size=None):
         if enc_size:
             dummy_input = model.get_dummy_inputs(enc_size)
         else:
@@ -108,25 +108,28 @@ class TTSModelExport:
         torch.onnx.export(
             model,
             dummy_input,
-            file_name,
+            os.path.join(path, f'{model.model_name}.onnx'),
             verbose=verbose,
             opset_version=15,
             input_names=model.get_input_names(),
             output_names=model.get_output_names(),
             dynamic_axes=model.get_dynamic_axes(),
         )
+        
+        # export submodel if required
+        if len(model.submodel) > 0:
+            for i, sm in enumerate(model.submodel):
+                self._export_model(sm, verbose, path, enc_size)
 
     def _export_tts(self, model, path, verbose):
-        file_name = os.path.join(path, 'tts_model.onnx')
         if verbose:
             logging.info(f'TTS model is saved in {file_name}')
-        self._export_model(model, file_name, verbose)
+        self._export_model(model, verbose, path)
 
     def _export_vocoder(self, model, path, verbose):
-        file_name = os.path.join(path, 'vocoder.onnx')
         if verbose:
             logging.info(f'Vocoder model is saved in {file_name}')
-        self._export_model(model, file_name, verbose)
+        self._export_model(model, verbose, path)
 
     def _quantize_model(self, model_from, model_to, verbose):
         if verbose:
@@ -139,7 +142,7 @@ class TTSModelExport:
             quantize_dynamic(
                 m,
                 export_file,
-                weight_type=QuantType.QUInt8
+                op_types_to_quantize=['Attention', 'MatMul']
             )
             ret[basename] = export_file
             os.remove(os.path.join(model_from, basename + '-opt.onnx'))

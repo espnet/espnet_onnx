@@ -19,6 +19,7 @@ class OnnxVocoder(nn.Module, AbsExportModel):
     ):
         super().__init__()
         self.model = model
+        self.model_name = 'vocoder'
 
     def forward(
         self, c: torch.Tensor, g: Optional[torch.Tensor] = None
@@ -53,5 +54,5 @@ class OnnxVocoder(nn.Module, AbsExportModel):
     def get_model_config(self, path):
         return {
             'vocoder_type': 'OnnxVocoder',
-            'model_path': str(path / 'vocoder.onnx')
+            'model_path': str(path / f'{self.model_name}.onnx')
         }
