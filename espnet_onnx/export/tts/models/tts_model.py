@@ -4,6 +4,10 @@ from espnet2.tts.tacotron2.tacotron2 import Tacotron2 as espnetTacotron2
 from espnet2.gan_tts.joint.joint_text2wav import JointText2Wav as espnetJointText2Wav
 from .tts_models.vits import OnnxVITSModel
 from .tts_models.fastspeech2 import OnnxFastSpeech2
+from .tts_models.tacotron2 import (
+    OnnxTacotron2Encoder,
+    OnnxTacotron2Decoder
+)
 
 # vocoder
 from espnet2.utils.griffin_lim import Spectrogram2Waveform

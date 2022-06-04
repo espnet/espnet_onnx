@@ -56,7 +56,12 @@ class TTSModelExport:
         # export encoder
         tts_model = get_tts_model(model.model.tts, self.export_config)
         self._export_tts(tts_model, export_dir, verbose)
-        model_config.update(tts_model=tts_model.get_model_config(export_dir))
+        if isinstance(tts_model, list):
+            model_config.update(tts_model_encoder=tts_model[0].get_model_config(export_dir))
+            model_config.update(tts_model_decoder=tts_model[1].get_model_config(export_dir))
+        else:
+            model_config.update(tts_model=tts_model.get_model_config(export_dir))
+            
 
         # export vocoder
         voc_model, require_export = get_vocoder(model, self.export_config)
@@ -72,7 +77,14 @@ class TTSModelExport:
             quantize_dir.mkdir(exist_ok=True)
             qt_config = self._quantize_model(export_dir, quantize_dir, verbose)
             for m in qt_config.keys():
-                model_config[m].update(quantized_model_path=qt_config[m])
+                if 'predecoder' in m:
+                    model_config['tts_model_decoder']['predecoder'].update(
+                        quantized_model_path=qt_config[m])
+                elif 'postdecoder' in m:
+                    model_config['tts_model_decoder']['postdecoder'].update(
+                        quantized_model_path=qt_config[m])
+                else:
+                    model_config[m].update(quantized_model_path=qt_config[m])
 
         config_name = base_dir / 'config.yaml'
         save_config(model_config, config_name)
@@ -100,6 +112,11 @@ class TTSModelExport:
         return ret
 
     def _export_model(self, model, verbose, path, enc_size=None):
+        if isinstance(model, list):
+            for m in model:
+                self._export_model(m, verbose, path, enc_size)
+            return
+                
         if enc_size:
             dummy_input = model.get_dummy_inputs(enc_size)
         else:
@@ -117,7 +134,7 @@ class TTSModelExport:
         )
         
         # export submodel if required
-        if len(model.submodel) > 0:
+        if hasattr(model, 'submodel'):
             for i, sm in enumerate(model.submodel):
                 self._export_model(sm, verbose, path, enc_size)
 

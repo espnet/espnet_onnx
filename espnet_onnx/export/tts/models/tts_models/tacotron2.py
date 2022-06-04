@@ -3,8 +3,11 @@ from typing import (
     Optional,
     Tuple
 )
+import six
+import os
 
 import math
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -12,7 +15,8 @@ import torch.nn.functional as F
 from espnet_onnx.export.asr.models.language_models.embed import Embedding
 from espnet_onnx.utils.torch_function import MakePadMask
 from espnet_onnx.utils.abs_model import AbsExportModel
-from espnet_onnx.utils.export.layers.predecoder import PreDecoder
+from espnet_onnx.export.layers.predecoder import PreDecoder
+from espnet_onnx.export.layers.attention import get_attention
 
 
 class OnnxEncoderLayer(nn.Module):
@@ -28,7 +32,7 @@ class OnnxEncoderLayer(nn.Module):
         Returns:
             Tensor: The sequences of encoder states(T, eunits).
         """
-        xs = self.model.embed(xs.unsqueeze(0)).transpose(1, 2)
+        xs = self.model.embed(xs).transpose(1, 2)
         if self.model.convs is not None:
             for i in six.moves.range(len(self.model.convs)):
                 if self.model.use_residual:
@@ -39,7 +43,7 @@ class OnnxEncoderLayer(nn.Module):
         if self.model.blstm is None:
             return xs.transpose(1, 2)
         
-        xs, _ = self.model.blstm(xs)  # (B, Tmax, C)
+        xs, _ = self.model.blstm(xs.transpose(1, 2))  # (B, Tmax, C)
         return xs[0]
 
 
@@ -61,7 +65,6 @@ class OnnxTacotron2Encoder(nn.Module, AbsExportModel):
         self.eos = model.eos
         
         # models
-        self.make_pad_mask = MakePadMask(max_seq_len)
         self.enc = OnnxEncoderLayer(model.enc)
         if self.use_gst:
             self.gst = model.gst
@@ -106,7 +109,7 @@ class OnnxTacotron2Encoder(nn.Module, AbsExportModel):
         x = F.pad(x, [0, 1], "constant", self.eos)
 
         # inference
-        h = self.enc(x)
+        h = self.enc(x.unsqueeze(0))
         if self.use_gst:
             style_emb = self.gst(y.unsqueeze(0))
             h = h + style_emb
@@ -136,7 +139,7 @@ class OnnxTacotron2Encoder(nn.Module, AbsExportModel):
         lids = torch.LongTensor([0]) \
             if self.langs is not None else None
 
-        return (text, text_length, feats, sids, spembs, lids)
+        return (text, feats, sids, spembs, lids)
 
     def get_input_names(self):
         return ['text', 'feats', 'sids', 'spembs', 'lids']
@@ -165,7 +168,7 @@ class PostDecoder(nn.Module, AbsExportModel):
         self.model = model
         self.odim = odim
         self.activation = activation
-        self.model_name = f'postdecoder_{idx}'
+        self.model_name = f'postdecoder'
     
     def forward(self, x):
         if self.model is not None:
@@ -216,26 +219,27 @@ class OnnxTacotron2Decoder(nn.Module, AbsExportModel):
         
         # HPs
         self.odim = model.odim
+        self.enc_out = model.enc.blstm.hidden_size * 2
         self.threshold = threshold
         self.minlenratio = minlenratio
         self.maxlenratio = maxlenratio
         self.backward_window = backward_window
         self.forward_window = forward_window
-        self.use_concat = model.use_concat
+        self.use_concate = model.dec.use_concate
         self.cumulate_att_w = model.cumulate_att_w
+        self.use_att_extra_inputs = model.dec.use_att_extra_inputs
         
         # models
-        self.att = model.dec.att
+        self.att = get_attention(model.dec.att)
         self.prenet = model.dec.prenet
         self.lstm = model.dec.lstm
-        self.feats_out = model.dec.feats_out
+        self.feat_out = model.dec.feat_out
         self.prob_out = model.dec.prob_out
         self.output_activation_fn = model.dec.output_activation_fn
-        
-        self.subnet.append(
-            PreDecoder(att, 0)
+        self.submodel.append(
+            PreDecoder(model.dec.att, 0)
         )
-        self.subnet.append(
+        self.submodel.append(
             PostDecoder(
                 model.dec.postnet,
                 model.dec.output_activation_fn,
@@ -257,10 +261,10 @@ class OnnxTacotron2Decoder(nn.Module, AbsExportModel):
         if self.use_att_extra_inputs:
             att_c, att_w = self.att(
                 z_prev[0],
-                a_prev[idx],
-                pre_compute_enc_h[idx],
-                enc_h[idx],
-                mask[idx]
+                a_prev,
+                pre_compute_enc_h,
+                enc_h,
+                mask,
                 prev_out,
                 backward_window=self.backward_window,
                 forward_window=self.forward_window,
@@ -268,15 +272,14 @@ class OnnxTacotron2Decoder(nn.Module, AbsExportModel):
         else:
             att_c, att_w = self.att(
                 z_prev[0],
-                a_prev[idx],
-                pre_compute_enc_h[idx],
-                enc_h[idx],
-                mask[idx]
+                a_prev,
+                pre_compute_enc_h,
+                enc_h,
+                mask,
                 backward_window=self.backward_window,
                 forward_window=self.forward_window,
             )
 
-        att_ws += [att_w]
         prenet_out = self.prenet(prev_out) if self.prenet is not None else prev_out
         xs = torch.cat([att_c, prenet_out], dim=1)
         ret_z_list = []
@@ -295,19 +298,20 @@ class OnnxTacotron2Decoder(nn.Module, AbsExportModel):
             if self.use_concate
             else z_list[-1]
         )
-        outs += [self.feat_out(zcs).view(1, self.odim, -1)]  # [(1, odim, r), ...]
-        probs += [torch.sigmoid(self.prob_out(zcs))[0]]  # [(r), ...]
+        out = self.feat_out(zcs).view(1, self.odim, -1)  # [(1, odim, r), ...]
+        prob = torch.sigmoid(self.prob_out(zcs))[0]  # [(r), ...]
         if self.output_activation_fn is not None:
-            prev_out = self.output_activation_fn(outs[-1][:, :, -1])  # (1, odim)
+            prev_out = self.output_activation_fn(out[:, :, -1])  # (1, odim)
         else:
-            prev_out = outs[-1][:, :, -1]  # (1, odim)
-        if self.cumulate_att_w and prev_att_w is not None:
-            prev_att_w = prev_att_w + att_w  # Note: error when use +=
+            prev_out = out[:, :, -1]  # (1, odim)
+        if self.cumulate_att_w:
+            prev_att_w = a_prev + att_w  # Note: error when use +=
         else:
             prev_att_w = att_w
 
         return (
-            outs,
+            out,
+            prob,
             ret_c_list,
             ret_z_list,
             prev_att_w,
@@ -322,17 +326,18 @@ class OnnxTacotron2Decoder(nn.Module, AbsExportModel):
             ret = torch.randn(1, 1, feat_length)
         return ret
 
-    def get_dummy_inputs(self, enc_size):
+    def get_dummy_inputs(self):
         feat_length = 50
-        z_prev = [torch.randn(1, self.model.lstm[i].hidden_size)
-                  for i in range(len(self.model.lstm))]
+        make_pad_mask = MakePadMask(torch.LongTensor([1024]))
+        z_prev = [torch.randn(1, self.model.dec.lstm[i].hidden_size)
+                  for i in range(len(self.model.dec.lstm))]
         a_prev = self.get_a_prev(feat_length, self.att)
-        c_prev = [torch.randn(1, self.model.lstm[i].hidden_size)
-                  for i in range(len(self.model.lstm))]
+        c_prev = [torch.randn(1, self.model.dec.lstm[i].hidden_size)
+                  for i in range(len(self.model.dec.lstm))]
         pre_compute_enc_h = self.get_precompute_enc_h(feat_length)
-        enc_h = torch.randn(1, feat_length, enc_size)
+        enc_h = torch.randn(1, feat_length, self.enc_out)
         mask = torch.from_numpy(np.where(make_pad_mask(
-            [feat_length]) == 1, -float('inf'), 0)).type(torch.float32)
+            torch.LongTensor([feat_length])) == 1, -float('inf'), 0)).type(torch.float32)
         prev_out = torch.zeros(1, self.odim)
         return (
             z_prev, c_prev,
@@ -341,11 +346,11 @@ class OnnxTacotron2Decoder(nn.Module, AbsExportModel):
         )
     
     def get_precompute_enc_h(self,feat_length):
-        return torch.randn(1, feat_length, self.model.att.mlp_enc.out_features)
+        return torch.randn(1, feat_length, self.model.dec.att.mlp_enc.out_features)
 
     def get_input_names(self):
-        ret = ['z_prev_%d' % i for i in range(len(self.model.lstm))]
-        ret += ['c_prev_%d' % i for i in range(len(self.model.lstm))]
+        ret = ['z_prev_%d' % i for i in range(len(self.model.dec.lstm))]
+        ret += ['c_prev_%d' % i for i in range(len(self.model.dec.lstm))]
         ret += 'a_prev'
         ret += 'pceh'
         ret += 'enc_h'
@@ -354,9 +359,9 @@ class OnnxTacotron2Decoder(nn.Module, AbsExportModel):
         return ret
 
     def get_output_names(self):
-        ret = ['outs']
-        ret += ['c_list_%d' % i for i in range(len(self.model.lstm))]
-        ret += ['z_list_%d' % i for i in range(len(self.model.lstm))]
+        ret = ['out', 'prob']
+        ret += ['c_list_%d' % i for i in range(len(self.model.dec.lstm))]
+        ret += ['z_list_%d' % i for i in range(len(self.model.dec.lstm))]
         ret += ['prev_att_w', 'prev_out']
         return ret
 
@@ -394,21 +399,18 @@ class OnnxTacotron2Decoder(nn.Module, AbsExportModel):
 
     def get_model_config(self, path):
         ret = {
-            "dec_type": "RNNDecoder",
+            'model_type': 'Tacotron2Decoder',
             "model_path": os.path.join(path, f'{self.model_name}.onnx'),
-            "dlayers": self.model.dlayers,
-            "odim": self.model.odim,
-            "dunits": self.model.dunits,
-            "decoder_length": self.decoder_length,
-            "rnn_type": self.model.dtype,
-            "predecoder": [
-                {
-                    "model_path": os.path.join(path, f'predecoder_{i}.onnx'),
-                    "att_type": a.att_type
-                }
-                for i,a in enumerate(self.att_list)
-                if not isinstance(a, OnnxNoAtt)
-            ]
+            "dlayers": len(self.model.dec.lstm),
+            "odim": self.odim,
+            "dunits": self.model.dec.att.dunits,
+            "predecoder": {
+                "model_path": os.path.join(path, f'{self.submodel[0].model_name}.onnx'),
+                "att_type": self.att.att_type
+            },
+            "postdecoder": {
+                "model_path": os.path.join(path, f'{self.submodel[1].model_name}.onnx')
+            }
         }
         if hasattr(self.model, 'att_win'):
             ret.update(att_win=self.model.att_win)
