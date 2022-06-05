@@ -46,7 +46,6 @@ class Tacotron2:
         self.threshold = self.config.decoder.threshold
         self.decoder_input_names = [d.name for d in self.decoder.get_inputs()]
         self.decoder_output_names = [d.name for d in self.decoder.get_outputs()]
-        print(self.decoder_output_names)
     
     def _load_model(self, config, providers, use_quantized):
         if use_quantized:
@@ -100,7 +99,6 @@ class Tacotron2:
                     continue
                 outs = np.concatenate(outs, axis=2)  # (1, odim, L)
                 if self.postdecoder is not None:
-                    print('PostDecoder applied')
                     outs = self.postdecoder.run(['out'], {
                         'x': outs
                     })[0] # (1, odim, L)
@@ -143,8 +141,8 @@ class Tacotron2:
             dic[key] = value
         return dic
     
-    def zero_state(self, hs_pad):
-        return np.zeros((hs_pad.shape[0], self.dunits), dtype=np.float32)
+    def zero_state(self):
+        return np.zeros((1, self.dunits), dtype=np.float32)
 
     def get_att_prev(self, x, att_type=None):
         att_prev = 1.0 - make_pad_mask([x.shape[0]])
@@ -159,11 +157,11 @@ class Tacotron2:
     def init_state(self, x):
         # to support mutiple encoder asr mode, in single encoder mode,
         # convert torch.Tensor to List of torch.Tensor
-        c_list = [self.zero_state(x)]
-        z_list = [self.zero_state(x)]
+        c_list = [self.zero_state()]
+        z_list = [self.zero_state()]
         for _ in range(1, self.dlayers):
-            c_list.append(self.zero_state(x))
-            z_list.append(self.zero_state(x))
+            c_list.append(self.zero_state())
+            z_list.append(self.zero_state())
 
         a = self.get_att_prev(x[0])
         prev_out = np.zeros((1, self.config.decoder.odim), dtype=np.float32)
@@ -174,8 +172,7 @@ class Tacotron2:
         )[0]
         self.enc_h = x
         self.mask = np.where(make_pad_mask(
-                [x.shape[0]]) == 1, -float('inf'), 0).astype(np.float32)
-        
+                [x.shape[1]]) == 1, -float('inf'), 0).astype(np.float32)
         return c_list[:], z_list[:], a, prev_out
 
     def _split(self, status_lists):

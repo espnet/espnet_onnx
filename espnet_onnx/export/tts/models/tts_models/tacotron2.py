@@ -208,6 +208,7 @@ class OnnxTacotron2Decoder(nn.Module, AbsExportModel):
         threshold=0.5,
         minlenratio=0.0,
         maxlenratio=10.0,
+        use_att_constraint=False,
         backward_window=1,
         forward_window=3,
         **kwargs
@@ -228,6 +229,7 @@ class OnnxTacotron2Decoder(nn.Module, AbsExportModel):
         self.use_concate = model.dec.use_concate
         self.cumulate_att_w = model.cumulate_att_w
         self.use_att_extra_inputs = model.dec.use_att_extra_inputs
+        self.use_att_constraint = use_att_constraint
         self.onnx_export = model.dec.postnet is not None
         self.reduction_factor = model.dec.reduction_factor
         
@@ -268,6 +270,7 @@ class OnnxTacotron2Decoder(nn.Module, AbsExportModel):
                 enc_h,
                 mask,
                 prev_out,
+                # last_attended_idx=last_attended_idx,
                 backward_window=self.backward_window,
                 forward_window=self.forward_window,
             )
@@ -278,21 +281,30 @@ class OnnxTacotron2Decoder(nn.Module, AbsExportModel):
                 pre_compute_enc_h,
                 enc_h,
                 mask,
+                # last_attended_idx=last_attended_idx,
                 backward_window=self.backward_window,
                 forward_window=self.forward_window,
             )
 
         prenet_out = self.prenet(prev_out) if self.prenet is not None else prev_out
         xs = torch.cat([att_c, prenet_out], dim=1)
-        z_prev[0], c_prev[0] = self.lstm[0](xs, (z_prev[0], c_prev[0]))
+        new_z_cache = []
+        new_c_cache = []
+        _z_list, _c_list = self.lstm[0](xs, (z_prev[0], c_prev[0]))
+        new_z_cache.append(_z_list)
+        new_c_cache.append(_c_list)
+        
         for i in six.moves.range(1, len(self.lstm)):
-            z_prev[i], c_prev[i] = self.lstm[i](
-                z_prev[i-1], (z_prev[i], c_prev[i])
+            _z_list, _c_list = self.lstm[i](
+                _z_list, (z_prev[i], c_prev[i])
             )
+            new_z_cache.append(_z_list)
+            new_c_cache.append(_c_list)
+        
         zcs = (
-            torch.cat([z_prev[-1], att_c], dim=1)
+            torch.cat([_z_list, att_c], dim=1)
             if self.use_concate
-            else z_list[-1]
+            else _z_list
         )
         out = self.feat_out(zcs).view(1, self.odim, -1)  # [(1, odim, r), ...]
         prob = torch.sigmoid(self.prob_out(zcs))[0]  # [(r), ...]
@@ -304,14 +316,13 @@ class OnnxTacotron2Decoder(nn.Module, AbsExportModel):
             prev_att_w = a_prev + att_w  # Note: error when use +=
         else:
             prev_att_w = att_w
-
         return (
             out,
             prob,
             prev_att_w,
             prev_out,
-            c_prev,
-            z_prev,
+            new_c_cache,
+            new_z_cache,
         )
         
     def get_a_prev(self, feat_length, att):

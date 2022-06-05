@@ -215,6 +215,7 @@ class OnnxAttLoc(nn.Module):
         enc_h,
         mask,
         scaling=2.0,
+        last_attended_idx=None,
         backward_window=1,
         forward_window=3,
     ):
@@ -243,10 +244,10 @@ class OnnxAttLoc(nn.Module):
         e = e + mask
 
         # apply monotonic attention constraint (mainly for TTS)
-        # if last_attended_idx is not None:
-        #     e = _apply_attention_constraint(
-        #         e, last_attended_idx, backward_window, forward_window
-        #     )
+        if last_attended_idx is not None:
+            e = _apply_attention_constraint(
+                e, last_attended_idx, backward_window, forward_window
+            )
 
         w = F.softmax(scaling * e, dim=1)
 
@@ -506,3 +507,30 @@ class AttForward(torch.nn.Module):
 
         return c, w
 
+
+def _apply_attention_constraint(
+    e, last_attended_idx, backward_window=1, forward_window=3
+):
+    """Apply monotonic attention constraint.
+    This function apply the monotonic attention constraint
+    introduced in `Deep Voice 3: Scaling
+    Text-to-Speech with Convolutional Sequence Learning`_.
+    Args:
+        e (Tensor): Attention energy before applying softmax (1, T).
+        last_attended_idx (int): The index of the inputs of the last attended [0, T].
+        backward_window (int, optional): Backward window size in attention constraint.
+        forward_window (int, optional): Forward window size in attetion constraint.
+    Returns:
+        Tensor: Monotonic constrained attention energy (1, T).
+    .. _`Deep Voice 3: Scaling Text-to-Speech with Convolutional Sequence Learning`:
+        https://arxiv.org/abs/1710.07654
+    """
+    if e.size(0) != 1:
+        raise NotImplementedError("Batch attention constraining is not yet supported.")
+    backward_idx = last_attended_idx - backward_window
+    forward_idx = last_attended_idx + forward_window
+    if backward_idx > 0:
+        e[:, :backward_idx] = -float("inf")
+    if forward_idx < e.size(1):
+        e[:, forward_idx:] = -float("inf")
+    return e
