@@ -12,6 +12,7 @@ import torch
 from onnxruntime.quantization import quantize_dynamic, QuantType
 
 from espnet2.bin.tts_inference import Text2Speech
+from espnet_onnx.utils.abs_model import AbsExportModel
 from espnet_onnx.export.tts.models import (
     get_tts_model,
     get_vocoder
@@ -57,11 +58,13 @@ class TTSModelExport:
         tts_model = get_tts_model(model.model.tts, self.export_config)
         self._export_tts(tts_model, export_dir, verbose)
         if isinstance(tts_model, list):
-            model_config.update(tts_model_encoder=tts_model[0].get_model_config(export_dir))
-            model_config.update(tts_model_decoder=tts_model[1].get_model_config(export_dir))
+            model_config.update(tts_model=dict(
+                encoder=tts_model[0].get_model_config(export_dir),
+                decoder=tts_model[1].get_model_config(export_dir),
+                model_type=tts_model[2]
+            ))
         else:
             model_config.update(tts_model=tts_model.get_model_config(export_dir))
-            
 
         # export vocoder
         voc_model, require_export = get_vocoder(model, self.export_config)
@@ -78,10 +81,16 @@ class TTSModelExport:
             qt_config = self._quantize_model(export_dir, quantize_dir, verbose)
             for m in qt_config.keys():
                 if 'predecoder' in m:
-                    model_config['tts_model_decoder']['predecoder'].update(
+                    model_config['tts_model']['decoder']['predecoder'].update(
                         quantized_model_path=qt_config[m])
                 elif 'postdecoder' in m:
-                    model_config['tts_model_decoder']['postdecoder'].update(
+                    model_config['tts_model']['decoder']['postdecoder'].update(
+                        quantized_model_path=qt_config[m])
+                elif 'tts_model_encoder' in m:
+                    model_config['tts_model']['encoder'].update(
+                        quantized_model_path=qt_config[m])
+                elif 'tts_model_decoder' in m:
+                    model_config['tts_model']['decoder'].update(
                         quantized_model_path=qt_config[m])
                 else:
                     model_config[m].update(quantized_model_path=qt_config[m])
@@ -114,9 +123,16 @@ class TTSModelExport:
     def _export_model(self, model, verbose, path, enc_size=None):
         if isinstance(model, list):
             for m in model:
-                self._export_model(m, verbose, path, enc_size)
+                if isinstance(m, AbsExportModel):
+                    self._export_model(m, verbose, path, enc_size)
             return
-                
+        
+        if (
+            hasattr(model, 'onnx_export')
+            and not model.onnx_export
+        ):
+            return
+        
         if enc_size:
             dummy_input = model.get_dummy_inputs(enc_size)
         else:

@@ -228,6 +228,8 @@ class OnnxTacotron2Decoder(nn.Module, AbsExportModel):
         self.use_concate = model.dec.use_concate
         self.cumulate_att_w = model.cumulate_att_w
         self.use_att_extra_inputs = model.dec.use_att_extra_inputs
+        self.onnx_export = model.dec.postnet is not None
+        self.reduction_factor = model.dec.reduction_factor
         
         # models
         self.att = get_attention(model.dec.att)
@@ -312,10 +314,10 @@ class OnnxTacotron2Decoder(nn.Module, AbsExportModel):
         return (
             out,
             prob,
+            prev_att_w,
+            prev_out,
             ret_c_list,
             ret_z_list,
-            prev_att_w,
-            prev_out
         )
         
     def get_a_prev(self, feat_length, att):
@@ -351,25 +353,20 @@ class OnnxTacotron2Decoder(nn.Module, AbsExportModel):
     def get_input_names(self):
         ret = ['z_prev_%d' % i for i in range(len(self.model.dec.lstm))]
         ret += ['c_prev_%d' % i for i in range(len(self.model.dec.lstm))]
-        ret += 'a_prev'
-        ret += 'pceh'
-        ret += 'enc_h'
-        ret += 'mask'
-        ret += 'prev_out'
+        ret += ['a_prev', 'pceh', 'enc_h', 'mask', 'prev_in']
         return ret
 
     def get_output_names(self):
-        ret = ['out', 'prob']
+        ret = ['out', 'prob', 'prev_att_w', 'prev_out']
         ret += ['c_list_%d' % i for i in range(len(self.model.dec.lstm))]
         ret += ['z_list_%d' % i for i in range(len(self.model.dec.lstm))]
-        ret += ['prev_att_w', 'prev_out']
         return ret
 
     def get_dynamic_axes(self):
         # input
         ret = {}
         ret.update({
-            'prev_att_w': {
+            'a_prev': {
                 self.att.get_dynamic_axes(): 'a_prev_length',
             }
         })
@@ -389,12 +386,6 @@ class OnnxTacotron2Decoder(nn.Module, AbsExportModel):
                 1: 'mask_height'
             }
         })
-        # output
-        ret.update({
-            'prev_att_w': {
-                1: 'prev_att_w_length'
-            }
-        })
         return ret
 
     def get_model_config(self, path):
@@ -403,13 +394,18 @@ class OnnxTacotron2Decoder(nn.Module, AbsExportModel):
             "model_path": os.path.join(path, f'{self.model_name}.onnx'),
             "dlayers": len(self.model.dec.lstm),
             "odim": self.odim,
-            "dunits": self.model.dec.att.dunits,
+            "dunits": self.model.dec.lstm[0].hidden_size,
+            "threshold": self.threshold,
+            "minlenratio": self.minlenratio,
+            "maxlenratio": self.maxlenratio,
+            "reduction_factor": self.reduction_factor,
             "predecoder": {
                 "model_path": os.path.join(path, f'{self.submodel[0].model_name}.onnx'),
                 "att_type": self.att.att_type
             },
             "postdecoder": {
-                "model_path": os.path.join(path, f'{self.submodel[1].model_name}.onnx')
+                "model_path": os.path.join(path, f'{self.submodel[1].model_name}.onnx'),
+                "onnx_export": self.onnx_export
             }
         }
         if hasattr(self.model, 'att_win'):

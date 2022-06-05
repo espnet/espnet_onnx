@@ -29,7 +29,8 @@ def get_tts_model(model, export_config):
     elif isinstance(model, espnetTacotron2):
         return [
             OnnxTacotron2Encoder(model, **export_config),
-            OnnxTacotron2Decoder(model, **export_config)
+            OnnxTacotron2Decoder(model, **export_config),
+            'Tacotron2'
         ]   
     
     elif isinstance(model, espnetJointText2Wav):
@@ -48,7 +49,7 @@ def get_vocoder(model, export_config):
     
     if hasattr(model, 'vocoder'):
         if isinstance(model.vocoder, Spectrogram2Waveform):
-            return model, False
+            return model.vocoder, False
         elif isinstance(model.vocoder, ParallelWaveGANPretrainedVocoder):
             raise RuntimeError('Pretrained PWGVocoder is currently not supported.')
     
