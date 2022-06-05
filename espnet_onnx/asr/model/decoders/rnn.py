@@ -161,7 +161,7 @@ class RNNDecoder(BatchScorerInterface):
             self.decoder_output_names,
             input_dict
         )
-        c_list, z_list, att_w = self.separate(status_lists)
+        c_list, z_list, att_w = self._split(status_lists)
         return (
             logp,
             dict(
@@ -207,7 +207,7 @@ class RNNDecoder(BatchScorerInterface):
             })
         return ret
 
-    def separate(self, status_lists):
+    def _split(self, status_lists):
         c_list = status_lists[:self.decoder_length]
         z_list = status_lists[self.decoder_length: 2*self.num_encs]
         att_w = status_lists[2*self.decoder_length:]
