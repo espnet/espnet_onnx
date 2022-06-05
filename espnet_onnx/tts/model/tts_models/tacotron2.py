@@ -43,8 +43,10 @@ class Tacotron2:
         self.use_feats = 'feats' in self.input_names
         self.dlayers = self.config.decoder.dlayers
         self.dunits = self.config.decoder.dunits
+        self.threshold = self.config.decoder.threshold
         self.decoder_input_names = [d.name for d in self.decoder.get_inputs()]
         self.decoder_output_names = [d.name for d in self.decoder.get_outputs()]
+        print(self.decoder_output_names)
     
     def _load_model(self, config, providers, use_quantized):
         if use_quantized:
@@ -69,14 +71,15 @@ class Tacotron2:
         # compute encoder and initialize states
         input_enc = self.get_input_enc(text, feats, sids, spembs, lids)
         h = self.encoder.run(['h'], input_enc)[0]
+        hs = h[None, :]
         
         idx = 0
         outs = []
         probs = []
         att_ws = []
-        maxlen = int(len(text) * self.config.decoder.maxlenratio)
-        minlen = int(len(text) * self.config.decoder.minlenratio)
-        c_list, z_list, a_prev, prev_out = self.init_state(h)
+        maxlen = int(h.shape[0] * self.config.decoder.maxlenratio)
+        minlen = int(h.shape[0] * self.config.decoder.minlenratio)
+        c_list, z_list, a_prev, prev_out = self.init_state(hs)
         
         # compute decoder
         while True:
@@ -91,19 +94,16 @@ class Tacotron2:
             att_ws += [a_prev]
             
             # check whether to finish generation
-            if (
-                int(sum(prob >= self.config.decoder.threshold)) > 0
-                or idx >= maxlen
-            ):
+            if int(sum(probs[-1] >= self.threshold)) > 0 or idx >= maxlen:
                 # check mininum length
                 if idx < minlen:
                     continue
                 outs = np.concatenate(outs, axis=2)  # (1, odim, L)
                 if self.postdecoder is not None:
+                    print('PostDecoder applied')
                     outs = self.postdecoder.run(['out'], {
                         'x': outs
                     })[0] # (1, odim, L)
-                    
                 probs = np.concatenate(probs, axis=0)
                 att_ws = np.concatenate(att_ws, axis=0)
                 break
@@ -159,22 +159,22 @@ class Tacotron2:
     def init_state(self, x):
         # to support mutiple encoder asr mode, in single encoder mode,
         # convert torch.Tensor to List of torch.Tensor
-        c_list = [self.zero_state(x[None, :])]
-        z_list = [self.zero_state(x[None, :])]
+        c_list = [self.zero_state(x)]
+        z_list = [self.zero_state(x)]
         for _ in range(1, self.dlayers):
-            c_list.append(self.zero_state(x[None, :]))
-            z_list.append(self.zero_state(x[None, :]))
+            c_list.append(self.zero_state(x))
+            z_list.append(self.zero_state(x))
 
-        a = self.get_att_prev(x)
+        a = self.get_att_prev(x[0])
         prev_out = np.zeros((1, self.config.decoder.odim), dtype=np.float32)
         
         # compute predecoder
         self.pre_compute_enc_h = self.predecoder.run(
-            ['pre_compute_enc_h'], { 'enc_h': x[None, :] }
+            ['pre_compute_enc_h'], { 'enc_h': x }
         )[0]
-        self.enc_h = x[None, :]
+        self.enc_h = x
         self.mask = np.where(make_pad_mask(
-                [x.shape[0]]) == 1, -10000.0, 0).astype(np.float32)
+                [x.shape[0]]) == 1, -float('inf'), 0).astype(np.float32)
         
         return c_list[:], z_list[:], a, prev_out
 

@@ -208,8 +208,8 @@ class OnnxTacotron2Decoder(nn.Module, AbsExportModel):
         threshold=0.5,
         minlenratio=0.0,
         maxlenratio=10.0,
-        backward_window=None,
-        forward_window=None,
+        backward_window=1,
+        forward_window=3,
         **kwargs
     ):
         super().__init__()
@@ -251,8 +251,8 @@ class OnnxTacotron2Decoder(nn.Module, AbsExportModel):
 
     def forward(
         self,
-        z_prev,
         c_prev,
+        z_prev,
         a_prev,
         pre_compute_enc_h,
         enc_h,
@@ -284,17 +284,11 @@ class OnnxTacotron2Decoder(nn.Module, AbsExportModel):
 
         prenet_out = self.prenet(prev_out) if self.prenet is not None else prev_out
         xs = torch.cat([att_c, prenet_out], dim=1)
-        ret_z_list = []
-        ret_c_list = []
-        _z_list, _c_list = self.lstm[0](xs, (z_prev[0], c_prev[0]))
-        ret_z_list.append(_z_list)
-        ret_c_list.append(_c_list)
+        z_prev[0], c_prev[0] = self.lstm[0](xs, (z_prev[0], c_prev[0]))
         for i in six.moves.range(1, len(self.lstm)):
-            _z_list, _c_list = self.lstm[i](
-                z_prev[i - 1], (z_prev[i], c_prev[i])
+            z_prev[i], c_prev[i] = self.lstm[i](
+                z_prev[i-1], (z_prev[i], c_prev[i])
             )
-            ret_z_list.append(_z_list)
-            ret_c_list.append(_c_list)
         zcs = (
             torch.cat([z_prev[-1], att_c], dim=1)
             if self.use_concate
@@ -316,8 +310,8 @@ class OnnxTacotron2Decoder(nn.Module, AbsExportModel):
             prob,
             prev_att_w,
             prev_out,
-            ret_c_list,
-            ret_z_list,
+            c_prev,
+            z_prev,
         )
         
     def get_a_prev(self, feat_length, att):
@@ -351,8 +345,8 @@ class OnnxTacotron2Decoder(nn.Module, AbsExportModel):
         return torch.randn(1, feat_length, self.model.dec.att.mlp_enc.out_features)
 
     def get_input_names(self):
-        ret = ['z_prev_%d' % i for i in range(len(self.model.dec.lstm))]
-        ret += ['c_prev_%d' % i for i in range(len(self.model.dec.lstm))]
+        ret = ['c_prev_%d' % i for i in range(len(self.model.dec.lstm))]
+        ret += ['z_prev_%d' % i for i in range(len(self.model.dec.lstm))]
         ret += ['a_prev', 'pceh', 'enc_h', 'mask', 'prev_in']
         return ret
 
