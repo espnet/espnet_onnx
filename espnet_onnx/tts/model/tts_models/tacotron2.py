@@ -78,19 +78,26 @@ class Tacotron2:
         att_ws = []
         maxlen = int(h.shape[0] * self.config.decoder.maxlenratio)
         minlen = int(h.shape[0] * self.config.decoder.minlenratio)
-        c_list, z_list, a_prev, prev_out = self.init_state(hs)
+        c_list, z_list, prev_out = self.init_state(hs)
         
         # compute decoder
+        prev_att_w = None
         while True:
             idx += self.config.decoder.reduction_factor
-            input_dec = self.get_input_dec(c_list, z_list, a_prev, prev_out)
+            input_dec = self.get_input_dec(c_list, z_list, prev_att_w, prev_out)
             out, prob, a_prev, prev_out, *cz_states = \
                 self.decoder.run(self.decoder_output_names, input_dec)
+            
+            if self.config.decoder.cumulate_att_w and prev_att_w is not None:
+                prev_att_w = prev_att_w + a_prev
+            else:
+                prev_att_w = a_prev
+            
             c_list, z_list = self._split(cz_states)
             
-            outs += [out]
-            probs += [prob]
-            att_ws += [a_prev]
+            outs += [out.copy()]
+            probs += [prob.copy()]
+            att_ws += [a_prev.copy()]
             
             # check whether to finish generation
             if int(sum(probs[-1] >= self.threshold)) > 0 or idx >= maxlen:
@@ -105,7 +112,7 @@ class Tacotron2:
                 probs = np.concatenate(probs, axis=0)
                 att_ws = np.concatenate(att_ws, axis=0)
                 break
-        
+        # return dict(feat_gen=out, prob=prob, att_w=prev_att_w, hs=hs)
         return dict(feat_gen=outs, prob=probs, att_w=att_ws)
 
     def get_input_enc(self, text, feats, sids, spembs, lids):
@@ -127,12 +134,15 @@ class Tacotron2:
             for i, zl in enumerate(z_list)
         })
         ret.update({
-            'a_prev': a_prev,
             'pceh': self.pre_compute_enc_h,
             'enc_h': self.enc_h,
             'mask': self.mask,
             'prev_in': prev_in
         })
+        if a_prev is not None:
+            ret.update(a_prev=a_prev)
+        else:
+            ret.update(a_prev=self.get_att_prev(self.enc_h))
         return ret
 
     def _set_input_dict(self, dic, key, value):
@@ -145,9 +155,10 @@ class Tacotron2:
         return np.zeros((1, self.dunits), dtype=np.float32)
 
     def get_att_prev(self, x, att_type=None):
-        att_prev = 1.0 - make_pad_mask([x.shape[0]])
+        # x : (1, T, D)
+        att_prev = 1.0 - make_pad_mask([x.shape[1]])
         att_prev = (
-            att_prev / np.array([x.shape[0]])[..., None]).astype(np.float32)
+            att_prev / np.array([x.shape[1]])[..., None]).astype(np.float32)
         if att_type == 'location2d':
             att_prev = att_prev[..., None].reshape(-1, self.config.att_win, -1)
         if att_type in ('coverage', 'coverage_location'):
@@ -163,7 +174,6 @@ class Tacotron2:
             c_list.append(self.zero_state())
             z_list.append(self.zero_state())
 
-        a = self.get_att_prev(x[0])
         prev_out = np.zeros((1, self.config.decoder.odim), dtype=np.float32)
         
         # compute predecoder
@@ -172,8 +182,8 @@ class Tacotron2:
         )[0]
         self.enc_h = x
         self.mask = np.where(make_pad_mask(
-                [x.shape[1]]) == 1, -float('inf'), 0).astype(np.float32)
-        return c_list[:], z_list[:], a, prev_out
+                [x[0].shape[0]]) == 1, -float('inf'), 0).astype(np.float32)
+        return c_list[:], z_list[:], prev_out
 
     def _split(self, status_lists):
         len_list = len(status_lists)

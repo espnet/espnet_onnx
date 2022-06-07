@@ -223,9 +223,8 @@ class OnnxAttLoc(nn.Module):
         dec_z = dec_z.view(batch, self.dunits)
         # att_prev: utt x frame -> utt x 1 x 1 x frame
         # -> utt x att_conv_chans x 1 x frame
-        frame_length = att_prev.size(1)
         att_conv = self.model.loc_conv(
-            att_prev.view(batch, 1, 1, frame_length))
+            att_prev.view(batch, 1, 1, enc_h.size(1)))
         # att_conv: utt x att_conv_chans x 1 x frame -> utt x frame x att_conv_chans
         att_conv = att_conv.squeeze(2).transpose(1, 2)
         # att_conv: utt x frame x att_conv_chans -> utt x frame x att_dim
@@ -253,7 +252,7 @@ class OnnxAttLoc(nn.Module):
 
         # weighted sum over flames
         # utt x hdim
-        c = torch.sum(enc_h * w.view(batch, frame_length, 1), dim=1)
+        c = torch.sum(enc_h * w.view(batch, enc_h.size(1), 1), dim=1)
 
         return c, w
 

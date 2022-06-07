@@ -217,6 +217,7 @@ class OnnxTacotron2Decoder(nn.Module, AbsExportModel):
         self.model = model
         self.submodel = []
         self.model_name = 'tts_model_decoder'
+        self.model.eval()
         
         # HPs
         self.odim = model.odim
@@ -271,8 +272,8 @@ class OnnxTacotron2Decoder(nn.Module, AbsExportModel):
                 mask,
                 prev_out,
                 # last_attended_idx=last_attended_idx,
-                backward_window=self.backward_window,
-                forward_window=self.forward_window,
+                # backward_window=self.backward_window,
+                # forward_window=self.forward_window,
             )
         else:
             att_c, att_w = self.att(
@@ -282,11 +283,15 @@ class OnnxTacotron2Decoder(nn.Module, AbsExportModel):
                 enc_h,
                 mask,
                 # last_attended_idx=last_attended_idx,
-                backward_window=self.backward_window,
-                forward_window=self.forward_window,
+                # backward_window=self.backward_window,
+                # forward_window=self.forward_window,
             )
 
-        prenet_out = self.prenet(prev_out) if self.prenet is not None else prev_out
+        prenet_out = prev_out
+        if self.prenet is not None:
+            for i in six.moves.range(len(self.prenet.prenet)):
+                prenet_out = self.prenet.prenet[i](prenet_out)
+            
         xs = torch.cat([att_c, prenet_out], dim=1)
         new_z_cache = []
         new_c_cache = []
@@ -312,14 +317,11 @@ class OnnxTacotron2Decoder(nn.Module, AbsExportModel):
             prev_out = self.output_activation_fn(out[:, :, -1])  # (1, odim)
         else:
             prev_out = out[:, :, -1]  # (1, odim)
-        if self.cumulate_att_w:
-            prev_att_w = a_prev + att_w  # Note: error when use +=
-        else:
-            prev_att_w = att_w
+
         return (
             out,
             prob,
-            prev_att_w,
+            att_w,
             prev_out,
             new_c_cache,
             new_z_cache,
@@ -347,7 +349,7 @@ class OnnxTacotron2Decoder(nn.Module, AbsExportModel):
             torch.LongTensor([feat_length])) == 1, -float('inf'), 0)).type(torch.float32)
         prev_out = torch.zeros(1, self.odim)
         return (
-            z_prev, c_prev,
+            c_prev, z_prev,
             a_prev, pre_compute_enc_h,
             enc_h, mask, prev_out
         )
@@ -404,6 +406,7 @@ class OnnxTacotron2Decoder(nn.Module, AbsExportModel):
             "minlenratio": self.minlenratio,
             "maxlenratio": self.maxlenratio,
             "reduction_factor": self.reduction_factor,
+            "cumulate_att_w": self.cumulate_att_w,
             "predecoder": {
                 "model_path": os.path.join(path, f'{self.submodel[0].model_name}.onnx'),
                 "att_type": self.att.att_type
