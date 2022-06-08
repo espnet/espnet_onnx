@@ -9,6 +9,7 @@ import onnxruntime
 import warnings
 
 from espnet_onnx.utils.abs_model import AbsModel
+from espnet_onnx.asr.frontend.global_mvn import GlobalMVN
 from espnet_onnx.tts.model.preprocess.common_processor import CommonPreprocessor
 from espnet_onnx.tts.model.duration_calculator import DurationCalculator
 from espnet_onnx.tts.model.tts_model import get_tts_model
@@ -65,6 +66,11 @@ class AbsTTSModel(AbsModel):
             self.vocoder = Vocoder(self.config.vocoder, providers, use_quantized)
         else:
             raise RuntimeError(f'vocoder type {self.config.vocoder_type} is not supported.')
+    
+    def _build_normalizer(self):
+        self.normalize = None
+        if self.config.normalize.use_normalize:
+            self.normalize = GlobalMVN(self.config.normalize)
 
     def _build_model(self, providers, use_quantized):
         # build tts model such as vits
@@ -79,6 +85,7 @@ class AbsTTSModel(AbsModel):
             cleaner_config=self.config.text_cleaner,
         )
         self.duration_calculator = DurationCalculator()
+        self._build_normalizer()
         self._build_vocoder(providers, use_quantized)
 
     def _check_ort_version(self, providers: List[str]):

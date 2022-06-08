@@ -95,9 +95,9 @@ class Tacotron2:
             
             c_list, z_list = self._split(cz_states)
             
-            outs += [out.copy()]
-            probs += [prob.copy()]
-            att_ws += [a_prev.copy()]
+            outs += [out]
+            probs += [prob]
+            att_ws += [a_prev]
             
             # check whether to finish generation
             if int(sum(probs[-1] >= self.threshold)) > 0 or idx >= maxlen:
@@ -112,7 +112,6 @@ class Tacotron2:
                 probs = np.concatenate(probs, axis=0)
                 att_ws = np.concatenate(att_ws, axis=0)
                 break
-        # return dict(feat_gen=out, prob=prob, att_w=prev_att_w, hs=hs)
         return dict(feat_gen=outs, prob=probs, att_w=att_ws)
 
     def get_input_enc(self, text, feats, sids, spembs, lids):

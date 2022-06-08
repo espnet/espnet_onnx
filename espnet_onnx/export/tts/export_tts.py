@@ -6,6 +6,7 @@ import os
 import glob
 from datetime import datetime
 import logging
+import shutil
 
 import numpy as np
 import torch
@@ -20,7 +21,8 @@ from espnet_onnx.export.tts.models import (
 from .get_config import (
     get_token_config,
     get_preprocess_config,
-    get_vocoder_config
+    get_vocoder_config,
+    get_normalize_config
 )
 from espnet_onnx.utils.config import (
     save_config,
@@ -52,6 +54,9 @@ class TTSModelExport:
         export_dir = base_dir / 'full'
         export_dir.mkdir(parents=True, exist_ok=True)
 
+        # copy model files
+        self._copy_files(model, base_dir, verbose)
+        
         model_config = self._create_config(model, export_dir)
 
         # export encoder
@@ -116,9 +121,19 @@ class TTSModelExport:
     def _create_config(self, model, path):
         ret = {}
         ret.update(get_preprocess_config(model.preprocess_fn, path))
+        ret.update(normalize=get_normalize_config(model.model.normalize, path))
         ret.update(token=get_token_config(
             model.preprocess_fn.token_id_converter))
         return ret
+
+    def _copy_files(self, model, path, verbose):
+        # copy stats file
+        if model.model.normalize is not None \
+                and hasattr(model.model.normalize, 'stats_file'):
+            stats_file = model.model.normalize.stats_file
+            shutil.copy(stats_file, path)
+            if verbose:
+                logging.info(f'`stats_file` was copied into {path}.')
 
     def _export_model(self, model, verbose, path, enc_size=None):
         if isinstance(model, list):

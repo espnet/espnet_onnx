@@ -80,6 +80,9 @@ class Text2Speech(AbsTTSModel):
         # preprocess text
         text = self.preprocess(text)
         output_dict = self.tts_model(text, **options)
+        
+        # postprocess
+        self.postprocess(output_dict['feat_gen'])
 
         if output_dict.get("att_w") is not None:
             duration, focus_rate = self.duration_calculator(
@@ -93,3 +96,11 @@ class Text2Speech(AbsTTSModel):
             output_dict.update(wav=wav)
 
         return output_dict
+
+    def postprocess(self, feat):
+        if self.normalize is not None:
+            feat_length = np.array([feat.shape[0]], dtype=np.int64)
+            feat, feat_length = self.normalize.inverse(feat[None, :], feat_length)
+            return feat[0]
+        else:
+            return feat
