@@ -11,18 +11,21 @@ import torch.nn as nn
 from espnet_onnx.utils.abs_model import AbsExportModel
 
 
-class OnnxVocoder(nn.Module, AbsExportModel):
+class OnnxPWGVocoder(nn.Module, AbsExportModel):
     def __init__(
         self,
         model,
+        use_z=False,
         **kwargs
     ):
         super().__init__()
         self.model = model
-        self.model_name = 'vocoder'
+        self.use_z = use_z
+        self.aux_channels = model.aux_channels
+        self.model_name = 'PWGVocoder'
 
     def forward(
-        self, c: torch.Tensor, g: Optional[torch.Tensor] = None
+        self, c: torch.Tensor, z: Optional[torch.Tensor] = None
     ) -> torch.Tensor:
         """Perform inference.
         Args:
@@ -31,28 +34,40 @@ class OnnxVocoder(nn.Module, AbsExportModel):
         Returns:
             Tensor: Output tensor (T ** upsample_factor, out_channels).
         """
-        if g is not None:
-            g = g.unsqueeze(0)
-        c = self.model.forward(c.transpose(1, 0).unsqueeze(0), g=g)
-        return c.squeeze(0).transpose(1, 0)
+        if z is not None:
+            z = z.transpose(1, 0).unsqueeze(0)
+        c = c.transpose(1, 0).unsqueeze(0)
+        return self.model.forward(c, z).squeeze(0).transpose(1, 0)
 
     def get_dummy_inputs(self):
-        c = torch.randn(100, self.model.input_conv.in_channels)
-        return (c,)
+        c = torch.randn(100, self.aux_channels)
+        if self.use_z:
+            z = torch.randn(100, self.aux_channels)
+            return (c, z)
+        else:
+            return (c,)
 
     def get_input_names(self):
-        return ['c']
+        if self.use_z:
+            return ['c', 'z']
+        else:
+            return ['c']
 
     def get_output_names(self):
         return ['wav']
 
     def get_dynamic_axes(self):
-        return {
+        ret = {
             'c': {0: 'c_length'},
         }
+        if self.use_z:
+            ret.update({
+                'z': {0: 'z_length'}
+            })
+        return ret
 
     def get_model_config(self, path):
         return {
-            'vocoder_type': 'OnnxVocoder',
+            'vocoder_type': 'OnnxPWGVocoder',
             'model_path': str(path / f'{self.model_name}.onnx')
         }

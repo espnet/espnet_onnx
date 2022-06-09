@@ -16,7 +16,10 @@ from espnet2.gan_tts.hifigan.hifigan import HiFiGANGenerator
 from espnet2.gan_tts.melgan.melgan import MelGANGenerator
 from espnet2.gan_tts.parallel_wavegan.parallel_wavegan import ParallelWaveGANGenerator
 from espnet2.gan_tts.style_melgan.style_melgan import StyleMelGANGenerator
-from .vocoders.vocoder import OnnxVocoder
+from .vocoders.hifigan import OnnxHiFiGANVocoder
+from .vocoders.melgan import OnnxMelGANVocoder
+from .vocoders.parallel_wavegan import OnnxPWGVocoder
+from .vocoders.style_melgan import OnnxStyleMelGANVocoder
 
 
 def get_tts_model(model, export_config):
@@ -39,13 +42,15 @@ def get_tts_model(model, export_config):
         raise RuntimeError('Currently, VITS and FastSpeech2 is supported.')
 
 def get_vocoder(model, export_config):
-    if (
-        isinstance(model, HiFiGANGenerator)
-        or isinstance(model, MelGANGenerator)
-        or isinstance(model, ParallelWaveGANGenerator)
-        or isinstance(model, StyleMelGANGenerator)
-    ):
-        return OnnxVocoder(model), True
+    if isinstance(model, HiFiGANGenerator):
+        return OnnxHiFiGANVocoder(model, **export_config), True
+    elif isinstance(model, MelGANGenerator):
+        return OnnxMelGANVocoder(model, **export_config), True
+    elif isinstance(model, ParallelWaveGANGenerator):
+        return OnnxPWGVocoder(model, **export_config), True
+    elif isinstance(model, StyleMelGANGenerator):
+        # return OnnxStyleMelGANVocoder(model, **export_config), True
+        raise RuntimeError('Currently, StyleMelgan is not supported.')
     
     if hasattr(model, 'vocoder'):
         if isinstance(model.vocoder, Spectrogram2Waveform):

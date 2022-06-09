@@ -1,0 +1,4 @@
+vocoder_type: parallel_wavegan_generator
+vocoder_params:
+  layers: 10
+  stacks: 2
