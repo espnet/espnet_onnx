@@ -16,6 +16,7 @@ class TransformerLM(nn.Module, AbsExportModel):
         self.embed = Embedding(model.embed, max_seq_len)
         self.encoder = model.encoder
         self.decoder = model.decoder
+        self.model_name = 'transformer_lm'
 
     def forward(self, y, mask, cache):
         xs = self.embed(y)
@@ -86,7 +87,7 @@ class TransformerLM(nn.Module, AbsExportModel):
     def get_model_config(self, path):
         return {
             "use_lm": True,
-            "model_path": os.path.join(path, "lm.onnx"),
+            "model_path": os.path.join(path, f'{self.model_name}.onnx'),
             "lm_type": "TransformerLM",
             "odim": self.encoder.encoders[0].size,
             "nlayers": len(self.encoder.encoders)

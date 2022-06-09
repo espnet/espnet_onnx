@@ -13,7 +13,7 @@ from espnet_onnx.export.asr.models import (
     get_decoder,
     get_lm,
 )
-from espnet_onnx.export.asr.models.decoders.attention import OnnxNoAtt
+from espnet_onnx.export.layers.attention import OnnxNoAtt
 from espnet_onnx.utils.config import save_config
 
 
@@ -51,14 +51,6 @@ lm_cases = [
     'seqrnn',
     'transformer_pe'
 ]
-
-
-def export_predec(dec_wrapper, model_export, export_dir):
-    model_export._export_predecoder(dec_wrapper, export_dir, verbose=False)
-    for i,a in enumerate(dec_wrapper.att_list):
-        if not isinstance(a, OnnxNoAtt):
-            assert os.path.isfile(os.path.join(export_dir, f'predecoder_{i}.onnx'))
-
 
 def save_model(torch_model, onnx_model, model_export, model_type, model_name):
     export_dir = Path(model_export.cache_dir) / 'test' / \
@@ -105,7 +97,7 @@ def test_export_encoder(enc_type, load_config, model_export, get_class):
             export_dir / 'pe',
             encoder.pos_enc.pe.numpy()
         )
-    assert os.path.isfile(os.path.join(export_dir, 'encoder.onnx'))
+    assert len(os.path.join(export_dir, '*encoder.onnx')) > 0
 
 
 @pytest.mark.parametrize('dec_type', decoder_cases)
@@ -127,12 +119,9 @@ def test_export_decoder(dec_type, load_config, model_export, get_class):
     dec_wrapper = get_decoder(decoder, {})
     export_dir = save_model(decoder, dec_wrapper, model_export, 'decoder', dec_type)
     
-    if dec_type[:3] == 'rnn':
-        export_predec(dec_wrapper, model_export, export_dir)
-        
     decoder_config = dec_wrapper.get_model_config(export_dir)
     save_config(decoder_config, export_dir / 'config.yaml')
-    assert os.path.isfile(os.path.join(export_dir, 'decoder.onnx'))
+    assert len(os.path.join(export_dir, '*decoder.onnx')) > 0
 
 
 @pytest.mark.parametrize('lm_type', lm_cases)
@@ -152,4 +141,4 @@ def test_export_lm(lm_type, load_config, model_export, get_class):
     lm_config = {'lm': lm_wrapper.get_model_config(export_dir)}
     lm_config['lm'].update({'use_lm': True})
     save_config(lm_config, export_dir / 'config.yaml')
-    assert os.path.isfile(os.path.join(export_dir, 'lm.onnx'))
+    assert len(os.path.join(export_dir, '*lm.onnx')) > 0

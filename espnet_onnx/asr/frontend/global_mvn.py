@@ -73,3 +73,23 @@ class GlobalMVN:
             x /= self.std
 
         return x, ilens
+    
+    def inverse(
+        self, x: np.ndarray, ilens: np.ndarray
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """Forward function
+        Args:
+            x: (B, L, ...)
+            ilens: (B,)
+        """
+        mask = make_pad_mask(ilens, x, 1)
+        
+        if self.norm_vars:
+            x *= self.std
+
+        # feat: (B, T, D)
+        if self.norm_means:
+            x += self.mean
+            x = mask_fill(x, mask, 0.0)
+
+        return x, ilens

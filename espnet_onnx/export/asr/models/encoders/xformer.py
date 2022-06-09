@@ -30,6 +30,7 @@ class XformerEncoder(nn.Module, AbsExportModel):
         self.model = model
         self.make_pad_mask = MakePadMask(max_seq_len)
         self.feats_dim = feats_dim
+        self.model_name = 'xformer_encoder'
 
     def forward(self, feats, feats_length):
         mask = 1 - self.make_pad_mask(feats_length).unsqueeze(1)
@@ -81,7 +82,7 @@ class XformerEncoder(nn.Module, AbsExportModel):
         ret = {}
         ret.update(
             enc_type='XformerEncoder',
-            model_path=os.path.join(path, 'encoder.onnx'),
+            model_path=os.path.join(path, f'{self.model_name}.onnx'),
             is_vggrnn=False,
             frontend=self.get_frontend_config(asr_model.frontend),
             do_normalize=asr_model.normalize is not None,

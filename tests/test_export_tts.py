@@ -8,9 +8,25 @@ from pathlib import Path
 import torch
 
 from espnet_onnx.export.tts.models.tts_models.vits import OnnxVITSModel
+from espnet_onnx.export.tts.models.tts_models.fastspeech2 import OnnxFastSpeech2
+from espnet_onnx.export.tts.models.tts_models.tacotron2 import (
+    OnnxTacotron2Encoder,
+    OnnxTacotron2Decoder
+)
+from espnet_onnx.export.tts.models import get_vocoder
 
 tts_cases = [
     ['vits', OnnxVITSModel],
+    ['fastspeech2', OnnxFastSpeech2],
+    ['tacotron2_loc', [OnnxTacotron2Encoder, OnnxTacotron2Decoder]],
+    # ['tacotron2_for', [OnnxTacotron2Encoder, OnnxTacotron2Decoder]],
+]
+
+voc_cases = [
+    'hifigan',
+    'melgan',
+    'parallel_wavegan',
+    # 'style_melgan'
 ]
 
 
@@ -21,6 +37,9 @@ def save_model(torch_model, onnx_model, model_export, model_type, model_name):
     
     if model_type == 'tts':
         model_export._export_tts(onnx_model, export_dir, verbose=False)
+    
+    if model_type == 'vocoder':
+        model_export._export_vocoder(onnx_model, export_dir, verbose=False)
     
     torch.save(torch_model.state_dict(), str(export_dir / f'{model_type}.pth'))
     return export_dir
@@ -35,6 +54,26 @@ def test_export_tts(tts_type, cls, load_config, model_export_tts, get_class):
         model_config.tts_conf,
         idim=78, odim=513
     )
-    tts_wrapper = cls(tts)
-    export_dir = save_model(tts, tts_wrapper, model_export_tts, 'tts', tts_type)
-    assert os.path.isfile(os.path.join(export_dir, 'tts_model.onnx'))
+    if 'tacotron' in tts_type:
+        tts_wrapper_encoder = cls[0](tts)
+        save_model(tts.enc, tts_wrapper_encoder, model_export_tts, 'tts', tts_type + '_encoder')
+        tts_wrapper_decoder = cls[1](tts)
+        export_dir = save_model(tts.dec, tts_wrapper_decoder, model_export_tts, 'tts', tts_type + '_decoder')
+    else:
+        tts_wrapper = cls(tts)
+        export_dir = save_model(tts, tts_wrapper, model_export_tts, 'tts', tts_type)
+    assert len(os.path.join(export_dir, '*.onnx')) > 0
+
+
+@pytest.mark.parametrize('voc_type', voc_cases)
+def test_export_vocoder(voc_type, load_config, model_export_tts, get_class):
+    model_config = load_config(voc_type, model_type='vocoder')
+    vocoder = get_class(
+        'vocoder',
+        model_config.vocoder_type,
+        model_config.vocoder_params
+    )
+    voc_wrapper, _ = get_vocoder(vocoder, {})
+    export_dir = save_model(vocoder, voc_wrapper, model_export_tts, 'vocoder', voc_type)
+    assert len(os.path.join(export_dir, '*.onnx')) > 0
+

@@ -55,6 +55,10 @@ from espnet2.tts.fastspeech2 import FastSpeech2
 from espnet2.tts.tacotron2 import Tacotron2
 from espnet2.tts.transformer import Transformer
 
+from espnet2.gan_tts.hifigan import HiFiGANGenerator
+from espnet2.gan_tts.melgan import MelGANGenerator
+from espnet2.gan_tts.style_melgan import StyleMelGANGenerator
+from espnet2.gan_tts.parallel_wavegan import ParallelWaveGANGenerator
 
 def pytest_addoption(parser):
     parser.addoption('--config_dir', action='store',
@@ -144,6 +148,15 @@ class_choices = {
         ),
         type_check=AbsTTS,
         default="tacotron2",
+    ),
+    'vocoder': ClassChoices(
+        "vocoder",
+        classes=dict(
+            hifigan_generator=HiFiGANGenerator,
+            melgan_generator=MelGANGenerator,
+            parallel_wavegan_generator=ParallelWaveGANGenerator,
+            style_melgan_generator=StyleMelGANGenerator,
+        )
     )
 }
 

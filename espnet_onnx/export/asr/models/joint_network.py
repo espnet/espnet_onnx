@@ -12,6 +12,7 @@ class JointNetwork(nn.Module, AbsExportModel):
         super().__init__()
         self.model = model
         self.search_type = search_type
+        self.model_name = 'joint_network'
 
     def forward(self, enc_out, dec_out):
         return self.model(enc_out, dec_out)
@@ -43,5 +44,5 @@ class JointNetwork(nn.Module, AbsExportModel):
 
     def get_model_config(self, path):
         return {
-            "model_path": os.path.join(path, "joint_network.onnx")
+            "model_path": os.path.join(path, f'{self.model_name}.onnx')
         }

@@ -224,7 +224,7 @@ class OnnxVITSModel(nn.Module, AbsExportModel):
         )
         self.use_teacher_forcing = use_teacher_forcing
         self.predict_duration = predict_duration
-
+        self.model_name = 'vits'
 
     def forward(
         self,
@@ -304,5 +304,5 @@ class OnnxVITSModel(nn.Module, AbsExportModel):
     def get_model_config(self, path):
         return {
             'model_type': 'VITS',
-            'model_path': str(path / 'tts_model.onnx')
+            'model_path': str(path / f'{self.model_name}.onnx')
         }

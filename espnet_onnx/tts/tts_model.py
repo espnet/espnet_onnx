@@ -9,13 +9,13 @@ from typeguard import check_argument_types
 import numpy as np
 import onnxruntime
 
-from espnet_onnx.utils.abs_model import AbsModel
+from .abs_tts_model import AbsTTSModel
 from espnet_onnx.tts.model.preprocess.common_processor import CommonPreprocessor
 from espnet_onnx.tts.model.duration_calculator import DurationCalculator
 from espnet_onnx.tts.model.tts_model import get_tts_model
 
 
-class Text2Speech(AbsModel):
+class Text2Speech(AbsTTSModel):
     """Wrapper class for espnet2.asr.bin.tts_inference.Text2Speech
 
     """
@@ -34,28 +34,16 @@ class Text2Speech(AbsModel):
         self._check_ort_version(providers)
 
         # check if there is quantized model if use_quantized=True
-        if use_quantized and 'quantized_model_path' not in self.config.tts_model.keys():
+        if self.config.tts_model.model_type == 'Tacotron2':
+            if use_quantized and 'quantized_model_path' not in self.config.tts_model.encoder.keys():
+                raise RuntimeError(
+                'Configuration for quantized model is not defined.')
+        elif use_quantized and 'quantized_model_path' not in self.config.tts_model.keys():
             # check if quantized model config is defined.
             raise RuntimeError(
                 'Configuration for quantized model is not defined.')
 
         self._build_model(providers, use_quantized)
-    
-    def _build_model(self, providers, use_quantized):
-        # build tts model such as vits
-        self.tts_model = get_tts_model(
-            self.config.tts_model, providers, use_quantized)
-
-        self._build_tokenizer()
-        self._build_token_converter()
-        self.preprocess = CommonPreprocessor(
-            tokenizer=self.tokenizer,
-            token_id_converter=self.converter,
-            cleaner_config=self.config.text_cleaner,
-        )
-        self.duration_calculator = DurationCalculator()
-        # vocoder is currently not supported
-        # self.vocoder is get_vocoder()
 
     def __call__(
         self,
@@ -95,7 +83,10 @@ class Text2Speech(AbsModel):
 
         # preprocess text
         text = self.preprocess(text)
-        output_dict = self.tts_model(text, options)
+        output_dict = self.tts_model(text, **options)
+        
+        # postprocess
+        self.postprocess(output_dict['feat_gen'])
 
         if output_dict.get("att_w") is not None:
             duration, focus_rate = self.duration_calculator(
@@ -103,15 +94,17 @@ class Text2Speech(AbsModel):
             output_dict.update(duration=duration, focus_rate=focus_rate)
 
         # vocoder is currently not supported.
-        # if self.vocoder is not None:
-        #     if (
-        #         self.prefer_normalized_feats
-        #         or output_dict.get("feat_gen_denorm") is None
-        #     ):
-        #         input_feat = output_dict["feat_gen"]
-        #     else:
-        #         input_feat = output_dict["feat_gen_denorm"]
-        #     wav = self.vocoder(input_feat)
-        #     output_dict.update(wav=wav)
+        if self.vocoder is not None:
+            input_feat = output_dict["feat_gen"]
+            wav = self.vocoder(input_feat)
+            output_dict.update(wav=wav)
 
         return output_dict
+
+    def postprocess(self, feat):
+        if self.normalize is not None:
+            feat_length = np.array([feat.shape[0]], dtype=np.int64)
+            feat, feat_length = self.normalize.inverse(feat[None, :], feat_length)
+            return feat[0]
+        else:
+            return feat

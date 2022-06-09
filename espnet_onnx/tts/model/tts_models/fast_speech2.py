@@ -20,7 +20,7 @@ from espnet_onnx.utils.function import (
 from espnet_onnx.utils.config import Config
 
 
-class VITS:
+class FastSpeech2:
     def __init__(
         self,
         config: Config,
@@ -40,6 +40,7 @@ class VITS:
             )
 
         self.input_names = [d.name for d in self.model.get_inputs()]
+        self.output_names = ['feat_gen', 'out_duration', 'out_pitch', 'out_energy']
         self.use_sids = 'sids' in self.input_names
         self.use_lids = 'lids' in self.input_names
         self.use_feats = 'feats' in self.input_names
@@ -52,11 +53,10 @@ class VITS:
         spembs:  np.ndarray = None,
         lids:  np.ndarray = None
     ):
-        output_names = ['wav', 'att_w', 'dur']
         input_dict = self.get_input_dict(
             text, feats, sids, spembs, lids)
-        wav, att_w, dur = self.model.run(output_names, input_dict)
-        return dict(wav=wav, att_w=att_w, dur=dur)
+        feat_gen, dur, pitch, energy = self.model.run(self.output_names, input_dict)
+        return dict(feat_gen=feat_gen, dur=dur, pitch=pitch, energy=energy)
 
     def get_input_dict(self, text, feats, sids, spembs, lids):
         ret = {'text': text, 'text_length': np.array(
