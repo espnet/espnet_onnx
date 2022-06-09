@@ -181,7 +181,8 @@ class ASRModelExport:
         # export submodel if required
         if hasattr(model, 'submodel'):
             for i, sm in enumerate(model.submodel):
-                self._export_model(sm, verbose, path, enc_size)
+                if sm.require_onnx():
+                    self._export_model(sm, verbose, path, enc_size)
 
     def _export_encoder(self, model, path, verbose):
         if verbose:

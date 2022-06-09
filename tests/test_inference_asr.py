@@ -64,7 +64,7 @@ def check_output(out_t, out_o):
         f"The shape of output of onnx {out_o.shape} should be the same with the output of torch model {out_t.shape}"
 
     mean_dif = np.mean((out_t - out_o)**2)
-    assert mean_dif < 0.05, \
+    assert mean_dif < 0.001, \
         f"Result of torch model and onnx model differs."
 
 
@@ -103,7 +103,8 @@ def test_infer_encoder(enc_type, feat_lens, load_config, get_class):
     )
     encoder_espnet.load_state_dict(torch.load(str(model_dir / 'encoder.pth')))
     encoder_espnet.eval()
-    encoder_onnx = ort.InferenceSession(str(model_dir / 'encoder.onnx'), providers=PROVIDERS)
+    model_file = glob.glob(os.path.join(model_dir , '*encoder.onnx'))[0]
+    encoder_onnx = ort.InferenceSession(model_file, providers=PROVIDERS)
     
     # test output
     for fl in feat_lens:
