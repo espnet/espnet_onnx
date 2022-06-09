@@ -11,3 +11,4 @@ espnet
 espnet_model_zoo
 onnx
 espnet_tts_frontend
+protpbuf==3.20.1
