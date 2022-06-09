@@ -440,7 +440,7 @@ class OnnxAttCovLoc(torch.nn.Module):
         return c, att_prev
 
 
-class AttForward(torch.nn.Module):
+class OnnxAttForward(torch.nn.Module):
     def __init__(self, model):
         super().__init__()
         self.model = model
@@ -449,6 +449,9 @@ class AttForward(torch.nn.Module):
         self.att_dim = model.att_dim
         self.att_type = 'att_for'
 
+    def get_dynamic_axes(self):
+        return 1
+    
     def forward(
         self,
         dec_z,
@@ -467,7 +470,7 @@ class AttForward(torch.nn.Module):
 
         # att_prev: utt x frame -> utt x 1 x 1 x frame
         # -> utt x att_conv_chans x 1 x frame
-        att_conv = self.model.loc_conv(att_prev.view(batch, 1, 1, self.model.h_length))
+        att_conv = self.model.loc_conv(att_prev.view(batch, 1, 1, enc_h.size(1)))
         # att_conv: utt x att_conv_chans x 1 x frame -> utt x frame x att_conv_chans
         att_conv = att_conv.squeeze(2).transpose(1, 2)
         # att_conv: utt x frame x att_conv_chans -> utt x frame x att_dim

@@ -12,11 +12,19 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from espnet.nets.pytorch_backend.rnn.attentions import (
+    AttForward,
+    AttForwardTA
+)
+
 from espnet_onnx.export.asr.models.language_models.embed import Embedding
 from espnet_onnx.utils.torch_function import MakePadMask
 from espnet_onnx.utils.abs_model import AbsExportModel
 from espnet_onnx.export.layers.predecoder import PreDecoder
-from espnet_onnx.export.layers.attention import get_attention
+from espnet_onnx.export.layers.attention import (
+    get_attention,
+    OnnxAttForward,
+)
 
 
 class OnnxEncoderLayer(nn.Module):
@@ -234,13 +242,18 @@ class OnnxTacotron2Decoder(nn.Module, AbsExportModel):
         self.onnx_export = model.dec.postnet is not None
         self.reduction_factor = model.dec.reduction_factor
         
-        # models
-        self.att = get_attention(model.dec.att)
         self.prenet = model.dec.prenet
         self.lstm = model.dec.lstm
         self.feat_out = model.dec.feat_out
         self.prob_out = model.dec.prob_out
         self.output_activation_fn = model.dec.output_activation_fn
+        # get attention model
+        self.att = get_attention(model.dec.att)
+        if self.att is None:
+            # attention model is AttForward or AttforwardTA.
+            if isinstance(model.dec.att, AttForward) or isinstance(model.dec.att, AttForwardTA):
+                raise ValueError("AttForwardTA or AttForward is not currently supported")
+            
         self.submodel.append(
             PreDecoder(model.dec.att, 0)
         )
