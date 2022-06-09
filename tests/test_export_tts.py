@@ -13,7 +13,7 @@ from espnet_onnx.export.tts.models.tts_models.tacotron2 import (
     OnnxTacotron2Encoder,
     OnnxTacotron2Decoder
 )
-from espnet_onnx.export.tts.models.tts_model import get_vocoder
+from espnet_onnx.export.tts.models import get_vocoder
 
 tts_cases = [
     ['vits', OnnxVITSModel],
