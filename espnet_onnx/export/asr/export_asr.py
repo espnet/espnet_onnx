@@ -10,7 +10,7 @@ import logging
 
 import numpy as np
 import torch
-from onnxruntime.quantization import quantize_dynamic, QuantType
+from onnxruntime.quantization import quantize_dynamic
 
 from espnet2.bin.asr_inference import Speech2Text
 from espnet2.text.sentencepiece_tokenizer import SentencepiecesTokenizer
@@ -245,7 +245,7 @@ class ASRModelExport:
             quantize_dynamic(
                 m,
                 export_file,
-                weight_type=QuantType.QUInt8
+                op_types_to_quantize=['Attention', 'MatMul']
             )
             ret[basename] = export_file
             os.remove(os.path.join(model_from, basename + '-opt.onnx'))

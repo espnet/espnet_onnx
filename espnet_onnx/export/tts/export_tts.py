@@ -10,7 +10,7 @@ import shutil
 
 import numpy as np
 import torch
-from onnxruntime.quantization import quantize_dynamic, QuantType
+from onnxruntime.quantization import quantize_dynamic
 
 from espnet2.bin.tts_inference import Text2Speech
 from espnet_onnx.utils.abs_model import AbsExportModel
