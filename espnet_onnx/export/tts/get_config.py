@@ -54,11 +54,14 @@ def get_preprocess_config(model, path):
 
 
 def get_vocoder_config(model):
-    ret = {
-        'vocoder_type': 'Spectrogram2Waveform',
-    }
-    if hasattr(model, 'params'):
-        ret.update(model.params)
+    if model is None:
+        return {'vocoder_type': 'not_used'}
+    else:
+        ret = {
+            'vocoder_type': 'Spectrogram2Waveform',
+        }
+        if hasattr(model, 'params'):
+            ret.update(model.params)
     return ret
 
 

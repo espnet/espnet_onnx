@@ -61,3 +61,5 @@ def get_vocoder(model, export_config):
     if hasattr(model, 'model'):
         if isinstance(model.model.tts, espnetJointText2Wav):
             return get_vocoder(model.model.tts.generator['vocoder'], export_config)
+
+    return None, False

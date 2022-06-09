@@ -58,7 +58,9 @@ class AbsTTSModel(AbsModel):
     
     def _build_vocoder(self, providers, use_quantized):
         self.vocoder = None
-        if self.config.vocoder.vocoder_type == 'Spectrogram2Waveform':
+        if self.config.vocoder.vocoder_type == 'not_used':
+            logging.info('Vocoder is not used.')
+        elif self.config.vocoder.vocoder_type == 'Spectrogram2Waveform':
             self.vocoder = Spectrogram2Waveform(self.config.vocoder)
         elif self.config.vocoder.vocoder_type == 'PretrainedPWGVocoder':
             raise RuntimeError('Currently, PWGVocoder is not supported.')

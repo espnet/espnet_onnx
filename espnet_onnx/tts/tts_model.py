@@ -86,7 +86,8 @@ class Text2Speech(AbsTTSModel):
         output_dict = self.tts_model(text, **options)
         
         # postprocess
-        self.postprocess(output_dict['feat_gen'])
+        if output_dict.get("feat_gen") is not None:
+            output_dict['feat_gen'] = self.postprocess(output_dict['feat_gen'])
 
         if output_dict.get("att_w") is not None:
             duration, focus_rate = self.duration_calculator(

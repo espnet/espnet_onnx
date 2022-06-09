@@ -73,12 +73,11 @@ class TTSModelExport:
 
         # export vocoder
         voc_model, require_export = get_vocoder(model, self.export_config)
-        if voc_model is not None:
-            if require_export:
-                self._export_vocoder(voc_model, export_dir, verbose)
-                model_config.update(vocoder=voc_model.get_model_config(export_dir))
-            else:
-                model_config.update(vocoder=get_vocoder_config(voc_model))
+        if voc_model is not None and require_export:
+            self._export_vocoder(voc_model, export_dir, verbose)
+            model_config.update(vocoder=voc_model.get_model_config(export_dir))
+        else:
+            model_config.update(vocoder=get_vocoder_config(voc_model))
 
         if quantize:
             quantize_dir = base_dir / 'quantize'
@@ -98,7 +97,7 @@ class TTSModelExport:
                     model_config['tts_model']['decoder'].update(
                         quantized_model_path=qt_config[m])
                 else:
-                    model_config[m].update(quantized_model_path=qt_config[m])
+                    model_config['tts_model'].update(quantized_model_path=qt_config[m])
 
         config_name = base_dir / 'config.yaml'
         save_config(model_config, config_name)
