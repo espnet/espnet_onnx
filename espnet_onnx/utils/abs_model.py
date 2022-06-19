@@ -1,6 +1,7 @@
 from abc import ABC
 
 from typing import List
+import torch.nn as nn
 
 import os
 import glob

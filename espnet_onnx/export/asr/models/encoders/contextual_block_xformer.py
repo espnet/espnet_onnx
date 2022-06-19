@@ -34,6 +34,7 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
     ):
         super().__init__()
         self.model = model
+        self.model_name = 'xformer_encoder'
         self._output_size = model._output_size
         self.pos_enc = model.pos_enc
         
@@ -166,7 +167,7 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
         ret = {}
         ret.update(
             enc_type='ContextualXformerEncoder',
-            model_path=os.path.join(path, 'encoder.onnx'),
+            model_path=os.path.join(path, f'{self.model_name}.onnx'),
             frontend=self.get_frontend_config(asr_model.frontend),
             do_normalize=asr_model.normalize is not None,
             do_preencoder=asr_model.preencoder is not None,

@@ -51,3 +51,30 @@ def get_preprocess_config(model, path):
         
     ret.update({'tokenizer': get_tokenizer_config(model.tokenizer, path)})
     return ret
+
+
+def get_vocoder_config(model):
+    if model is None:
+        return {'vocoder_type': 'not_used'}
+    else:
+        ret = {
+            'vocoder_type': 'Spectrogram2Waveform',
+        }
+        if hasattr(model, 'params'):
+            ret.update(model.params)
+    return ret
+
+
+def get_normalize_config(model, path):
+    ret = {
+        'use_normalize': model is not None
+    }
+    if ret['use_normalize']:
+        ret.update({
+            "type": "gmvn",
+            "norm_means": model.norm_means,
+            "norm_vars": model.norm_vars,
+            "eps": model.eps,
+            "stats_file": str(path.parent / 'feats_stats.npz')
+        })
+    return ret

@@ -4,18 +4,29 @@
 
 | arch name     | supported |
 | ------------- | --------- |
-| Tacotron2     | x         |
+| Tacotron2     | ◯         |
 | Transformer   | x         |
 | FastSpeech    | x         |
-| FastSpeech2   | x         |
-| VITS          |  ◯         |
+| FastSpeech2   | ◯         |
+| VITS          | ◯         |
 | JointText2Wav | x         |
 
 **Vocoder**
 
-| arch name                                  | supported |
-| ------------------------------------------ | --------- |
-| ParallelWaveGAN                            | x         |
+| arch name       | supported |
+| --------------- | --------- |
+| ParallelWaveGAN | ◯         |
+| MelGAN          | ◯         |
+| HiFiGAN         | ◯         |
+| StyleMelGAN     | x         |
+
+**Attention**
+
+| arch name    | supported |
+| ------------ | --------- |
+| AttLoc       | ◯         |
+| AttForward   | x         |
+| AttForwardTA | x         |
 
 **PositionalEmbedding**
 
@@ -26,4 +37,3 @@
 | LegacyRelPositionalEncoding | ◯         |
 | RelPositionalEncoding       | ◯         |
 | StreamPositionalEncoding    | ◯         |
-

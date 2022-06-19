@@ -29,6 +29,7 @@ class TransformerLM(nn.Module, AbsExportModel):
                 d.self_attn = OnnxMultiHeadedAttention(d.self_attn)
             self.encoder.encoders[i] = OnnxEncoderLayer(d)
             
+        self.model_name = 'transformer_lm'
         self.num_heads = self.encoder.encoders[0].self_attn.h
         self.hidden_size = self.encoder.encoders[0].self_attn.linear_out.out_features
     
@@ -127,7 +128,7 @@ class TransformerLM(nn.Module, AbsExportModel):
         return {
             "use_lm": True,
             "optimize_lm": self.optimize_lm,
-            "model_path": os.path.join(path, "lm.onnx"),
+            "model_path": os.path.join(path, f'{self.model_name}.onnx'),
             "lm_type": "TransformerLM",
             "odim": self.encoder.encoders[0].size,
             "nlayers": len(self.encoder.encoders)

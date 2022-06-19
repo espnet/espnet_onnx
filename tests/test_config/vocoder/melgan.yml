@@ -1,0 +1,16 @@
+vocoder_type: melgan_generator
+vocoder_params:
+  bias: true
+  channels: 512
+  in_channels: 80
+  kernel_size: 7
+  nonlinear_activation: LeakyReLU
+  nonlinear_activation_params:
+      negative_slope: 0.1
+  out_channels: 1
+  upsample_scales:
+  - 8
+  - 8
+  - 2
+  - 2
+  use_weight_norm: true

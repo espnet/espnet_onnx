@@ -133,6 +133,7 @@ class RNNEncoder(nn.Module, AbsExportModel):
     def __init__(self, model, feats_dim=80, **kwargs):
         super().__init__()
         self.model = model
+        self.model_name = 'rnn_encoder'
         self.enc = nn.ModuleList()
         self.feats_dim = feats_dim
         for e in model.enc:
@@ -170,7 +171,7 @@ class RNNEncoder(nn.Module, AbsExportModel):
         ret = {}
         ret.update(
             enc_type='RNNEncoder',
-            model_path=os.path.join(path, 'encoder.onnx'),
+            model_path=os.path.join(path, f'{self.model_name}.onnx'),
             is_vggrnn=isinstance(self.model, espnetVGGRNNEncoder),
             frontend=self.get_frontend_config(asr_model.frontend),
             do_normalize=asr_model.normalize is not None,

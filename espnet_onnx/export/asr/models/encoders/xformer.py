@@ -53,6 +53,7 @@ class XformerEncoder(nn.Module, AbsExportModel):
             mask = 1 - mask[:, None, :]
         
         return mask * -10000.0
+        self.model_name = 'xformer_encoder'
 
     def forward(self, feats, feats_length):
         mask = self.make_pad_mask(feats_length) # (B, T)
@@ -108,7 +109,7 @@ class XformerEncoder(nn.Module, AbsExportModel):
         ret = {}
         ret.update(
             enc_type='XformerEncoder',
-            model_path=os.path.join(path, 'encoder.onnx'),
+            model_path=os.path.join(path, f'{self.model_name}.onnx'),
             is_vggrnn=False,
             frontend=self.get_frontend_config(asr_model.frontend),
             do_normalize=asr_model.normalize is not None,

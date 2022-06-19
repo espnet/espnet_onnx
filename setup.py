@@ -23,7 +23,7 @@ requirements = {
 
 setup(
     name="espnet_onnx",
-    version="0.1.6",
+    version="0.1.9",
     url="https://github.com/Masao-Someki/espnet_onnx",
     author="Masao Someki",
     author_email="masao.someki@gmail.com",
@@ -44,7 +44,7 @@ setup(
         "Programming Language :: Python :: 3.9",
         "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
-        "Operating System :: POSIX :: Linux",
+        "Operating System :: OS Independent",
         "License :: OSI Approved :: MIT License",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],

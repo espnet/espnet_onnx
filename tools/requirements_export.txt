@@ -12,3 +12,4 @@ espnet_model_zoo
 onnx
 espnet_tts_frontend
 coloredlogs
+protobuf==3.20.1
