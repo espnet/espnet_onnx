@@ -79,9 +79,9 @@ class ASRModelExport:
             model.asr_model, export_dir))
 
         # # export decoder
-        # dec_model = get_decoder(model.asr_model.decoder, self.export_config)
-        # self._export_decoder(dec_model, enc_out_size, export_dir, verbose)
-        # model_config.update(decoder=dec_model.get_model_config(export_dir))
+        dec_model = get_decoder(model.asr_model.decoder, self.export_config)
+        self._export_decoder(dec_model, enc_out_size, export_dir, verbose)
+        model_config.update(decoder=dec_model.get_model_config(export_dir))
         
         # export joint_network if transducer decoder is used.
         if model.asr_model.use_transducer_decoder:
