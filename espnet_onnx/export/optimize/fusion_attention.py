@@ -9,12 +9,12 @@ from sys import path
 from typing import Tuple, Union
 
 import numpy as np
-from fusion_base import Fusion
-from fusion_options import AttentionMaskFormat
-from fusion_utils import FusionUtils, NumpyHelper
 from onnx import NodeProto, TensorProto, helper, numpy_helper
-from onnx_model import OnnxModel
-from shape_infer_helper import SymbolicShapeInferenceHelper, get_shape_from_type_proto
+from onnxruntime.transformers.fusion_base import Fusion
+from onnxruntime.transformers.fusion_options import AttentionMaskFormat
+from onnxruntime.transformers.fusion_utils import FusionUtils, NumpyHelper
+from onnxruntime.transformers.onnx_model import OnnxModel
+from onnxruntime.transformers.shape_infer_helper import SymbolicShapeInferenceHelper, get_shape_from_type_proto
 
 logger = getLogger(__name__)
 
@@ -93,17 +93,17 @@ class FusionAttention(Fusion):
         hidden_size: int,
         num_heads: int,
         attention_mask: AttentionMask,
-        unidirectional: int,
+        unidirectional: bool,
     ):
         super().__init__(model, "Attention", ["SkipLayerNormalization", "LayerNormalization"])
         self.hidden_size = hidden_size
         self.num_heads = num_heads
         self.attention_mask = attention_mask
+        self.unidirectional = unidirectional
 
         # Flags to show warning only once
         self.num_heads_warning = True
         self.hidden_size_warning = True
-        self.unidirectional = unidirectional
 
     def get_num_heads_and_hidden_size(self, reshape_q: NodeProto) -> Tuple[int, int]:
         """Detect num_heads and hidden_size from a reshape node.
@@ -311,12 +311,8 @@ class FusionAttention(Fusion):
             name=attention_node_name,
         )
         attention_node.domain = "com.microsoft"
-        attention_node.attribute.extend(
-            [
-                helper.make_attribute("num_heads", num_heads),
-                helper.make_attribute("unidirectional", self.unidirectional),
-            ]
-        )
+        attention_node.attribute.extend([helper.make_attribute("num_heads", num_heads)])
+        attention_node.attribute.extend([helper.make_attribute("unidirectional", int(self.unidirectional))])
 
         if is_qkv_diff_dims:
             attention_node.attribute.extend(
@@ -337,20 +333,24 @@ class FusionAttention(Fusion):
                 return
 
         # SkipLayerNormalization has two inputs, and one of them is the root input for attention.
-        qkv_nodes = self.model.match_parent_path(start_node,
-            ["Add", "MatMul", "Reshape", "Transpose", "MatMul"], [0, None, 0, 0, 0]
+        qkv_nodes = self.model.match_parent_path(
+            start_node,
+            ["Add", "MatMul", "Reshape", "Transpose", "MatMul"],
+            [None, None, 0, 0, 0],
         )
-        
-        if qkv_nodes is None:
-            qkv_nodes = self.model.match_parent_path(start_node,
-                ["Add", "MatMul", "Reshape", "Transpose", "MatMul"], [1, None, 0, 0, 0]
+        einsum_node = None
+        if qkv_nodes is not None:
+            (_, matmul_qkv, reshape_qkv, transpose_qkv, matmul_qkv) = qkv_nodes
+        else:
+            # Match Albert
+            qkv_nodes = self.model.match_parent_path(
+                start_node, ["Add", "Einsum", "Transpose", "MatMul"], [1, None, 0, 0]
             )
-        
-        if qkv_nodes is None:
-            return
-        
-        (_, matmul_qkv, reshape_qkv, transpose_qkv, matmul_qkv) = qkv_nodes
-        
+            if qkv_nodes is not None:
+                (_, einsum_node, transpose_qkv, matmul_qkv) = qkv_nodes
+            else:
+                return
+
         other_inputs = []
         for i, input in enumerate(start_node.input):
             if input not in output_name_to_node:
@@ -363,8 +363,28 @@ class FusionAttention(Fusion):
             return
 
         root_input = other_inputs[0]
-        
-        if normalize_node.op_type == "LayerNormalization":
+        """
+        Match flaubert                     Mask
+                                            |
+        Mul --> LayerNormalization -->  Attention --> MatMul --> Add
+         |                                                        |
+         |                                                        |
+         +---------------------------------------------------------
+        """
+        mul_before_layernorm = self.model.match_parent(start_node, "Mul", 0)
+        if mul_before_layernorm is not None:
+            mul_children = input_name_to_nodes[mul_before_layernorm.output[0]]
+            if mul_children is not None and len(mul_children) == 2:
+                layernorm_node = mul_children[1]
+                if layernorm_node.op_type == "LayerNormalization":
+                    root_input = layernorm_node.output[0]
+                else:
+                    return
+            elif mul_children is not None and len(mul_children) == 5:
+                root_input = mul_before_layernorm.output[0]
+            else:
+                return
+        elif normalize_node.op_type == "LayerNormalization":
             children = input_name_to_nodes[root_input]
             for child in children:
                 if child.op_type == "LayerNormalization":
@@ -375,16 +395,31 @@ class FusionAttention(Fusion):
         if children_types.count("MatMul") != 3:
             return
 
-        v_nodes = self.model.match_parent_path(matmul_qkv,
-            ["Transpose", "Reshape", "Add", "MatMul"], [1, 0, 0, None])
-        
+        v_nodes = self.model.match_parent_path(matmul_qkv, ["Transpose", "Reshape", "Add", "MatMul"], [1, 0, 0, None])
         if v_nodes is None:
             logger.debug("fuse_attention: failed to match v path")
             return
-        
         (_, _, add_v, matmul_v) = v_nodes
-        qk_nodes = self.model.match_parent_path(matmul_qkv,
-            ["Softmax", "Add", "Div", "MatMul"], [0, 0, None, 0])
+
+        is_distill = False
+        is_distill_add = False
+        qk_paths = {
+            "path1": (["Softmax", "Add", "Div", "MatMul"], [0, 0, None, 0]),
+            "path2": (["Softmax", "Add", "Mul", "MatMul"], [0, 0, None, 0]),
+            "path3": (["Softmax", "Where", "MatMul", "Div"], [0, 0, 2, 0]),
+            "path4": (["Softmax", "Add", "Where", "MatMul"], [0, 0, 0, 2]),
+        }
+
+        qk_nodes = None
+        for k, v in qk_paths.items():
+            qk_nodes = self.model.match_parent_path(matmul_qkv, v[0], v[1])
+            if qk_nodes is None:
+                continue
+            if k == "path3":
+                is_distill = True
+            if k == "path4":
+                is_distill_add = True
+            break
 
         if qk_nodes is None:
             logger.debug("fuse_attention: failed to match qk path")
@@ -393,17 +428,28 @@ class FusionAttention(Fusion):
         add_qk = None
         matmul_qk = None
         where_qk = None
-        (_, add_qk, _, matmul_qk) = qk_nodes
-        q_nodes = self.model.match_parent_path(matmul_qk,
-            ["Transpose", "Reshape", "Add", "MatMul"], [0, 0, 0, None])
-        
+        if is_distill:
+            (_, where_qk, matmul_qk, _) = qk_nodes
+        elif is_distill_add:
+            (_, add_qk, where_qk, matmul_qk) = qk_nodes
+        else:
+            (_, add_qk, _, matmul_qk) = qk_nodes
+
+        q_nodes = self.model.match_parent_path(matmul_qk, ["Transpose", "Reshape", "Add", "MatMul"], [0, 0, 0, None])
+        if q_nodes is None:
+            q_nodes = self.model.match_parent_path(
+                matmul_qk,
+                ["Div", "Transpose", "Reshape", "Add", "MatMul"],
+                [0, 0, 0, 0, None],
+            )
+            if q_nodes is None:
+                logger.debug("fuse_attention: failed to match q path")
+                return
         reshape_q = q_nodes[-3]
         add_q = q_nodes[-2]
         matmul_q = q_nodes[-1]
-        
-        k_nodes = self.model.match_parent_path(matmul_qk,
-            ["Transpose", "Reshape", "Add", "MatMul"], [1, 0, 0, None])
-        
+
+        k_nodes = self.model.match_parent_path(matmul_qk, ["Transpose", "Reshape", "Add", "MatMul"], [1, 0, 0, None])
         if k_nodes is None:
             k_nodes = self.model.match_parent_path(
                 matmul_qk,
@@ -419,20 +465,50 @@ class FusionAttention(Fusion):
         # Note that Cast might be removed by OnnxRuntime so we match two patterns here.
         mask_nodes = None
         add_qk_str = None
-        mask_nodes = self.model.match_parent_path(
-            add_qk,
-            ["Mul", "Sub", "Unsqueeze", "Unsqueeze"],
-            [None, 0, 1, 0]
-        )
+        if is_distill:
+            _, mask_nodes, _ = self.model.match_parent_paths(
+                where_qk,
+                [
+                    (["Expand", "Reshape", "Equal"], [0, 0, 0]),
+                    (["Equal", "Unsqueeze", "Unsqueeze"], [0, 0, 0]),
+                    (["Cast", "Expand", "Reshape", "Equal"], [0, 0, 0, 0]),
+                ],
+                output_name_to_node,
+            )
+        elif is_distill_add:
+            _, mask_nodes, _ = self.model.match_parent_paths(
+                where_qk,
+                [
+                    (["Cast", "Equal", "Unsqueeze", "Unsqueeze"], [0, 0, 0, 0]),
+                    (["Equal", "Unsqueeze", "Unsqueeze"], [0, 0, 0]),
+                ],
+                output_name_to_node,
+            )
+            if add_qk is not None:
+                add_qk_str = self.get_add_qk_str(add_qk)
+                if add_qk_str is None:
+                    logger.debug(f"fuse_attention: failed to verify shape inference of {add_qk}")
+                    return
+        else:
+            _, mask_nodes, _ = self.model.match_parent_paths(
+                add_qk,
+                [
+                    (
+                        ["Mul", "Sub", "Cast", "Unsqueeze", "Unsqueeze"],
+                        [None, 0, 1, 0, 0],
+                    ),
+                    (["Mul", "Sub", "Unsqueeze", "Unsqueeze"], [None, 0, 1, 0]),
+                ],
+                output_name_to_node,
+            )
         if mask_nodes is None:
             logger.debug("fuse_attention: failed to match mask path")
             return
-        mask_nodes = mask_nodes[1:-1]
 
         if matmul_v.input[0] == root_input and matmul_q.input[0] == root_input and matmul_k.input[0] == root_input:
             mask_index = self.attention_mask.process_mask(mask_nodes[-1].input[0])
 
-            attention_last_node = reshape_qkv
+            attention_last_node = reshape_qkv if einsum_node is None else transpose_qkv
 
             q_num_heads, q_hidden_size = self.get_num_heads_and_hidden_size(reshape_q)
             # number of heads are same for all the paths, hence to create attention node, we pass the q_num_heads
@@ -456,6 +532,28 @@ class FusionAttention(Fusion):
 
             self.nodes_to_add.append(new_node)
             self.node_name_to_graph_name[new_node.name] = self.this_graph_name
+
+            if einsum_node is not None:
+                unique_index = einsum_node.input[0]
+                new_edge = "edge_modified_" + unique_index
+                shape_tensor = helper.make_tensor(
+                    name="shape_modified_tensor" + unique_index,
+                    data_type=TensorProto.INT64,
+                    dims=[4],
+                    vals=np.int64([0, 0, q_num_heads, int(q_hidden_size / q_num_heads)]).tobytes(),
+                    raw=True,
+                )
+                self.model.add_initializer(shape_tensor, self.this_graph_name)
+                self.model.add_node(
+                    helper.make_node(
+                        "Reshape",
+                        [attention_last_node.output[0], shape_tensor.name],
+                        [new_edge],
+                        "reshape_modified_" + unique_index,
+                    ),
+                    self.this_graph_name,
+                )
+                einsum_node.input[0] = new_edge
 
             self.nodes_to_remove.extend([attention_last_node, transpose_qkv, matmul_qkv])
             self.nodes_to_remove.extend(qk_nodes)

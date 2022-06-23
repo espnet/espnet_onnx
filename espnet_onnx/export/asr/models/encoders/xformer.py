@@ -43,6 +43,7 @@ class XformerEncoder(nn.Module, AbsExportModel):
                 d.self_attn = OnnxMultiHeadedAttention(d.self_attn)
             self.model.encoders[i] = OnnxEncoderLayer(d)
         
+        self.model_name = 'xformer_encoder'
         self.num_heads = model.encoders[0].self_attn.h
         self.hidden_size = model.encoders[0].self_attn.linear_out.out_features
     
@@ -53,7 +54,6 @@ class XformerEncoder(nn.Module, AbsExportModel):
             mask = 1 - mask[:, None, :]
         
         return mask * -10000.0
-        self.model_name = 'xformer_encoder'
 
     def forward(self, feats, feats_length):
         mask = self.make_pad_mask(feats_length) # (B, T)

@@ -44,7 +44,6 @@ class TransformerLM(BatchScorerInterface):
 
         self.nlayers = config.nlayers
         self.odim = config.odim
-        self.optimi
 
     def _get_mask_or_length(self, ys_in_pad):
         # ys_in_pad : (B, D)
