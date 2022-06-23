@@ -232,8 +232,7 @@ class FusionCrossAttention(Fusion):
         self.model.add_initializer(q_bias, self.this_graph_name)
         self.model.add_initializer(kv_bias, self.this_graph_name)
 
-        attention_inputs = [
-            input,
+        attention_inputs = input + [
             attention_node_name + "_q_weight",
             attention_node_name + "_kv_weight",
             attention_node_name + "_q_bias",
@@ -343,7 +342,7 @@ class FusionCrossAttention(Fusion):
                 add_v,
                 q_num_heads,
                 q_hidden_size,
-                root_input,
+                [root_input, matmul_v.input[0]],
                 attention_last_node.output[0],
             )
             if new_node is None:
