@@ -38,11 +38,11 @@ def optimize_by_onnxruntime(
     onnx_model_path: str,
     use_gpu: bool = False,
     optimized_model_path: Optional[str] = None,
+    opt_level: Optional[int] = 99,
     disabled_optimizers=[],
 ) -> str:
     """
     Use onnxruntime to optimize model.
-
     Args:
         onnx_model_path (str): the path of input onnx model.
         use_gpu (bool): whether the optimized model is targeted to run in GPU.
@@ -52,6 +52,7 @@ def optimize_by_onnxruntime(
     Returns:
         optimized_model_path (str): the path of optimized model
     """
+    assert opt_level in [1, 2, 99]
     import onnxruntime
 
     if use_gpu and "CUDAExecutionProvider" not in onnxruntime.get_available_providers():
@@ -59,11 +60,16 @@ def optimize_by_onnxruntime(
         return onnx_model_path
 
     sess_options = onnxruntime.SessionOptions()
-    sess_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_BASIC
+    if opt_level == 1:
+        sess_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_BASIC
+    elif opt_level == 2:
+        sess_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_EXTENDED
+    else:
+        sess_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
 
     if optimized_model_path is None:
         path_prefix = onnx_model_path[:-5]  # remove .onnx suffix
-        optimized_model_path = "{}_{}.onnx".format(path_prefix, "gpu" if use_gpu else "cpu")
+        optimized_model_path = "{}_o{}_{}.onnx".format(path_prefix, opt_level, "gpu" if use_gpu else "cpu")
 
     sess_options.optimized_model_filepath = optimized_model_path
 

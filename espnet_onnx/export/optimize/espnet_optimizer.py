@@ -10,30 +10,31 @@
 from logging import getLogger
 from typing import List
 
-from onnx import GraphProto, ModelProto, TensorProto, ValueInfoProto, helper
-
 from onnxruntime.transformers.fusion_biasgelu import FusionBiasGelu
+from onnxruntime.transformers.fusion_embedlayer import FusionEmbedLayerNormalization
 from onnxruntime.transformers.fusion_fastgelu import FusionFastGelu
 from onnxruntime.transformers.fusion_gelu import FusionGelu
 from onnxruntime.transformers.fusion_gelu_approximation import FusionGeluApproximation
-from onnxruntime.transformers.fusion_layernorm import FusionLayerNormalization
+from onnxruntime.transformers.fusion_layernorm import FusionLayerNormalization, FusionLayerNormalizationTF
 from onnxruntime.transformers.fusion_options import FusionOptions
 from onnxruntime.transformers.fusion_reshape import FusionReshape
 from onnxruntime.transformers.fusion_shape import FusionShape
 from onnxruntime.transformers.fusion_skiplayernorm import FusionBiasSkipLayerNormalization, FusionSkipLayerNormalization
 from onnxruntime.transformers.fusion_utils import FusionUtils
 from onnxruntime.transformers.onnx_model import OnnxModel
+from onnx import GraphProto, ModelProto, TensorProto, ValueInfoProto, helper
 
 from .fusion_attention import AttentionMask, FusionAttention
+from .fusion_cross_attention import FusionCrossAttention
 
 logger = getLogger(__name__)
 
 
-class BertOptimizationOptions(FusionOptions):
+class ESPnetOptimizationOptions(FusionOptions):
     """This class is deprecated"""
 
     def __init__(self, model_type):
-        logger.warning(f"BertOptimizationOptions is depreciated. Please use FusionOptions instead.")
+        logger.warning(f"ESPnetOptimizationOptions is depreciated. Please use FusionOptions instead.")
         super().__init__(model_type)
 
 
@@ -43,9 +44,9 @@ class ESPnetOptimizer(OnnxModel):
         model: ModelProto,
         num_heads: int = 0,
         hidden_size: int = 0,
-        unidirectional: int = 0
+        unidirectional: bool = False
     ):
-        """Initialize BERT ONNX Model.
+        """Initialize ESPnet ONNX Model.
         Args:
             model (ModelProto): the ONNX model
             num_heads (int, optional): number of attentioin heads. Defaults to 0, and we will detect the parameter automatically.
@@ -65,10 +66,17 @@ class ESPnetOptimizer(OnnxModel):
             self.attention_mask,
             unidirectional
         )
+        self.cross_attention_fusion = FusionCrossAttention(
+            self,
+            self.hidden_size,
+            self.num_heads,
+            self.attention_mask
+        )
         self.utils = FusionUtils(self)
 
     def fuse_attention(self):
         self.attention_fusion.apply()
+        self.cross_attention_fusion.apply()
 
     def fuse_gelu(self):
         fusion = FusionGelu(self)
@@ -96,8 +104,15 @@ class ESPnetOptimizer(OnnxModel):
         fusion = FusionShape(self)
         fusion.apply()
 
+    def fuse_embed_layer(self):
+        fusion = FusionEmbedLayerNormalization(self)
+        fusion.apply()
+
     def fuse_layer_norm(self):
         fusion = FusionLayerNormalization(self)
+        fusion.apply()
+
+        fusion = FusionLayerNormalizationTF(self)
         fusion.apply()
 
     def fuse_skip_layer_norm(self):
@@ -127,7 +142,8 @@ class ESPnetOptimizer(OnnxModel):
         return graph_inputs
 
     def get_graph_inputs_from_fused_nodes(self, casted: bool):
-        inputs = self.get_graph_inputs_from_node_type("Attention", [3], casted)
+        inputs = self.get_graph_inputs_from_node_type("EmbedLayerNormalization", [0, 1, 7], casted)
+        inputs += self.get_graph_inputs_from_node_type("Attention", [3], casted)
         return inputs
 
     def change_graph_input_type(
@@ -367,6 +383,9 @@ class ESPnetOptimizer(OnnxModel):
 
         self.fuse_shape()
 
+        if (options is None) or options.enable_embed_layer_norm:
+            self.fuse_embed_layer()
+
         # Remove reshape nodes that having same shape of input and output based on symbolic shape inference.
         self.utils.remove_useless_reshape_nodes()
 
@@ -399,7 +418,9 @@ class ESPnetOptimizer(OnnxModel):
         """
         op_count = {}
         ops = [
+            "EmbedLayerNormalization",
             "Attention",
+            "CrossAttention",
             "Gelu",
             "FastGelu",
             "BiasGelu",
@@ -417,14 +438,23 @@ class ESPnetOptimizer(OnnxModel):
         Returns True when the model is fully optimized.
         """
         op_count = self.get_fused_operator_statistics()
+        embed = op_count["EmbedLayerNormalization"]
         attention = op_count["Attention"]
+        cross_attention = op_count["CrossAttention"]
+        gelu = op_count["Gelu"] + op_count["BiasGelu"] + op_count["FastGelu"]
         layer_norm = op_count["LayerNormalization"] + op_count["SkipLayerNormalization"]
-        is_perfect = (attention > 0) and (layer_norm >= 2 * attention)
+        is_perfect = (embed > 0) and (attention > 0) and (attention == gelu) and (layer_norm >= 2 * attention)
 
         if layer_norm == 0:
             logger.debug("Layer Normalization not fused")
 
+        if gelu == 0:
+            logger.debug("Gelu/FastGelu not fused")
+
+        if embed == 0:
+            logger.debug("Embed Layer not fused")
+
         if attention == 0:
             logger.warning("Attention not fused")
 
-        return 
+        return is_perfect
