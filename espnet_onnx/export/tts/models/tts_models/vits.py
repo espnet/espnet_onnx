@@ -62,7 +62,7 @@ class OnnxVITSGenerator(nn.Module):
     def forward(
         self,
         text: torch.Tensor,
-        text_lengths: int,
+        text_lengths: torch.Tensor,
         feats: Optional[torch.Tensor] = None,
         feats_lengths: Optional[torch.Tensor] = None,
         sids: Optional[torch.Tensor] = None,
