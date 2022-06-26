@@ -17,7 +17,6 @@ This document explains the details of each models, such as export configuration,
 | input name   | detail                       | shape                          | dtype   | dynamic dim |
 | ------------ | ---------------------------- | ------------------------------ | ------- | ----------- |
 | feats        | Input feature of the speech. | `(1, feats_length, feats_dim)` | float32 | 1           |
-| feats_length | Length of input feature.     | `(1,)`                         | int64   | -           |
 
 **model output**
 
@@ -47,7 +46,6 @@ Xformer encoder supports the following models
 | input name   | detail                       | shape                          | dtype   | dynamic dim |
 | ------------ | ---------------------------- | ------------------------------ | ------- | ----------- |
 | feats        | Input feature of the speech. | `(1, feats_length, feats_dim)` | float32 | 1           |
-| feats_length | Length of input feature.     | `(1,)`                         | int64   | -           |
 
 **model output**
 
