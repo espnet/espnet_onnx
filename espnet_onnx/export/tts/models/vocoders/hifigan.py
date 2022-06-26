@@ -26,14 +26,19 @@ class OnnxHiFiGANVocoder(nn.Module, AbsExportModel):
     ) -> torch.Tensor:
         """Perform inference.
         Args:
-            c (torch.Tensor): Input tensor (T, in_channels).
+            c (torch.Tensor): Input tensor (T, in_channels), or (B, T, in_channels)
             g (Optional[Tensor]): Global conditioning tensor (global_channels, 1).
         Returns:
             Tensor: Output tensor (T ** upsample_factor, out_channels).
         """
         if g is not None:
             g = g.unsqueeze(0)
-        c = self.model.forward(c.transpose(1, 0).unsqueeze(0), g=g)
+            
+        if len(c.shape) == 3:
+            c = self.model.forward(c.transpose(1, 2), g=g)
+        else:
+            c = self.model.forward(c.transpose(1, 0).unsqueeze(0), g=g)
+            
         return c.squeeze(0).transpose(1, 0)
 
     def get_dummy_inputs(self):

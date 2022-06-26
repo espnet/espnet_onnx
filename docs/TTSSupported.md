@@ -9,7 +9,8 @@
 | FastSpeech    | x         |
 | FastSpeech2   | ◯         |
 | VITS          | ◯         |
-| JointText2Wav | x         |
+| JointText2Wav | ◯         |
+| JETS          | ◯         |
 
 **Vocoder**
 

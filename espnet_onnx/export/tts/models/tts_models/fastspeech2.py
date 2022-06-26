@@ -136,7 +136,6 @@ class OnnxFastSpeech2(nn.Module, AbsExportModel):
     def forward(
         self,
         text: torch.Tensor,
-        text_length: torch.Tensor,
         feats: Optional[torch.Tensor] = None,
         sids: Optional[torch.Tensor] = None,
         spembs: torch.Tensor = None,
@@ -147,7 +146,7 @@ class OnnxFastSpeech2(nn.Module, AbsExportModel):
 
         # add eos at the last of sequence
         x = F.pad(x, [0, 1], "constant", self.eos)
-        text_length += 1
+        text_lengths = torch.ones(x.shape).sum(dim=-1).type(torch.long)
 
         # setup batch axis
         xs, ys = x.unsqueeze(0), None
@@ -158,7 +157,7 @@ class OnnxFastSpeech2(nn.Module, AbsExportModel):
 
         _, outs, d_outs, p_outs, e_outs = self._forward(
             xs,
-            text_length,
+            text_lengths,
             ys,
             spembs=spembs,
             sids=sids,
@@ -233,7 +232,6 @@ class OnnxFastSpeech2(nn.Module, AbsExportModel):
 
     def get_dummy_inputs(self):
         text = torch.LongTensor([0, 1])
-        text_length = torch.LongTensor([text.shape[0]])
         feats = torch.randn(10, self.odim) \
             if self.use_gst else None
 
@@ -246,10 +244,10 @@ class OnnxFastSpeech2(nn.Module, AbsExportModel):
         lids = torch.LongTensor([0]) \
             if self.langs is not None else None
 
-        return (text, text_length, feats, sids, spembs, lids)
+        return (text, feats, sids, spembs, lids)
 
     def get_input_names(self):
-        return ['text', 'text_length', 'feats', 'sids', 'spembs', 'lids']
+        return ['text', 'feats', 'sids', 'spembs', 'lids']
 
     def get_output_names(self):
         return ['feat_gen', 'out_duration', 'out_pitch', 'out_energy']

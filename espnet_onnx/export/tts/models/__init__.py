@@ -1,8 +1,10 @@
 from espnet2.gan_tts.vits import VITS as espnetVITSModel
+from espnet2.gan_tts.jets import JETS as espnetJETSModel
 from espnet2.tts.fastspeech2.fastspeech2 import FastSpeech2 as espnetFastSpeech2
 from espnet2.tts.tacotron2.tacotron2 import Tacotron2 as espnetTacotron2
 from espnet2.gan_tts.joint.joint_text2wav import JointText2Wav as espnetJointText2Wav
 from .tts_models.vits import OnnxVITSModel
+from .tts_models.jets import OnnxJETSModel
 from .tts_models.fastspeech2 import OnnxFastSpeech2
 from .tts_models.tacotron2 import (
     OnnxTacotron2Encoder,
@@ -25,6 +27,9 @@ from .vocoders.style_melgan import OnnxStyleMelGANVocoder
 def get_tts_model(model, export_config):
     if isinstance(model, espnetVITSModel):
         return OnnxVITSModel(model, **export_config)
+    
+    elif isinstance(model, espnetJETSModel):
+        return OnnxJETSModel(model, **export_config)
     
     elif isinstance(model, espnetFastSpeech2):
         return OnnxFastSpeech2(model, **export_config)

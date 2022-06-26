@@ -46,6 +46,7 @@ class Tacotron2:
         self.threshold = self.config.decoder.threshold
         self.decoder_input_names = [d.name for d in self.decoder.get_inputs()]
         self.decoder_output_names = [d.name for d in self.decoder.get_outputs()]
+        self.use_att_constraint = self.config.decoder.use_att_constraint
     
     def _load_model(self, config, providers, use_quantized):
         if use_quantized:
@@ -65,7 +66,9 @@ class Tacotron2:
         feats: np.ndarray = None,
         sids: np.ndarray = None,
         spembs:  np.ndarray = None,
-        lids:  np.ndarray = None
+        lids:  np.ndarray = None,
+        backward_window:  np.ndarray = 1,
+        forward_window: np.ndarray = 3,
     ):
         # compute encoder and initialize states
         input_enc = self.get_input_enc(text, feats, sids, spembs, lids)
@@ -82,9 +85,11 @@ class Tacotron2:
         
         # compute decoder
         prev_att_w = None
+        last_attended_idx = 0
         while True:
             idx += self.config.decoder.reduction_factor
-            input_dec = self.get_input_dec(c_list, z_list, prev_att_w, prev_out)
+            input_dec = self.get_input_dec(c_list, z_list, prev_att_w, prev_out, last_attended_idx,
+                    backward_window, forward_window)
             out, prob, a_prev, prev_out, *cz_states = \
                 self.decoder.run(self.decoder_output_names, input_dec)
             
@@ -98,6 +103,9 @@ class Tacotron2:
             outs += [out]
             probs += [prob]
             att_ws += [a_prev]
+            
+            if self.use_att_constraint:
+                last_attended_idx = int(a_prev.argmax())
             
             # check whether to finish generation
             if int(sum(probs[-1] >= self.threshold)) > 0 or idx >= maxlen:
@@ -122,7 +130,8 @@ class Tacotron2:
         ret = self._set_input_dict(ret, 'lids', lids)
         return ret
 
-    def get_input_dec(self, c_list, z_list, a_prev, prev_in):
+    def get_input_dec(self, c_list, z_list, a_prev, prev_in, last_attended_idx,
+                backward_window, forward_window):
         ret = {}
         ret.update({
             f'c_prev_{i}': cl
@@ -142,6 +151,16 @@ class Tacotron2:
             ret.update(a_prev=a_prev)
         else:
             ret.update(a_prev=self.get_att_prev(self.enc_h))
+            
+        if self.use_att_constraint:
+            backward_idx = last_attended_idx - backward_window
+            forward_idx = last_attended_idx + forward_window
+            last_att_mask = np.zeros(self.enc_h.shape[1])
+            if backward_idx > 0:
+                last_att_mask[:backward_idx] = -10000.0
+            if forward_idx < self.enc_h.shape[1]:
+                last_att_mask[forward_idx:] = -10000.0
+            ret.update(last_att_mask=last_att_mask.astype(np.float32))
         return ret
 
     def _set_input_dict(self, dic, key, value):
