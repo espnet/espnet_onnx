@@ -62,7 +62,7 @@ class OnnxVITSGenerator(nn.Module):
     def forward(
         self,
         text: torch.Tensor,
-        text_lengths: torch.Tensor,
+        text_lengths: int,
         feats: Optional[torch.Tensor] = None,
         feats_lengths: Optional[torch.Tensor] = None,
         sids: Optional[torch.Tensor] = None,
@@ -229,9 +229,7 @@ class OnnxVITSModel(nn.Module, AbsExportModel):
     def forward(
         self,
         text: torch.Tensor,
-        text_lengths: torch.Tensor,
         feats: Optional[torch.Tensor] = None,
-        feats_lengths: Optional[torch.Tensor] = None,
         sids: Optional[torch.Tensor] = None,
         spembs: Optional[torch.Tensor] = None,
         lids: Optional[torch.Tensor] = None,
@@ -239,9 +237,11 @@ class OnnxVITSModel(nn.Module, AbsExportModel):
     ):
         # setup
         text = text[None]
+        text_lengths = torch.ones(text.shape).sum(dim=-1).type(torch.long)
 
         if self.use_teacher_forcing:
             assert feats is not None
+            feats_lengths = torch.ones(feats[:, 0].shape).sum(dim=-1).type(torch.long)
             feats = feats[None].transpose(1, 2)
             wav, att_w, dur = self.generator(
                 text=text,
@@ -265,10 +265,8 @@ class OnnxVITSModel(nn.Module, AbsExportModel):
 
     def get_dummy_inputs(self):
         text = torch.LongTensor([0, 1])
-        text_length = torch.LongTensor([text.size(0)])
         feats = torch.randn(5, self.model.generator.posterior_encoder.input_conv.in_channels) \
             if self.use_teacher_forcing else None
-        feats_length = torch.LongTensor([5]) if feats is not None else None
 
         sids = torch.LongTensor([0]) \
             if self.model.generator.spks is not None else None
@@ -282,10 +280,10 @@ class OnnxVITSModel(nn.Module, AbsExportModel):
         duration = torch.randn(text.size(0)) \
             if not self.predict_duration else None
 
-        return (text, text_length, feats, feats_length, sids, spembs, lids, duration)
+        return (text, feats, sids, spembs, lids, duration)
 
     def get_input_names(self):
-        return ['text', 'text_length', 'feats', 'feats_length', 'sids', 'spembs', 'lids', 'duration']
+        return ['text', 'feats', 'sids', 'spembs', 'lids', 'duration']
 
     def get_output_names(self):
         return ['wav', 'att_w', 'dur']
