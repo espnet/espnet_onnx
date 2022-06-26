@@ -50,6 +50,7 @@ from espnet2.train.class_choices import ClassChoices
 from espnet2.tts.abs_tts import AbsTTS
 from espnet2.gan_tts.joint import JointText2Wav
 from espnet2.gan_tts.vits import VITS
+from espnet2.gan_tts.jets import JETS
 from espnet2.tts.fastspeech import FastSpeech
 from espnet2.tts.fastspeech2 import FastSpeech2
 from espnet2.tts.tacotron2 import Tacotron2
@@ -145,6 +146,7 @@ class_choices = {
             # NOTE(kan-bayashi): available only for inference
             vits=VITS,
             joint_text2wav=JointText2Wav,
+            jets=JETS,
         ),
         type_check=AbsTTS,
         default="tacotron2",
