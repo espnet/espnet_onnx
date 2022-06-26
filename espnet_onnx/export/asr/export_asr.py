@@ -124,13 +124,13 @@ class ASRModelExport:
             if dec_model.is_optimizable():
                 model_name = dec_model.model_name + '.onnx'
                 opt_name = dec_model.model_name + '.opt.onnx'
-                self._optimize_model(dec_model, export_dir / model_name, optimize_dir / opt_name)
+                self._optimize_model(dec_model, export_dir / model_name, optimize_dir / opt_name, unidirectional=True)
                 model_config['decoder']['optimized_model_path'] = str(optimize_dir / opt_name)
             
             if lm_model is not None and lm_model.is_optimizable():
                 model_name = lm_model.model_name + '.onnx'
                 opt_name = lm_model.model_name + '.opt.onnx'
-                self._optimize_model(lm_model, export_dir / model_name, optimize_dir / opt_name)
+                self._optimize_model(lm_model, export_dir / model_name, optimize_dir / opt_name, unidirectional=True)
                 model_config['lm']['optimized_model_path'] = str(optimize_dir / opt_name)
 
         if quantize:
@@ -297,13 +297,14 @@ class ASRModelExport:
                 os.remove(os.path.join(model_from, basename + '-opt.onnx'))
         return ret
 
-    def _optimize_model(self, model, model_from, model_to):
+    def _optimize_model(self, model, model_from, model_to, unidirectional=False):
         optimization_options = FusionOptions()
         
         optimizer = optimize_model(
             str(model_from),
             model.num_heads,
             model.hidden_size,
+            unidirectional=unidirectional,
             optimization_options=optimization_options,
             use_gpu=self.export_config['use_gpu'],
             only_onnxruntime=self.export_config['only_onnxruntime'],
