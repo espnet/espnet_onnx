@@ -15,32 +15,21 @@ from espnet_onnx.utils.abs_model import AbsExportModel
 
 
 class OnnxLengthRegurator(nn.Module):
-    def __init__(self, alpha):
+    def __init__(self, alpha=1.0):
         super().__init__()
         self.alpha = alpha
         # The maximum length of the make_pad_mask is the 
         # maximum value of the duration.
         self.make_pad_mask = MakePadMask(512)
-        self.zero = torch.LongTensor([0])
-    
     def forward(self, x, dur):
         # This class assumes that the batch size of x
         # should be 1.
         if self.alpha != 1.0:
             dur = torch.round(ds.float() * alpha).long()
         dur = dur[0]
-        ma = torch.cumsum(
-            torch.cat((dur, self.zero), dim=0),
-            dim=0
-        )
-        mb = torch.cumsum(
-            torch.cat((self.zero, dur), dim=0),
-            dim=0
-        )
-        _m = self.make_pad_mask(mb)
-        _m[0] = 1
-        mask = ((1 - self.make_pad_mask(ma)) * _m)[:-1]
-        return torch.matmul(x.transpose(1, 2), mask).transpose(1, 2)
+        dm = 1 - self.make_pad_mask(dur)
+        nz = torch.nonzero(dm)[:, 0]
+        return x[:, nz]
 
 
 class OnnxReferenceEncoder(nn.Module):
@@ -76,6 +65,7 @@ class OnnxFastSpeech2(nn.Module, AbsExportModel):
         model,
         max_seq_len: int = 512,
         alpha: float = 1.0,
+        use_cache: bool = True,
         **kwargs
     ):
         super().__init__()
@@ -111,7 +101,7 @@ class OnnxFastSpeech2(nn.Module, AbsExportModel):
         if self.langs:
             self.lid_emb = model.lid_emb
         self.encoder.embed = Embedding(self.encoder.embed, max_seq_len=max_seq_len)
-        self.decoder.embed = Embedding(self.decoder.embed, max_seq_len= max_seq_len)
+        self.decoder.embed = Embedding(self.decoder.embed, max_seq_len=max_seq_len, use_cache=use_cache)
 
     def _source_mask(self, ilens):
         x_masks = 1 - self.make_pad_mask(ilens)

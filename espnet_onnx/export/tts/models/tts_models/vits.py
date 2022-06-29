@@ -175,7 +175,9 @@ class OnnxVITSGenerator(nn.Module):
                 w = torch.exp(logw) * x_mask * self.alpha
                 dur = torch.ceil(w)
             y_lengths = torch.clamp_min(torch.sum(dur, [1, 2]), 1).long()
-            y_mask = 1 - self.make_pad_mask(y_lengths).unsqueeze(1)
+            
+            # bugfix. issue #24
+            y_mask = torch.ones(y_lengths).unsqueeze(0).unsqueeze(0)
             attn_mask = torch.unsqueeze(
                 x_mask, 2) * torch.unsqueeze(y_mask, -1)
             attn = self.model._generate_path(dur, attn_mask)
@@ -195,7 +197,7 @@ class OnnxVITSGenerator(nn.Module):
             # decoder
             z_p = m_p + torch.randn_like(m_p) * torch.exp(logs_p) * self.noise_scale
             z = self.flow(z_p, y_mask, g=g, inverse=True)
-            wav = self.decoder((z * y_mask)[:, :, :self.max_seq_len], g=g)
+            wav = self.decoder((z * y_mask), g=g)
 
         return wav.squeeze(1), attn.squeeze(1), dur.squeeze(1)
 

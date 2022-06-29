@@ -58,6 +58,6 @@ class OnnxHiFiGANVocoder(nn.Module, AbsExportModel):
 
     def get_model_config(self, path):
         return {
-            'vocoder_type': 'HiFiGANVocoder',
+            'vocoder_type': 'OnnxVocoder',
             'model_path': str(path / f'{self.model_name}.onnx')
         }
