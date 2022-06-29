@@ -65,6 +65,7 @@ class OnnxFastSpeech2(nn.Module, AbsExportModel):
         model,
         max_seq_len: int = 512,
         alpha: float = 1.0,
+        use_cache: bool = True,
         **kwargs
     ):
         super().__init__()
@@ -100,7 +101,7 @@ class OnnxFastSpeech2(nn.Module, AbsExportModel):
         if self.langs:
             self.lid_emb = model.lid_emb
         self.encoder.embed = Embedding(self.encoder.embed, max_seq_len=max_seq_len)
-        self.decoder.embed = Embedding(self.decoder.embed, use_cache=False)
+        self.decoder.embed = Embedding(self.decoder.embed, max_seq_len=max_seq_len, use_cache=use_cache)
 
     def _source_mask(self, ilens):
         x_masks = 1 - self.make_pad_mask(ilens)
