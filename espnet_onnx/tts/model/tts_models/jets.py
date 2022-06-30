@@ -20,7 +20,7 @@ from espnet_onnx.utils.function import (
 from espnet_onnx.utils.config import Config
 
 
-class VITS:
+class JETS:
     def __init__(
         self,
         config: Config,
@@ -47,20 +47,18 @@ class VITS:
     def __call__(
         self,
         text: np.ndarray,
-        feats: np.ndarray = None,
         sids: np.ndarray = None,
         spembs:  np.ndarray = None,
         lids:  np.ndarray = None
     ):
-        output_names = ['wav', 'att_w', 'dur']
+        output_names = ['wav', 'dur']
         input_dict = self.get_input_dict(
-            text, feats, sids, spembs, lids)
-        wav, att_w, dur = self.model.run(output_names, input_dict)
-        return dict(wav=wav, att_w=att_w, dur=dur)
+            text, sids, spembs, lids)
+        wav, dur = self.model.run(output_names, input_dict)
+        return dict(wav=wav, dur=dur)
 
-    def get_input_dict(self, text, feats, sids, spembs, lids):
+    def get_input_dict(self, text, sids, spembs, lids):
         ret = {'text': text}
-        ret = self._set_input_dict(ret, 'feats', feats)
         ret = self._set_input_dict(ret, 'sids', sids)
         ret = self._set_input_dict(ret, 'spembs', spembs)
         ret = self._set_input_dict(ret, 'lids', lids)

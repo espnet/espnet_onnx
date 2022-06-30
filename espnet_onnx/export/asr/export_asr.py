@@ -146,6 +146,12 @@ class ASRModelExport:
                     model_idx = int(m.split('_')[1])
                     model_config['decoder']['predecoder'][model_idx].update(
                         quantized_model_path=qt_config[m])
+                elif 'encoder' in m:
+                    model_config['encoder'].update(quantized_model_path=qt_config[m])
+                elif 'decoder' in m:
+                    model_config['decoder'].update(quantized_model_path=qt_config[m])
+                elif 'lm' in m:
+                    model_config['lm'].update(quantized_model_path=qt_config[m])
                 else:
                     model_config[m].update(quantized_model_path=qt_config[m])
 

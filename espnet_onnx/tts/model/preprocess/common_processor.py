@@ -9,10 +9,11 @@ class CommonPreprocessor:
         token_id_converter,
         cleaner_config,
     ):
-        if cleaner_config.cleaner_types is not None:
-            self.text_cleaner = TextCleaner(cleaner_config.cleaner_types)
-        else:
+        if cleaner_config is None:
             self.text_cleaner = None
+        else:
+            self.text_cleaner = TextCleaner(cleaner_config.cleaner_types)
+        
         self.tokenizer = tokenizer
         self.token_id_converter = token_id_converter
 

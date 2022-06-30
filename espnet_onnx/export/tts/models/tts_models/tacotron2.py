@@ -217,8 +217,6 @@ class OnnxTacotron2Decoder(nn.Module, AbsExportModel):
         minlenratio=0.0,
         maxlenratio=10.0,
         use_att_constraint=False,
-        backward_window=1,
-        forward_window=3,
         **kwargs
     ):
         super().__init__()
@@ -233,8 +231,6 @@ class OnnxTacotron2Decoder(nn.Module, AbsExportModel):
         self.threshold = threshold
         self.minlenratio = minlenratio
         self.maxlenratio = maxlenratio
-        self.backward_window = backward_window
-        self.forward_window = forward_window
         self.use_concate = model.dec.use_concate
         self.cumulate_att_w = model.cumulate_att_w
         self.use_att_extra_inputs = model.dec.use_att_extra_inputs
@@ -274,6 +270,7 @@ class OnnxTacotron2Decoder(nn.Module, AbsExportModel):
         enc_h,
         mask,
         prev_out,
+        last_att_mask
     ):
         # decoder calculation
         if self.use_att_extra_inputs:
@@ -284,9 +281,7 @@ class OnnxTacotron2Decoder(nn.Module, AbsExportModel):
                 enc_h,
                 mask,
                 prev_out,
-                # last_attended_idx=last_attended_idx,
-                # backward_window=self.backward_window,
-                # forward_window=self.forward_window,
+                last_att_mask=last_att_mask
             )
         else:
             att_c, att_w = self.att(
@@ -295,9 +290,7 @@ class OnnxTacotron2Decoder(nn.Module, AbsExportModel):
                 pre_compute_enc_h,
                 enc_h,
                 mask,
-                # last_attended_idx=last_attended_idx,
-                # backward_window=self.backward_window,
-                # forward_window=self.forward_window,
+                last_att_mask=last_att_mask,
             )
 
         prenet_out = prev_out
@@ -361,10 +354,14 @@ class OnnxTacotron2Decoder(nn.Module, AbsExportModel):
         mask = torch.from_numpy(np.where(make_pad_mask(
             torch.LongTensor([feat_length])) == 1, -float('inf'), 0)).type(torch.float32)
         prev_out = torch.zeros(1, self.odim)
+        if self.use_att_constraint:
+            last_att_mask = torch.zeros(feat_length)
+        else:
+            last_att_mask = None
         return (
             c_prev, z_prev,
             a_prev, pre_compute_enc_h,
-            enc_h, mask, prev_out
+            enc_h, mask, prev_out, last_att_mask
         )
     
     def get_precompute_enc_h(self,feat_length):
@@ -373,7 +370,7 @@ class OnnxTacotron2Decoder(nn.Module, AbsExportModel):
     def get_input_names(self):
         ret = ['c_prev_%d' % i for i in range(len(self.model.dec.lstm))]
         ret += ['z_prev_%d' % i for i in range(len(self.model.dec.lstm))]
-        ret += ['a_prev', 'pceh', 'enc_h', 'mask', 'prev_in']
+        ret += ['a_prev', 'pceh', 'enc_h', 'mask', 'prev_in', 'last_att_mask']
         return ret
 
     def get_output_names(self):
@@ -406,6 +403,12 @@ class OnnxTacotron2Decoder(nn.Module, AbsExportModel):
                 1: 'mask_height'
             }
         })
+        if self.use_att_constraint:
+            ret.update({
+                'last_att_mask': {
+                    0: 'last_att_mask_length',
+                }
+            })
         return ret
 
     def get_model_config(self, path):
@@ -427,7 +430,8 @@ class OnnxTacotron2Decoder(nn.Module, AbsExportModel):
             "postdecoder": {
                 "model_path": os.path.join(path, f'{self.submodel[1].model_name}.onnx'),
                 "onnx_export": self.onnx_export
-            }
+            },
+            "use_att_constraint": self.use_att_constraint
         }
         if hasattr(self.model, 'att_win'):
             ret.update(att_win=self.model.att_win)

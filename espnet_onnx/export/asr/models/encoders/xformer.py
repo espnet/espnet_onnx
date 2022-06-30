@@ -55,8 +55,9 @@ class XformerEncoder(nn.Module, AbsExportModel):
         
         return mask * -10000.0
 
-    def forward(self, feats, feats_length):
-        mask = self.make_pad_mask(feats_length) # (B, T)
+    def forward(self, feats):
+        feats_length = torch.ones(feats[:, :, 0].shape).sum(dim=-1).type(torch.long)
+        mask = self.make_pad_mask(feats_length).unsqueeze(1)
         if (
             isinstance(self.model.embed, Conv2dSubsampling)
             or isinstance(self.model.embed, Conv2dSubsampling2)
@@ -86,11 +87,10 @@ class XformerEncoder(nn.Module, AbsExportModel):
 
     def get_dummy_inputs(self):
         feats = torch.randn(1, 100, self.feats_dim)
-        feats_lengths = torch.LongTensor([feats.size(1)])
-        return (feats, feats_lengths)
+        return (feats)
 
     def get_input_names(self):
-        return ['feats', 'feats_length']
+        return ['feats']
 
     def get_output_names(self):
         return ['encoder_out', 'encoder_out_lens']

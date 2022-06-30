@@ -139,8 +139,9 @@ class RNNEncoder(nn.Module, AbsExportModel):
         for e in model.enc:
             self.enc.append(RNNEncoderLayer(e))
 
-    def forward(self, feats, ilens):
+    def forward(self, feats):
         current_states = []
+        ilens = torch.ones(feats[:, :, 0].shape).sum(dim=-1).type(torch.long)
         for module in self.enc:
             feats, ilens, states = module(feats, ilens)
             current_states.append(states)
@@ -151,11 +152,10 @@ class RNNEncoder(nn.Module, AbsExportModel):
 
     def get_dummy_inputs(self):
         feats = torch.randn(1, 100, self.feats_dim)
-        feats_length = torch.LongTensor([feats.size(1)])
-        return (feats, feats_length)
+        return (feats)
 
     def get_input_names(self):
-        return ['feats', 'feats_length']
+        return ['feats']
 
     def get_output_names(self):
         return ['encoder_out', 'encoder_out_lens']

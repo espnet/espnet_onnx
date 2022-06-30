@@ -22,9 +22,7 @@ This document explains the details of each models, such as export configuration,
 | input name   | detail                                                                                          | shape                      | dtype   | dynamic dim |
 | ------------ | ----------------------------------------------------------------------------------------------- | -------------------------- | ------- | ----------- |
 | text         | Input text token ids.                                                                           | `(1,)`                     | int64   | 0           |
-| text_length  | Length of input token ids                                                                       | `(1,)`                     | int64   | -           |
 | feats        | Feature vector. Required if `use_teacher_forcing` is True.                                      | `(feats_length, feat_dim)` | float32 | 0           |
-| feats_length | The length of feat vector. Required if `use_teacher_forcing` is True.                           | `(1,)`                     | int64   | -           |
 | sids         | Speaker id. Required if exported model requires speaker id.                                     | `(1,)`                     | int64   | -           |
 | spembs       | Speaker vector. Required if exported model requires speaker embedding.                          | `(spk_embed_dim,)`         | float32 | -           |
 | lids         | Language id. Required if exported model required language id.                                   | `(1,)`                     | int64   | -           |

@@ -8,6 +8,7 @@ from pathlib import Path
 import torch
 
 from espnet_onnx.export.tts.models.tts_models.vits import OnnxVITSModel
+from espnet_onnx.export.tts.models.tts_models.jets import OnnxJETSModel
 from espnet_onnx.export.tts.models.tts_models.fastspeech2 import OnnxFastSpeech2
 from espnet_onnx.export.tts.models.tts_models.tacotron2 import (
     OnnxTacotron2Encoder,
@@ -20,6 +21,7 @@ tts_cases = [
     ['fastspeech2', OnnxFastSpeech2],
     ['tacotron2_loc', [OnnxTacotron2Encoder, OnnxTacotron2Decoder]],
     # ['tacotron2_for', [OnnxTacotron2Encoder, OnnxTacotron2Decoder]],
+    ['jets', OnnxJETSModel],
 ]
 
 voc_cases = [

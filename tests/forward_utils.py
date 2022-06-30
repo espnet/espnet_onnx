@@ -11,8 +11,7 @@ def run_onnx_enc(model, dummy_input, model_type):
     feat_length = np.array([dummy_input.shape[1]])
     encoder_out, encoder_out_lens = \
         model.run(["encoder_out", "encoder_out_lens"], {
-            "feats": dummy_input,
-            "feats_length": feat_length
+            "feats": dummy_input
         })
     
     if model_type[:3] == 'rnn':

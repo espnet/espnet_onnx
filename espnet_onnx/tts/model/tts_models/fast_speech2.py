@@ -59,8 +59,7 @@ class FastSpeech2:
         return dict(feat_gen=feat_gen, dur=dur, pitch=pitch, energy=energy)
 
     def get_input_dict(self, text, feats, sids, spembs, lids):
-        ret = {'text': text, 'text_length': np.array(
-            [len(text)], dtype=np.int64)}
+        ret = {'text': text}
         ret = self._set_input_dict(ret, 'feats', feats)
         ret = self._set_input_dict(ret, 'sids', sids)
         ret = self._set_input_dict(ret, 'spembs', spembs)
