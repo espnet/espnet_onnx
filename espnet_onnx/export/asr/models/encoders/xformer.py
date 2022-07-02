@@ -57,7 +57,7 @@ class XformerEncoder(nn.Module, AbsExportModel):
 
     def forward(self, feats):
         feats_length = torch.ones(feats[:, :, 0].shape).sum(dim=-1).type(torch.long)
-        mask = self.make_pad_mask(feats_length).unsqueeze(1)
+        mask = self.make_pad_mask(feats_length)
         if (
             isinstance(self.model.embed, Conv2dSubsampling)
             or isinstance(self.model.embed, Conv2dSubsampling2)

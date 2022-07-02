@@ -52,15 +52,20 @@ class Embedding(nn.Module):
         super().__init__()
         self.model = model
         if not isinstance(model, nn.Embedding):
-            if (
-                isinstance(model, Conv2dSubsampling)
-                or isinstance(model, Conv2dSubsampling2)
-                or isinstance(model, Conv2dSubsampling6)
-                or isinstance(model, Conv2dSubsampling8)
-            ):
-                self.model.out[-1] = get_pos_emb(model.out[-1], max_seq_len, use_cache)
+            if isinstance(model, Conv2dSubsampling):
+                self.model = OnnxConv2dSubsampling(model)
+                self.model.out[-1] = get_pos_emb(model.out[-1], max_seq_len)
+            elif isinstance(model, Conv2dSubsampling2):
+                self.model = OnnxConv2dSubsampling2(model)
+                self.model.out[-1] = get_pos_emb(model.out[-1], max_seq_len)
+            elif isinstance(model, Conv2dSubsampling6):
+                self.model = OnnxConv2dSubsampling6(model)
+                self.model.out[-1] = get_pos_emb(model.out[-1], max_seq_len)
+            elif isinstance(model, Conv2dSubsampling8):
+                self.model = OnnxConv2dSubsampling8(model)
+                self.model.out[-1] = get_pos_emb(model.out[-1], max_seq_len)
             else:
-                self.model[-1] = get_pos_emb(model[-1], max_seq_len, use_cache)
+                self.model[-1] = get_pos_emb(model[-1], max_seq_len)
 
     def forward(self, x, mask=None):
         if mask is None:
