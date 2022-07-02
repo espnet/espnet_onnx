@@ -55,7 +55,7 @@ class TransformerLM(BatchScorerInterface):
         
         ys_mask = ys_in_pad != 0
         m = subsequent_mask(ys_mask.shape[-1])[None, :]
-        return ys_mask[:, None, :] * m
+        return (ys_mask[:, None, :] * m).astype(np.int64)
 
     def score(
         self, y: np.ndarray, state: Any, x: np.ndarray

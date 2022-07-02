@@ -15,9 +15,9 @@ from espnet_onnx.utils.torch_function import MakePadMask
 
 
 class TransformerLM(nn.Module, AbsExportModel):
-    def __init__(self, model, max_seq_len=512, optimize_lm=False, **kwargs):
+    def __init__(self, model, max_seq_len=512, optimize=False, **kwargs):
         super().__init__()
-        self.optimize_lm = optimize_lm
+        self.optimize = optimize
         self.embed = Embedding(model.embed, max_seq_len)
         self.encoder = model.encoder
         self.decoder = model.decoder
@@ -73,7 +73,7 @@ class TransformerLM(nn.Module, AbsExportModel):
             mask_or_length = torch.LongTensor([tgt.size(1)])
         else:
             ys_mask = tgt != 0
-            mask_or_length = torch.from_numpy(subsequent_mask(ys_mask.shape[-1])[None, :])
+            mask_or_length = torch.from_numpy(subsequent_mask(ys_mask.shape[-1])[None, :]).type(torch.long)
         cache = [
             torch.zeros((1, 1, self.encoder.encoders[0].size))
             for _ in range(len(self.encoder.encoders))
@@ -127,7 +127,7 @@ class TransformerLM(nn.Module, AbsExportModel):
     def get_model_config(self, path):
         return {
             "use_lm": True,
-            "optimize_lm": self.optimize_lm,
+            "optimized": self.optimize,
             "model_path": os.path.join(path, f'{self.model_name}.onnx'),
             "lm_type": "TransformerLM",
             "odim": self.encoder.encoders[0].size,
