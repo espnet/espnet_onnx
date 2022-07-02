@@ -19,7 +19,7 @@ def optimize_model(
     hidden_size: int = 0,
     use_gpu: bool = False,
     only_onnxruntime: bool = False,
-    use_ort_for_espnet: bool = False,
+    model_type: str = 'bert',
 ):
     args = [
         'python', '-m',
@@ -35,10 +35,7 @@ def optimize_model(
     if only_onnxruntime:
         args.extend(['--only_onnxruntime'])
     
-    if use_ort_for_espnet:
-        args.extend(['--model_type', 'espnet'])
-    else:
-        args.extend(['--model_type', 'bert'])
+    args.extend(['--model_type', model_type])
     
     subprocess.check_call(args)
     

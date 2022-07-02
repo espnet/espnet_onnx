@@ -22,7 +22,6 @@ class Encoder:
         encoder_config: Config,
         providers: List[str],
         use_quantized: bool = False,
-        use_optimized: bool = False
     ):
         self.config = encoder_config
         # Note that id model was optimized and quantized,
@@ -30,11 +29,6 @@ class Encoder:
         if use_quantized:
             self.encoder = onnxruntime.InferenceSession(
                 self.config.quantized_model_path,
-                providers=providers
-            )
-        elif use_optimized:
-            self.encoder = onnxruntime.InferenceSession(
-                self.config.optimized_model_path,
                 providers=providers
             )
         else:

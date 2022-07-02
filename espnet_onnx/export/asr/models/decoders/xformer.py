@@ -80,7 +80,7 @@ class XformerDecoder(nn.Module, AbsExportModel):
         return True
 
     def get_input_names(self):
-        return ['tgt', 'tgt_mask', 'memory'] \
+        return ['tgt', 'mask_or_length', 'memory'] \
             + ['cache_%d' % i for i in range(len(self.model.decoders))]
 
     def get_output_names(self):

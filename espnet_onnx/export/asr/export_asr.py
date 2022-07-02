@@ -113,28 +113,16 @@ class ASRModelExport:
         
         if optimize:
             if enc_model.is_optimizable():
-                model_name = enc_model.model_name + '.onnx'
-                opt_name = enc_model.model_name + '.opt.onnx'
-                self._optimize_model(enc_model, export_dir / model_name, export_dir / opt_name)
-                model_config['encoder']['optimized'] = True
-                os.remove(export_dir / model_name)
-                os.rename(export_dir / opt_name, export_dir / model_name)
+                if self._optimize_model(enc_model, export_dir, 'encoder'):
+                    model_config['encoder']['optimized'] = True
             
             if dec_model.is_optimizable():
-                model_name = dec_model.model_name + '.onnx'
-                opt_name = dec_model.model_name + '.opt.onnx'
-                self._optimize_model(dec_model, export_dir / model_name, export_dir / opt_name)
-                model_config['decoder']['optimized'] = True
-                os.remove(export_dir / model_name)
-                os.rename(export_dir / opt_name, export_dir / model_name)
+                if self._optimize_model(dec_model, export_dir, 'decoder'):
+                    model_config['decoder']['optimized'] = True
             
             if lm_model is not None and lm_model.is_optimizable():
-                model_name = lm_model.model_name + '.onnx'
-                opt_name = lm_model.model_name + '.opt.onnx'
-                self._optimize_model(lm_model, export_dir / model_name, export_dir / opt_name)
-                model_config['lm']['optimized'] = True
-                os.remove(export_dir / model_name)
-                os.rename(export_dir / opt_name, export_dir / model_name)
+                if self._optimize_model(lm_model, export_dir, 'lm'):
+                    model_config['lm']['optimized'] = True
             
         if quantize:
             quantize_dir = base_dir / 'quantize'
@@ -306,13 +294,34 @@ class ASRModelExport:
             os.remove(os.path.join(model_from, basename + '-opt.onnx'))
         return ret
 
-    def _optimize_model(self, model, model_from, model_to):
-        optimize_model(
-            model_from,
-            model_to,
-            model.num_heads,
-            model.hidden_size,
-            use_gpu=self.export_config['use_gpu'],
-            only_onnxruntime=self.export_config['only_onnxruntime'],
-            use_ort_for_espnet=self.export_config['use_ort_for_espnet'],
-        )
+    def _optimize_model(self, model, model_dir, model_type):
+        if model_type in ('encoder', 'lm'):
+            if self.export_config['use_ort_for_espnet']:
+                model_type = 'espnet'
+            else:
+                model_type = 'bert'
+        elif model_type == 'decoder':
+            if self.export_config['use_ort_for_espnet']:
+                model_type = 'espnet'
+            else:
+                warnings.warn('You cannot optimize TransformerDecoder without custom version of onnxruntime.' \
+                    + 'Please follow the instruction on README.md to install onnxruntime for espnet_onnx')
+                model_type = None
+        
+        if model_type is not None:
+            model_name = str(model_dir / model.model_name) + '.onnx'
+            opt_name = str(model_dir / model.model_name) + '.opt.onnx'
+            optimize_model(
+                model_name,
+                opt_name,
+                model.num_heads,
+                model.hidden_size,
+                use_gpu=self.export_config['use_gpu'],
+                only_onnxruntime=self.export_config['only_onnxruntime'],
+                model_type=model_type
+            )
+            os.remove(model_dir / model_name)
+            os.rename(model_dir / opt_name, model_dir / model_name)
+            return True
+        else:
+            return False

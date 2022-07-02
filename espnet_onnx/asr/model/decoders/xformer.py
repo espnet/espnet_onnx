@@ -20,7 +20,6 @@ class XformerDecoder(BatchScorerInterface):
         config: Config,
         providers: List[str],
         use_quantized: bool = False,
-        use_optimized: bool = False
     ):
         """Onnx support for espnet2.asr.decoder.transformer_decoder
 
@@ -33,23 +32,18 @@ class XformerDecoder(BatchScorerInterface):
                 config.quantized_model_path,
                 providers=providers
             )
-        elif use_optimized:
-            self.decoder = onnxruntime.InferenceSession(
-                config.optimized_model_path,
-                providers=providers
-            )
         else:
             self.decoder = onnxruntime.InferenceSession(
                 config.model_path,
                 providers=providers
             )
+        self.config = config
         self.n_layers = config.n_layers
         self.odim = config.odim
         self.in_caches = [d.name for d in self.decoder.get_inputs()
                           if 'cache' in d.name]
         self.out_caches = [d.name for d in self.decoder.get_outputs()
                            if 'cache' in d.name]
-        self.use_optimized = use_optimized
 
     def batch_score(
         self, ys: np.ndarray, states: List[Any], xs: np.ndarray
@@ -85,7 +79,7 @@ class XformerDecoder(BatchScorerInterface):
         # batch decoding
         ys_mask = self._get_mask_or_length(ys)
         input_dict = self.get_input_dict(ys, ys_mask, xs, batch_state)
-            
+        
         logp, *states = self.decoder.run(
             ['y'] + self.out_caches,
             input_dict
@@ -100,7 +94,7 @@ class XformerDecoder(BatchScorerInterface):
         in_names = [d.name for d in self.decoder.get_inputs() if 'cache' not in d.name]
         ret = {}
         if 'tgt' in in_names: ret.update(tgt=ys.astype(np.int64))
-        if 'tgt_mask' in in_names: ret.update(tgt_mask=ys_mask)
+        if 'mask_or_length' in in_names: ret.update(mask_or_length=ys_mask)
         if 'memory' in in_names: ret.update(memory=xs)
         ret.update(
             {k: v for (k, v) in zip(self.in_caches, state)})
@@ -108,7 +102,7 @@ class XformerDecoder(BatchScorerInterface):
     
     def _get_mask_or_length(self, ys_in_pad):
         # ys_in_pad : (B, D)
-        if self.use_optimized:
+        if self.config['optimized']:
             if len(ys_in_pad.shape) == 1:
                 return np.array([len(ys_in_pad)]).astype(np.int64)
             else:

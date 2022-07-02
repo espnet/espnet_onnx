@@ -26,7 +26,6 @@ class Speech2Text(AbsASRModel):
                  model_dir: Union[Path, str] = None,
                  providers: List[str] = ['CPUExecutionProvider'],
                  use_quantized: bool = False,
-                 use_optimized: bool = False,
                  ):
         assert check_argument_types()
         self._check_argument(tag_name, model_dir)
@@ -40,8 +39,8 @@ class Speech2Text(AbsASRModel):
             raise RuntimeError('Onnx model is built for streaming. Use StreamingSpeech2Text instead.')
 
         # check quantize and optimize model
-        self._check_flags(use_quantized, use_optimized)
-        self._build_model(providers, use_quantized, use_optimized)
+        self._check_flags(use_quantized)
+        self._build_model(providers, use_quantized)
         
         if self.config.transducer.use_transducer_decoder:
             self.start_idx = 1
