@@ -112,33 +112,34 @@ class ASRModelExport:
             model_config.update(lm=dict(use_lm=False))
         
         if optimize:
-            optimize_dir = base_dir / f'optimized_gpu-{self.export_config["use_gpu"]}_fp16-{self.export_config["float16"]}'
-            optimize_dir.mkdir(exist_ok=True)
             if enc_model.is_optimizable():
                 model_name = enc_model.model_name + '.onnx'
                 opt_name = enc_model.model_name + '.opt.onnx'
-                self._optimize_model(enc_model, export_dir / model_name, optimize_dir / opt_name)
-                model_config['encoder']['optimized_model_path'] = str(optimize_dir / opt_name)
+                self._optimize_model(enc_model, export_dir / model_name, export_dir / opt_name)
+                model_config['encoder']['optimized'] = True
+                os.remove(export_dir / model_name)
+                os.rename(export_dir / opt_name, export_dir / model_name)
             
             if dec_model.is_optimizable():
                 model_name = dec_model.model_name + '.onnx'
                 opt_name = dec_model.model_name + '.opt.onnx'
-                self._optimize_model(dec_model, export_dir / model_name, optimize_dir / opt_name)
-                model_config['decoder']['optimized_model_path'] = str(optimize_dir / opt_name)
+                self._optimize_model(dec_model, export_dir / model_name, export_dir / opt_name)
+                model_config['decoder']['optimized'] = True
+                os.remove(export_dir / model_name)
+                os.rename(export_dir / opt_name, export_dir / model_name)
             
             if lm_model is not None and lm_model.is_optimizable():
                 model_name = lm_model.model_name + '.onnx'
                 opt_name = lm_model.model_name + '.opt.onnx'
-                self._optimize_model(lm_model, export_dir / model_name, optimize_dir / opt_name)
-                model_config['lm']['optimized_model_path'] = str(optimize_dir / opt_name)
-
+                self._optimize_model(lm_model, export_dir / model_name, export_dir / opt_name)
+                model_config['lm']['optimized'] = True
+                os.remove(export_dir / model_name)
+                os.rename(export_dir / opt_name, export_dir / model_name)
+            
         if quantize:
             quantize_dir = base_dir / 'quantize'
             quantize_dir.mkdir(exist_ok=True)
-            if optimize:
-                qt_config = self._quantize_model(optimize_dir, quantize_dir, optimize, verbose)
-            else:
-                qt_config = self._quantize_model(export_dir, quantize_dir, optimize, verbose)
+            qt_config = self._quantize_model(export_dir, quantize_dir, optimize, verbose)
                 
             for m in qt_config.keys():
                 if 'predecoder' in m:
@@ -287,19 +288,22 @@ class ASRModelExport:
             logging.info(f'Quantized model is saved in {model_to}.')
         ret = {}
         models = glob.glob(os.path.join(model_from, "*.onnx"))
+        
+        if self.export_config['use_ort_for_espnet']:
+            op_types_to_quantize = ['Attention', 'CrossAttention', 'MatMul']
+        else:
+            op_types_to_quantize=['Attention', 'MatMul']
+            
         for m in models:
             basename = os.path.basename(m).split('.')[0]
             export_file = os.path.join(model_to, basename + '_qt.onnx')
             quantize_dynamic(
                 m,
                 export_file,
-                op_types_to_quantize=['Attention', 'MatMul']
+                op_types_to_quantize=op_types_to_quantize
             )
             ret[basename] = export_file
-            if optimize:
-                os.remove(os.path.join(model_from, basename + '.onnx'))
-            else:
-                os.remove(os.path.join(model_from, basename + '-opt.onnx'))
+            os.remove(os.path.join(model_from, basename + '-opt.onnx'))
         return ret
 
     def _optimize_model(self, model, model_from, model_to):

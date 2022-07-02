@@ -49,6 +49,7 @@ class XformerDecoder(BatchScorerInterface):
                           if 'cache' in d.name]
         self.out_caches = [d.name for d in self.decoder.get_outputs()
                            if 'cache' in d.name]
+        self.use_optimized = use_optimized
 
     def batch_score(
         self, ys: np.ndarray, states: List[Any], xs: np.ndarray
@@ -82,9 +83,9 @@ class XformerDecoder(BatchScorerInterface):
             ]
 
         # batch decoding
-        ys_mask = subsequent_mask(ys.shape[-1])[None, :]
+        ys_mask = self._get_mask_or_length(ys)
         input_dict = self.get_input_dict(ys, ys_mask, xs, batch_state)
-
+            
         logp, *states = self.decoder.run(
             ['y'] + self.out_caches,
             input_dict
@@ -104,4 +105,15 @@ class XformerDecoder(BatchScorerInterface):
         ret.update(
             {k: v for (k, v) in zip(self.in_caches, state)})
         return ret
+    
+    def _get_mask_or_length(self, ys_in_pad):
+        # ys_in_pad : (B, D)
+        if self.use_optimized:
+            if len(ys_in_pad.shape) == 1:
+                return np.array([len(ys_in_pad)]).astype(np.int64)
+            else:
+                return np.array([len(ys) for ys in ys_in_pad]).astype(np.int64)
         
+        ys_mask = ys_in_pad != 0
+        m = subsequent_mask(ys_mask.shape[-1])[None, :]
+        return (ys_mask[:, None, :] * m).astype(np.int64)

@@ -68,7 +68,7 @@ class XformerDecoder(nn.Module, AbsExportModel):
             mask_or_length = torch.LongTensor([tgt.size(1)])
         else:
             ys_mask = tgt != 0
-            mask_or_length = torch.from_numpy(subsequent_mask(ys_mask.shape[-1])[None, :])
+            mask_or_length = torch.from_numpy(subsequent_mask(ys_mask.shape[-1])[None, :]).type(torch.long)
         enc_out = torch.randn(1, 100, enc_size)
         cache = [
             torch.zeros((1, 1, self.model.decoders[0].size))
@@ -122,5 +122,6 @@ class XformerDecoder(nn.Module, AbsExportModel):
             "dec_type": "XformerDecoder",
             "model_path": os.path.join(path, f'{self.model_name}.onnx'),
             "n_layers": len(self.model.decoders),
-            "odim": self.model.decoders[0].size
+            "odim": self.model.decoders[0].size,
+            "optimized": self.optimize
         }
