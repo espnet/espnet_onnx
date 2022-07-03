@@ -71,12 +71,8 @@ class OnnxDecoderLayer(nn.Module):
         if self.normalize_before:
             x = self.norm1(x)
 
-        if cache is None:
-            x_q = x
-        else:
-            assert cache.shape == (x.shape[0], x.shape[1] - 1, self.size)
-            x_q = x[:, -1:, :]
-            residual = residual[:, -1:, :]
+        x_q = x[:, -1:, :]
+        residual = residual[:, -1:, :]
 
         if self.concat_after:
             x_concat = torch.cat((x, self.self_attn(x_q, x, x, mask)), dim=-1)
@@ -95,9 +91,9 @@ class OnnxDecoderLayer(nn.Module):
             x_concat = torch.cat(
                 (x, self.src_attn(x, memory, memory, memory_mask)), dim=-1
             )
-            x = residual + self.concat_linear2(x_concat)
+            x = self.concat_linear2(x_concat) + residual
         else:
-            x = residual + self.src_attn(x, memory, memory, memory_mask)
+            x = self.src_attn(x, memory, memory, memory_mask) + residual
         if not self.normalize_before:
             x = self.norm2(x)
         
@@ -108,5 +104,8 @@ class OnnxDecoderLayer(nn.Module):
         x = self.feed_forward(x) + residual
         if not self.normalize_before:
             x = self.norm3(x)
+        
+        if cache is not None:
+            x = torch.cat([cache, x], dim=1)
 
         return x, mask

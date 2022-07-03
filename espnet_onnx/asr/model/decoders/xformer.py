@@ -30,12 +30,12 @@ class XformerDecoder(BatchScorerInterface):
         if use_quantized:
             self.decoder = onnxruntime.InferenceSession(
                 config.quantized_model_path,
-                providers=providers
+                providers=providers,
             )
         else:
             self.decoder = onnxruntime.InferenceSession(
                 config.model_path,
-                providers=providers
+                providers=providers,
             )
         self.config = config
         self.n_layers = config.n_layers
@@ -110,4 +110,4 @@ class XformerDecoder(BatchScorerInterface):
         
         ys_mask = ys_in_pad != 0
         m = subsequent_mask(ys_mask.shape[-1])[None, :]
-        return (ys_mask[:, None, :] * m).astype(np.int64)
+        return m.astype(np.int64)

@@ -49,8 +49,7 @@ class OnnxMultiHeadedAttention(nn.Module):
             scores = scores + mask
 
         self.attn = torch.softmax(scores, dim=-1)
-        p_attn = self.dropout(self.attn)
-        context_layer = torch.matmul(p_attn, value)  # (batch, head, time1, d_k)
+        context_layer = torch.matmul(self.attn, value)  # (batch, head, time1, d_k)
         
         context_layer = context_layer.permute(0, 2, 1, 3).contiguous()
         new_context_layer_shape = context_layer.size()[:-2] + (self.all_head_size,)

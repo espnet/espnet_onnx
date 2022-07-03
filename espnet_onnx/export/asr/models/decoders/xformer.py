@@ -46,17 +46,18 @@ class XformerDecoder(nn.Module, AbsExportModel):
     def forward(self, tgt, mask_or_length, memory, cache):
         if self.optimize:
             mask = self.make_pad_mask(mask_or_length) # (B, T)
+            mask[:, -1] = 1
         else:
             mask = mask_or_length
         
         x = self.embed(tgt)
-        new_cache = []
         mask = self.prepare_mask(mask)
+        new_cache = []
         for c, decoder in zip(cache, self.model.decoders):
             x, mask = decoder(
-                x, mask, memory, None
+                x, mask, memory, None, c
             )
-            new_cache.append(torch.cat([c, x], dim=1))
+            new_cache.append(x)
             
         y = self.model.after_norm(x[:, -1])
         y = torch.log_softmax(self.model.output_layer(y), dim=-1)
@@ -104,6 +105,7 @@ class XformerDecoder(nn.Module, AbsExportModel):
         if not self.optimize:
             ret.update({
                 'mask_or_length': {
+                    0: 'mol_batch',
                     1: 'mol_height',
                     2: 'mol_width'
                 }
