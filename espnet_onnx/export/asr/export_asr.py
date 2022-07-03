@@ -297,12 +297,12 @@ class ASRModelExport:
     def _optimize_model(self, model, model_dir, model_type):
         if model_type in ('encoder', 'lm'):
             if self.export_config['use_ort_for_espnet']:
-                model_type = 'espnet'
+                model_type = 'espnet_transformer_encoder'
             else:
                 model_type = 'bert'
         elif model_type == 'decoder':
             if self.export_config['use_ort_for_espnet']:
-                model_type = 'espnet'
+                model_type = 'espnet_transformer_decoder'
             else:
                 warnings.warn('You cannot optimize TransformerDecoder without custom version of onnxruntime.' \
                     + 'Please follow the instruction on README.md to install onnxruntime for espnet_onnx')
