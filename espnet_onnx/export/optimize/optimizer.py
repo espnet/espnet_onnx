@@ -6,11 +6,6 @@ from typing import Union
 from pathlib import Path
 import subprocess
 
-args = [
-    'ls',
-    '-l',
-    '-a'
-]
 
 def optimize_model(
     input_model: Union[str, Path],
