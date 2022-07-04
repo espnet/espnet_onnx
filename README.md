@@ -4,10 +4,12 @@
 ![](https://img.shields.io/badge/licence-MIT-blue)
 [![](https://img.shields.io/badge/pypi-0.1.9-brightgreen)](https://pypi.org/project/espnet-onnx/)
 
-**ESPNet without PyTorch!**
+**ESPnet without PyTorch!**
 
-Utility library to easily export espnet models to onnx format.
-There is no need to install PyTorch or ESPNet on your machine if you already have exported files!
+Utility library to easily export, quantize, and optimize espnet models to onnx format. 
+There is no need to install PyTorch or ESPnet on your machine if you already have exported files!
+
+
 
 ## Install
 
@@ -18,6 +20,8 @@ pip install espnet_onnx
 ```
 
 2. If you want to export pretrained model, you need to install `torch>=1.11.0`, `espnet`, `espnet_model_zoo`, `onnx` additionally.
+
+
 
 ## Usage
 
@@ -56,6 +60,7 @@ m.export_from_zip(
 
 - [Details for ASR models and configurations](./docs/ASRModelDetail.md)
 - [Details for TTS models and configurations](./docs/TTSModelDetail.md)
+- [Details for optimization configurations](./doc/optimize)
 
 ```python
 from espnet_onnx.export import ASRModelExport
@@ -68,6 +73,33 @@ m.export_from_zip(
   tag_name='tag_name_for_zipped_model',
 )
 ```
+
+4. You can easily optimize your model by using the `optimize` option. The detailed explanation is in [this document](./docs/Optimization.md).
+
+```python
+from espnet_onnx.export import ASRModelExport
+
+m = ASRModelExport()
+m.export_from_zip(
+  'path/to/the/zipfile',
+  tag_name='tag_name_for_zipped_model',
+  optimize=True,
+  quantize=True
+)
+```
+
+5. You can export model from the command line.
+
+```shell
+python -m espnet_onnx.export \
+  --model_type asr \
+  --input ${path_to_zip} \
+  --tag transformer_lm \
+  --apply_optimize \
+  --apply_quantize
+```
+
+
 
 #### Inference
 

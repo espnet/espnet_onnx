@@ -194,19 +194,18 @@ Xformer decoder supports the following models
 
 **model input**
 
-| input name | detail                                                                        | shape                             | dtype   | dynamic dim |
-| ---------- | ----------------------------------------------------------------------------- | --------------------------------- | ------- | ----------- |
-| tgt        | Input token ids                                                               | `(batch, maxlen_out)`             | int64   | 0, 1        |
-| tgt_mask   | Input token mask                                                              | `(1, maxlen_out, maxlen_out)`     | float32 | 1, 2        |
-| memory     | encoded memory                                                                | `(batch, maxlen_in, feat)`        | float32 | 0, 1        |
+| input name | detail                                                       | shape                             | dtype   | dynamic dim |
+| ---------- | ------------------------------------------------------------ | --------------------------------- | ------- | ----------- |
+| tgt        | Input token ids                                              | `(batch, maxlen_out)`             | int64   | 0, 1        |
+| memory     | encoded memory                                               | `(batch, maxlen_in, feat)`        | float32 | 0, 1        |
 | cache      | List of cached outputs. The length of list is the same as number of decoders. | List[`(1, max_time_out-1, size)`] | float32 | 0, 1        |
 
 **model output**
 
-| output name   | detail                                                                                                                | shape                                      | dtype   | dynamic dim |
-| ------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ | ------- | ----------- |
-| y             | Output feature of decoder.                                                                                            | `(batch, feats_length, decoder_feats_dim)` | float32 | 0, 1        |
-| out*cache*{i} | List of caches. The length of list is the same as number of decoders. This argument should be inputs for next `cache` | List[`(1, max_time_out-1, size)`]          | float32 | 0, 1        |
+| output name  | detail                                                       | shape                                      | dtype   | dynamic dim |
+| ------------ | ------------------------------------------------------------ | ------------------------------------------ | ------- | ----------- |
+| y            | Output feature of decoder.                                   | `(batch, feats_length, decoder_feats_dim)` | float32 | 0, 1        |
+| out_cache{i} | List of caches. The length of list is the same as number of decoders. This argument should be inputs for next `cache` | List[`(1, max_time_out-1, size)`]          | float32 | 0, 1        |
 
 ### TransducerDecoder
 
@@ -266,11 +265,10 @@ There is no available configuration.
 
 **model input**
 
-| input name | detail                                                                  | shape                       | dtype   | dynamic dim |
-| ---------- | ----------------------------------------------------------------------- | --------------------------- | ------- | ----------- |
-| tgt        | Label ID sequences                                                      | `(batch, seq_len)`          | int64   | 0, 1        |
-| tgt_mask   | Input token mask                                                        | `(batch, seq_len, seq_len)` | float32 | 0, 1, 2     |
-| cache\_{i} | Cache for encoder. The length of list is same as the number of encoders | `(batch, 1, enc_feats)`     | float32 | 0, 1        |
+| input name | detail                                                       | shape                   | dtype   | dynamic dim |
+| ---------- | ------------------------------------------------------------ | ----------------------- | ------- | ----------- |
+| tgt        | Label ID sequences                                           | `(batch, seq_len)`      | int64   | 0, 1        |
+| cache\_{i} | Cache for encoder. The length of list is same as the number of encoders | `(batch, 1, enc_feats)` | float32 | 0, 1        |
 
 **model output**
 
