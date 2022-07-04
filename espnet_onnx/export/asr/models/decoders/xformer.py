@@ -15,11 +15,10 @@ from ..decoder_layer import OnnxDecoderLayer
 
 
 class XformerDecoder(nn.Module, AbsExportModel):
-    def __init__(self, model, max_seq_len=512, optimize=False, **kwargs):
+    def __init__(self, model, max_seq_len=512, **kwargs):
         super().__init__()
         self.embed = Embedding(model.embed, max_seq_len)
         self.model = model
-        self.optimize = optimize
         self.make_pad_mask = MakePadMask(max_seq_len, flip=False)
         # replace multihead attention module into customized module.
         for i,d in enumerate(self.model.decoders):
@@ -35,20 +34,17 @@ class XformerDecoder(nn.Module, AbsExportModel):
         self.model_name = 'xformer_decoder'
     
     def prepare_mask(self, mask):
-        if self.optimize:
-            if len(mask.shape) == 2:
-                mask = mask[:, None, None, :]
-            elif len(mask.shape) == 3:
-                mask = mask[:, None, :]
+        if len(mask.shape) == 2:
+            mask = mask[:, None, None, :]
+        elif len(mask.shape) == 3:
+            mask = mask[:, None, :]
         mask = 1 - mask
         return mask * -10000.0
 
-    def forward(self, tgt, mask_or_length, memory, cache):
-        if self.optimize:
-            mask = self.make_pad_mask(mask_or_length) # (B, T)
-            mask[:, -1] = 1
-        else:
-            mask = mask_or_length
+    def forward(self, tgt, memory, cache):
+        feats_length = torch.ones(tgt.shape).sum(dim=-1).type(torch.long)
+        mask = self.make_pad_mask(feats_length) # (B, T)
+        mask[:, -1] = 1
         
         x = self.embed(tgt)
         mask = self.prepare_mask(mask)
@@ -65,23 +61,18 @@ class XformerDecoder(nn.Module, AbsExportModel):
 
     def get_dummy_inputs(self, enc_size):
         tgt = torch.LongTensor([0, 1]).unsqueeze(0)
-        if self.optimize:
-            mask_or_length = torch.LongTensor([tgt.size(1)])
-        else:
-            ys_mask = tgt != 0
-            mask_or_length = torch.from_numpy(subsequent_mask(ys_mask.shape[-1])[None, :]).type(torch.long)
         enc_out = torch.randn(1, 100, enc_size)
         cache = [
             torch.zeros((1, 1, self.model.decoders[0].size))
             for _ in range(len(self.model.decoders))
         ]
-        return (tgt, mask_or_length, enc_out, cache)
+        return (tgt, enc_out, cache)
 
     def is_optimizable(self):
         return True
 
     def get_input_names(self):
-        return ['tgt', 'mask_or_length', 'memory'] \
+        return ['tgt', 'memory'] \
             + ['cache_%d' % i for i in range(len(self.model.decoders))]
 
     def get_output_names(self):
@@ -94,22 +85,11 @@ class XformerDecoder(nn.Module, AbsExportModel):
                 0: 'tgt_batch',
                 1: 'tgt_length'
             },
-            'mask_or_length': {
-                0: 'mol_batch',
-            },
             'memory': {
                 0: 'memory_batch',
                 1: 'memory_length'
             }
         }
-        if not self.optimize:
-            ret.update({
-                'mask_or_length': {
-                    0: 'mol_batch',
-                    1: 'mol_height',
-                    2: 'mol_width'
-                }
-            })
         ret.update({
             'cache_%d' % d: {
                 0: 'cache_%d_batch' % d,
@@ -124,6 +104,5 @@ class XformerDecoder(nn.Module, AbsExportModel):
             "dec_type": "XformerDecoder",
             "model_path": os.path.join(path, f'{self.model_name}.onnx'),
             "n_layers": len(self.model.decoders),
-            "odim": self.model.decoders[0].size,
-            "optimized": self.optimize
+            "odim": self.model.decoders[0].size
         }

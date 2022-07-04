@@ -61,6 +61,8 @@ class ASRModelExport:
         if tag_name is None:
             tag_name = datetime.now().strftime("%Y%m%d_%H%M%S")
         
+        self.export_config['optimize'] = optimize
+        
         base_dir = self.cache_dir / tag_name.replace(' ', '-')
         export_dir = base_dir / 'full'
         export_dir.mkdir(parents=True, exist_ok=True)

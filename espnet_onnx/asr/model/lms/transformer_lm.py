@@ -18,7 +18,6 @@ class TransformerLM(BatchScorerInterface):
         providers: List[str],
         use_quantized: bool =False,
     ):
-        self.optimize_lm = config.optimize_lm
         if use_quantized:
             self.lm_session = onnxruntime.InferenceSession(
                 config.quantized_model_path,
@@ -29,7 +28,6 @@ class TransformerLM(BatchScorerInterface):
                 config.model_path,
                 providers=providers
             )
-            self.optimize_lm = False
             
         self.enc_output_names = ['y'] \
             + [d.name for d in self.lm_session.get_outputs() if 'cache' in d.name]
@@ -38,18 +36,6 @@ class TransformerLM(BatchScorerInterface):
 
         self.nlayers = config.nlayers
         self.odim = config.odim
-
-    def _get_mask_or_length(self, ys_in_pad):
-        # ys_in_pad : (B, D)
-        if self.optimize_lm:
-            if len(ys_in_pad.shape) == 1:
-                return np.array([len(ys_in_pad)]).astype(np.int64)
-            else:
-                return np.array([len(ys) for ys in ys_in_pad]).astype(np.int64)
-        
-        ys_mask = ys_in_pad != 0
-        m = subsequent_mask(ys_mask.shape[-1])[None, :]
-        return (ys_mask[:, None, :] * m).astype(np.int64)
 
     def score(
         self, y: np.ndarray, state: Any, x: np.ndarray
@@ -69,7 +55,7 @@ class TransformerLM(BatchScorerInterface):
         """
         y = y[None, :]
 
-        input_dic = {'tgt': y, 'mask_or_length': self._target_mask(y)}
+        input_dic = {'tgt': y}
         input_dic.update({
             k: v for k, v in zip(self.enc_in_cache_names, state)
         })
@@ -113,7 +99,7 @@ class TransformerLM(BatchScorerInterface):
                 for i in range(self.nlayers)
             ]
 
-        input_dic = {'tgt': ys, 'mask_or_length': self._get_mask_or_length(ys)}
+        input_dic = {'tgt': ys}
         input_dic.update({
             k: v for k, v in zip(self.enc_in_cache_names, batch_state)
         })

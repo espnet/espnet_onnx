@@ -68,12 +68,11 @@ class OnnxEncoderLayer(nn.Module):
         if self.normalize_before:
             x = self.norm1(x)
 
-        if cache is None:
-            x_q = x
-        else:
-            assert cache.shape == (x.shape[0], x.shape[1] - 1, self.size)
+        if cache is not None:
             x_q = x[:, -1:, :]
             residual = residual[:, -1:, :]
+        else:
+            x_q = x
 
         if self.concat_after:
             x_concat = torch.cat((x, self.self_attn(x_q, x, x, mask)), dim=-1)

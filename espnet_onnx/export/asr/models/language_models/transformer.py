@@ -15,9 +15,8 @@ from espnet_onnx.utils.torch_function import MakePadMask
 
 
 class TransformerLM(nn.Module, AbsExportModel):
-    def __init__(self, model, max_seq_len=512, optimize=False, **kwargs):
+    def __init__(self, model, max_seq_len=512, **kwargs):
         super().__init__()
-        self.optimize = optimize
         self.embed = Embedding(model.embed, max_seq_len)
         self.encoder = model.encoder
         self.decoder = model.decoder
@@ -34,19 +33,17 @@ class TransformerLM(nn.Module, AbsExportModel):
         self.hidden_size = self.encoder.encoders[0].self_attn.linear_out.out_features
     
     def prepare_mask(self, mask):
-        if self.optimize_lm:
-            if len(mask.shape) == 2:
-                mask = mask[:, None, None, :]
-            elif len(mask.shape) == 3:
-                mask = mask[:, None, :]
+        if len(mask.shape) == 2:
+            mask = mask[:, None, None, :]
+        elif len(mask.shape) == 3:
+            mask = mask[:, None, :]
         mask = 1 - mask
         return mask * -10000.0
 
-    def forward(self, y, tgt_length_or_mask, cache):
-        if self.optimize_lm:
-            mask = self.make_pad_mask(tgt_length_or_mask) # (B, T)
-        else:
-            mask = tgt_length_or_mask
+    def forward(self, y, cache):
+        feats_length = torch.ones(y.shape).sum(dim=-1).type(torch.long)
+        mask = self.make_pad_mask(feats_length) # (B, T)
+        mask[:, -1] = 1
         
         xs = self.embed(y)
         # forward_one_step of Encoder
@@ -58,8 +55,8 @@ class TransformerLM(nn.Module, AbsExportModel):
         new_cache = []
         mask = self.prepare_mask(mask)
         for c, e in zip(cache, self.encoder.encoders):
-            xs, mask = e(xs, mask)
-            new_cache.append(torch.cat([c, xs], dim=1))
+            xs, mask = e(xs, mask, c)
+            new_cache.append(xs)
 
         if self.encoder.normalize_before:
             xs = self.encoder.after_norm(xs)
@@ -84,7 +81,7 @@ class TransformerLM(nn.Module, AbsExportModel):
         return True
 
     def get_input_names(self):
-        return ['tgt', 'mask_or_length'] \
+        return ['tgt'] \
             + ['cache_%d' % i for i in range(len(self.encoder.encoders))]
 
     def get_output_names(self):
@@ -96,18 +93,8 @@ class TransformerLM(nn.Module, AbsExportModel):
             'tgt': {
                 0: 'tgt_batch',
                 1: 'tgt_length'
-            },
-            'mask_or_length': {
-                0: 'mol_batch',
             }
         }
-        if not self.optimize_lm:
-            ret.update({
-                'mask_or_length': {
-                    1: 'mol_height',
-                    2: 'mol_width'
-                }
-            })
         ret.update({
             'cache_%d' % d: {
                 0: 'cache_%d_batch' % d,
@@ -127,7 +114,6 @@ class TransformerLM(nn.Module, AbsExportModel):
     def get_model_config(self, path):
         return {
             "use_lm": True,
-            "optimized": self.optimize,
             "model_path": os.path.join(path, f'{self.model_name}.onnx'),
             "lm_type": "TransformerLM",
             "odim": self.encoder.encoders[0].size,

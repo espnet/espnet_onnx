@@ -77,8 +77,7 @@ class XformerDecoder(BatchScorerInterface):
             ]
 
         # batch decoding
-        ys_mask = self._get_mask_or_length(ys)
-        input_dict = self.get_input_dict(ys, ys_mask, xs, batch_state)
+        input_dict = self.get_input_dict(ys, xs, batch_state)
         
         logp, *states = self.decoder.run(
             ['y'] + self.out_caches,
@@ -90,24 +89,11 @@ class XformerDecoder(BatchScorerInterface):
                        for i in range(self.n_layers)] for b in range(n_batch)]
         return logp, state_list
 
-    def get_input_dict(self, ys, ys_mask, xs, state):
+    def get_input_dict(self, ys, xs, state):
         in_names = [d.name for d in self.decoder.get_inputs() if 'cache' not in d.name]
         ret = {}
         if 'tgt' in in_names: ret.update(tgt=ys.astype(np.int64))
-        if 'mask_or_length' in in_names: ret.update(mask_or_length=ys_mask)
         if 'memory' in in_names: ret.update(memory=xs)
         ret.update(
             {k: v for (k, v) in zip(self.in_caches, state)})
         return ret
-    
-    def _get_mask_or_length(self, ys_in_pad):
-        # ys_in_pad : (B, D)
-        if self.config['optimized']:
-            if len(ys_in_pad.shape) == 1:
-                return np.array([len(ys_in_pad)]).astype(np.int64)
-            else:
-                return np.array([len(ys) for ys in ys_in_pad]).astype(np.int64)
-        
-        ys_mask = ys_in_pad != 0
-        m = subsequent_mask(ys_mask.shape[-1])[None, :]
-        return m.astype(np.int64)
