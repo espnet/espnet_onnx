@@ -23,7 +23,7 @@ from ..multihead_att import OnnxMultiHeadedAttention
 from espnet_onnx.utils.abs_model import AbsExportModel
 
 
-class XformerEncoder(nn.Module, AbsExportModel):
+class TransformerEncoder(nn.Module, AbsExportModel):
     def __init__(
         self,
         model,

@@ -43,8 +43,10 @@ class OnnxEncoderLayer(nn.Module):
         super().__init__()
         self.self_attn = model.self_attn
         self.feed_forward = model.feed_forward
-        self.norm1 = model.norm1
-        self.norm2 = model.norm2
+        if hasattr(model, 'norm1'):
+            self.norm1 = model.norm1
+        if hasattr(model, 'norm2'):
+            self.norm2 = model.norm2
         self.size = model.size
         self.normalize_before = model.normalize_before
         self.concat_after = model.concat_after

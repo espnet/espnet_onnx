@@ -6,8 +6,11 @@ from espnet2.asr.encoder.rnn_encoder import RNNEncoder as espnetRNNEncoder
 from espnet2.asr.encoder.vgg_rnn_encoder import VGGRNNEncoder as espnetVGGRNNEncoder
 from espnet2.asr.encoder.contextual_block_transformer_encoder import ContextualBlockTransformerEncoder as espnetContextualTransformer
 from espnet2.asr.encoder.contextual_block_conformer_encoder import ContextualBlockConformerEncoder as espnetContextualConformer
+from espnet2.asr.encoder.transformer_encoder import TransformerEncoder as espnetTransformerEncoder
+from espnet2.asr.encoder.conformer_encoder import ConformerEncoder as espnetConformerEncoder
 from .encoders.rnn import RNNEncoder
-from .encoders.xformer import XformerEncoder
+from .encoders.transformer import TransformerEncoder
+from .encoders.conformer import ConformerEncoder
 from .encoders.contextual_block_xformer import ContextualBlockXformerEncoder
 
 # decoder
@@ -33,8 +36,10 @@ def get_encoder(model, export_config):
         return RNNEncoder(model, **export_config)
     elif isinstance(model, espnetContextualTransformer) or isinstance(model, espnetContextualConformer):
         return ContextualBlockXformerEncoder(model, **export_config)
-    else:
-        return XformerEncoder(model, **export_config)
+    elif isinstance(model, espnetTransformerEncoder):
+        return TransformerEncoder(model, **export_config)
+    elif isinstance(model, espnetConformerEncoder):
+        return ConformerEncoder(model, **export_config)
 
 
 def get_decoder(model, export_config):

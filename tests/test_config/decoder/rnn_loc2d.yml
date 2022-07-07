@@ -1,9 +1,9 @@
 decoder: rnn
 decoder_conf:
   att_conf:
-    adim: 320
+    adim: 256
     atype: location2d
   dropout: 0.0
-  hidden_size: 320
+  hidden_size: 256
   num_layers: 1
   rnn_type: lstm

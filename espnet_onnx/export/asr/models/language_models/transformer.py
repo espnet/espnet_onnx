@@ -3,7 +3,12 @@ import os
 import torch
 import torch.nn as nn
 
-from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling
+from espnet.nets.pytorch_backend.transformer.subsampling import (
+    Conv2dSubsampling,
+    Conv2dSubsampling6,
+    Conv2dSubsampling8,
+)
+from espnet.nets.pytorch_backend.transducer.vgg2l import VGG2L
 from espnet.nets.pytorch_backend.transformer.attention import MultiHeadedAttention
 
 from espnet_onnx.utils.function import subsequent_mask
@@ -43,11 +48,14 @@ class TransformerLM(nn.Module, AbsExportModel):
     def forward(self, y, cache):
         feats_length = torch.ones(y.shape).sum(dim=-1).type(torch.long)
         mask = self.make_pad_mask(feats_length) # (B, T)
-        mask[:, -1] = 1
+        mask = (y != 0) * mask
         
         xs = self.embed(y)
         # forward_one_step of Encoder
-        if isinstance(self.encoder.embed, Conv2dSubsampling):
+        if isinstance(
+            self.encoder.embed,
+            (Conv2dSubsampling, Conv2dSubsampling6, Conv2dSubsampling8, VGG2L),
+        ):
             xs, mask = self.encoder.embed(xs, mask)
         else:
             xs = self.encoder.embed(xs)
@@ -66,16 +74,11 @@ class TransformerLM(nn.Module, AbsExportModel):
 
     def get_dummy_inputs(self):
         tgt = torch.LongTensor([0, 1]).unsqueeze(0)
-        if self.optimize_lm:
-            mask_or_length = torch.LongTensor([tgt.size(1)])
-        else:
-            ys_mask = tgt != 0
-            mask_or_length = torch.from_numpy(subsequent_mask(ys_mask.shape[-1])[None, :]).type(torch.long)
         cache = [
             torch.zeros((1, 1, self.encoder.encoders[0].size))
             for _ in range(len(self.encoder.encoders))
         ]
-        return (tgt, mask_or_length, cache)
+        return (tgt, cache)
 
     def is_optimizable(self):
         return True

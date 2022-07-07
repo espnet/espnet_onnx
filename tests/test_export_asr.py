@@ -52,20 +52,14 @@ lm_cases = [
     'transformer_pe'
 ]
 
-def save_model(torch_model, onnx_model, model_export, model_type, model_name):
-    export_dir = Path(model_export.cache_dir) / 'test' / \
-        model_type / f'./cache_{model_name}'
-    export_dir.mkdir(parents=True, exist_ok=True)
-    
+def save_model(onnx_model, export_dir, model_export, model_type):
     if model_type == 'encoder':
         model_export._export_encoder(onnx_model, export_dir, verbose=False)
     elif model_type == 'decoder':
-        model_export._export_decoder(onnx_model, 512, export_dir, verbose=False)
+        model_export._export_decoder(onnx_model, 256, export_dir, verbose=False)
     elif model_type == 'lm':
         model_export._export_lm(onnx_model, export_dir, verbose=False)
-    
-    torch.save(torch_model.state_dict(), str(export_dir / f'{model_type}.pth'))
-    return export_dir
+
 
 
 @pytest.mark.parametrize('enc_type', encoder_cases)
@@ -86,10 +80,14 @@ def test_export_encoder(enc_type, load_config, model_export, get_class):
         model_config.encoder_conf,
         input_size=input_size
     )
+    export_dir = Path(model_export.cache_dir) / 'test' / \
+        'encoder' / f'./cache_{enc_type}'
+    export_dir.mkdir(parents=True, exist_ok=True)
+    torch.save(encoder.state_dict(), str(export_dir / f'{enc_type}.pth'))
     
     # create encoder onnx wrapper and export
     enc_wrapper = get_encoder(encoder, {})
-    export_dir = save_model(encoder, enc_wrapper, model_export, 'encoder', enc_type)
+    save_model(enc_wrapper, export_dir, model_export, 'encoder')
     
     if enc_type in ('contextual_block_conformer', 'contextual_block_transformer'):
         # save position encoder parameters.
@@ -108,7 +106,7 @@ def test_export_decoder(dec_type, load_config, model_export, get_class):
     if model_config.decoder == 'transducer':
         kwargs = { 'vocab_size': 32000, 'embed_pad': 0 }
     else:
-        kwargs = { 'vocab_size': 32000, 'encoder_output_size': 512 }
+        kwargs = { 'vocab_size': 32000, 'encoder_output_size': 256 }
     
     decoder = get_class(
         'decoder',
@@ -116,8 +114,13 @@ def test_export_decoder(dec_type, load_config, model_export, get_class):
         model_config.decoder_conf,
         **kwargs
     )
+    export_dir = Path(model_export.cache_dir) / 'test' / \
+        'decoder' / f'./cache_{dec_type}'
+    export_dir.mkdir(parents=True, exist_ok=True)
+    torch.save(decoder.state_dict(), str(export_dir / f'{dec_type}.pth'))
+    
     dec_wrapper = get_decoder(decoder, {})
-    export_dir = save_model(decoder, dec_wrapper, model_export, 'decoder', dec_type)
+    save_model(dec_wrapper, export_dir, model_export, 'decoder')
     
     decoder_config = dec_wrapper.get_model_config(export_dir)
     save_config(decoder_config, export_dir / 'config.yaml')
@@ -135,8 +138,14 @@ def test_export_lm(lm_type, load_config, model_export, get_class):
         model_config.lm_conf,
         vocab_size=32000,
     )
+    lm.eval()
+    export_dir = Path(model_export.cache_dir) / 'test' / \
+        'lm' / f'./cache_{lm_type}'
+    export_dir.mkdir(parents=True, exist_ok=True)
+    torch.save(lm.state_dict(), str(export_dir / f'{lm_type}.pth'))
+    
     lm_wrapper = get_lm(lm, {})
-    export_dir = save_model(lm, lm_wrapper, model_export, 'lm', lm_type)
+    save_model(lm_wrapper, export_dir, model_export, 'lm')
     
     lm_config = {'lm': lm_wrapper.get_model_config(export_dir)}
     lm_config['lm'].update({'use_lm': True})

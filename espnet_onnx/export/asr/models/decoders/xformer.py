@@ -20,6 +20,9 @@ class XformerDecoder(nn.Module, AbsExportModel):
         self.embed = Embedding(model.embed, max_seq_len)
         self.model = model
         self.make_pad_mask = MakePadMask(max_seq_len, flip=False)
+        if isinstance(self.model.decoders[0].self_attn, MultiHeadedAttention):
+            self.num_heads = self.model.decoders[0].self_attn.h
+            self.hidden_size = self.model.decoders[0].self_attn.linear_out.out_features
         # replace multihead attention module into customized module.
         for i,d in enumerate(self.model.decoders):
             # d is DecoderLayer
@@ -29,8 +32,6 @@ class XformerDecoder(nn.Module, AbsExportModel):
                 d.src_attn = OnnxMultiHeadedAttention(d.src_attn)
             self.model.decoders[i] = OnnxDecoderLayer(d)
                 
-        self.num_heads = model.decoders[0].self_attn.h
-        self.hidden_size = model.decoders[0].self_attn.linear_out.out_features
         self.model_name = 'xformer_decoder'
     
     def prepare_mask(self, mask):
