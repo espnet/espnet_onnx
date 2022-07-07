@@ -7,6 +7,7 @@ import glob
 from datetime import datetime
 import shutil
 import logging
+import warnings
 
 import numpy as np
 import torch
@@ -47,7 +48,12 @@ class ASRModelExport:
             cache_dir = Path.home() / ".cache" / "espnet_onnx"
 
         self.cache_dir = Path(cache_dir)
-        self.export_config = {}
+        self.export_config = dict(
+            use_gpu=False,
+            only_onnxruntime=False,
+            float16=False,
+            use_ort_for_espnet=False,
+        )
 
     def export(
         self,
@@ -297,16 +303,16 @@ class ASRModelExport:
         return ret
 
     def _optimize_model(self, model, model_dir, model_type):
-        if model_type in ('encoder', 'lm'):
+        if model_type == 'encoder':
             if self.export_config['use_ort_for_espnet']:
-                model_type = 'espnet_transformer_encoder'
+                model_type = 'espnet'
             else:
                 model_type = 'bert'
-        elif model_type == 'decoder':
+        elif model_type in ('decoder', 'lm'):
             if self.export_config['use_ort_for_espnet']:
-                model_type = 'espnet_transformer_decoder'
+                model_type = 'espnet'
             else:
-                warnings.warn('You cannot optimize TransformerDecoder without custom version of onnxruntime.' \
+                warnings.warn('You cannot optimize TransformerDecoder or TransformerLM without custom version of onnxruntime.' \
                     + 'Please follow the instruction on README.md to install onnxruntime for espnet_onnx')
                 model_type = None
         
