@@ -11,10 +11,10 @@ jobs:
       - checkout
       - run: sudo apt-get -y update; sudo apt-get install libsndfile1
       - run: pip install --upgrade pip
-      - run: pip install -r tools/requirements_export.txt
-      - run: pip install pytest
       - run: wget https://github.com/Masao-Someki/espnet_onnx/releases/download/custom_ort_v1.11.1-espnet_onnx/onnxruntime-1.11.1_espnet_onnx-cp38-cp38-linux_x86_64.whl
       - run: pip install onnxruntime-1.11.1_espnet_onnx-cp38-cp38-linux_x86_64.whl
+      - run: pip install -r tools/requirements_export.txt
+      - run: pip install pytest
       - run: pytest tests --config_dir tests/test_config
 
 workflows:

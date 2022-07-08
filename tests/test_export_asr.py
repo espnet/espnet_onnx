@@ -32,8 +32,8 @@ encoder_cases = [
 
 decoder_cases = [
     'transformer',
-    'lightweight_conv',
-    'lightweight_conv2d',
+    # 'lightweight_conv',
+    # 'lightweight_conv2d',
     # 'dynamic_conv',
     # 'dynamic_conv2d',
     'rnn_noatt',
@@ -120,6 +120,7 @@ def test_export_decoder(dec_type, load_config, model_export, get_class):
     torch.save(decoder.state_dict(), str(export_dir / f'{dec_type}.pth'))
     
     dec_wrapper = get_decoder(decoder, {})
+    print(dec_wrapper)
     save_model(dec_wrapper, export_dir, model_export, 'decoder')
     
     decoder_config = dec_wrapper.get_model_config(export_dir)

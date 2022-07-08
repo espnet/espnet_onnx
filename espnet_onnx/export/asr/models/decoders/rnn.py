@@ -144,7 +144,7 @@ class RNNDecoder(nn.Module, AbsExportModel):
         enc_h = [torch.randn(1, feat_length, enc_size)
                  for _ in range(self.num_encs)]
         _m = torch.from_numpy(np.where(make_pad_mask(
-            [feat_length]) == 1, -float('inf'), 0)).type(torch.float32)
+            [feat_length]) == 1, -10000.0, 0)).type(torch.float32)
         mask = [_m for _ in range(self.num_encs)]
         return (
             vy, z_prev, c_prev,

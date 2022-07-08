@@ -1,74 +1,6 @@
 tts: vits
 tts_conf:
   cache_generator_outputs: true
-  discriminator_adv_loss_params:
-    average_by_discriminators: false
-    loss_type: mse
-  discriminator_params:
-    follow_official_norm: false
-    period_discriminator_params:
-      bias: true
-      channels: 32
-      downsample_scales:
-      - 3
-      - 3
-      - 3
-      - 3
-      - 1
-      in_channels: 1
-      kernel_sizes:
-      - 5
-      - 3
-      max_downsample_channels: 1024
-      nonlinear_activation: LeakyReLU
-      nonlinear_activation_params:
-        negative_slope: 0.1
-      out_channels: 1
-      use_spectral_norm: false
-      use_weight_norm: true
-    periods:
-    - 2
-    - 3
-    - 5
-    - 7
-    - 11
-    scale_discriminator_params:
-      bias: true
-      channels: 128
-      downsample_scales:
-      - 2
-      - 2
-      - 4
-      - 4
-      - 1
-      in_channels: 1
-      kernel_sizes:
-      - 15
-      - 41
-      - 5
-      - 3
-      max_downsample_channels: 1024
-      max_groups: 16
-      nonlinear_activation: LeakyReLU
-      nonlinear_activation_params:
-        negative_slope: 0.1
-      out_channels: 1
-      use_spectral_norm: false
-      use_weight_norm: true
-    scale_downsample_pooling: AvgPool1d
-    scale_downsample_pooling_params:
-      kernel_size: 4
-      padding: 2
-      stride: 2
-    scales: 1
-  discriminator_type: hifigan_multi_scale_multi_period_discriminator
-  feat_match_loss_params:
-    average_by_discriminators: false
-    average_by_layers: false
-    include_final_outputs: true
-  generator_adv_loss_params:
-    average_by_discriminators: false
-    loss_type: mse
   generator_params:
     aux_channels: 513
     decoder_channels: 512
@@ -141,14 +73,4 @@ tts_conf:
   lambda_feat_match: 2.0
   lambda_kl: 1.0
   lambda_mel: 45.0
-  mel_loss_params:
-    fmax: null
-    fmin: 0
-    fs: 22050
-    hop_length: 256
-    log_base: null
-    n_fft: 1024
-    n_mels: 80
-    win_length: null
-    window: hann
   sampling_rate: 22050

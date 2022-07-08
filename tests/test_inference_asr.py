@@ -35,8 +35,8 @@ encoder_cases = [
 decoder_cases = [
     ('transformer', [50, 100]),
     ('transducer', [1]),
-    ('lightweight_conv', [50, 100]),
-    ('lightweight_conv2d', [50, 100]),
+    # ('lightweight_conv', [50, 100]),
+    # ('lightweight_conv2d', [50, 100]),
     # ('dynamic_conv', [50, 100]),
     # ('dynamic_conv2d', [50, 100]),
     ('rnn_noatt', [50, 100]),
