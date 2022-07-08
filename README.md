@@ -74,7 +74,7 @@ m.export_from_zip(
 )
 ```
 
-4. You can easily optimize your model by using the `optimize` option. The detailed explanation is in [this document](./docs/Optimization.md).
+4. You can easily optimize your model by using the `optimize` option. If you want to fully optimize your model, you need to install the custom version of onnxruntime from [here](https://github.com/Masao-Someki/espnet_onnx/releases/tag/custom_ort_v1.11.1-espnet_onnx). Please read [this document](./docs/Optimization.md) for more detail.
 
 ```python
 from espnet_onnx.export import ASRModelExport
@@ -153,6 +153,8 @@ nbest = stream_asr.simulate(y, True)
 print(nbest[0][0])
 # 'this is a pen'
 ```
+
+4. If yo uinstalled the custom version of onnxruntime, you can run optimized model for inference. You don't have to change any code from the above. If the model was optimized, then espnet_onnx would automatically load the optimized version. 
 
 #### Text2Speech inference
 

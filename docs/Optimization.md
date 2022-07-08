@@ -78,7 +78,7 @@ Here is the comparison of the inference time for each model. All test was execut
 The custom version of onnxruntime is released [here](https://github.com/Masao-Someki/onnxruntime/releases). Run the following command to download and install it.
 
 ```shell
-wget install https://github.com/Masao-Someki/onnxruntime/releases/v1.11.1-espnet_onnx.dist
+wget install https://github.com/Masao-Someki/espnet_onnx/releases/download/custom_ort_v1.11.1-espnet_onnx/onnxruntime-1.11.1_espnet_onnx-cp38-cp38-linux_x86_64.whl
 pip install *.dist
 ```
 
