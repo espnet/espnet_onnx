@@ -6,7 +6,6 @@ typeguard
 pyyaml
 g2p_en
 jamo
-torch
 espnet
 espnet_model_zoo
 onnx
