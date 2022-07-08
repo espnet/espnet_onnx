@@ -74,7 +74,7 @@ m.export_from_zip(
 )
 ```
 
-4. You can easily optimize your model by using the `optimize` option. If you want to fully optimize your model, you need to install the custom version of onnxruntime from [here](https://github.com/Masao-Someki/espnet_onnx/releases/tag/custom_ort_v1.11.1-espnet_onnx). Please read [this document](./docs/Optimization.md) for more detail.
+4. You can easily optimize your model by using the `optimize` option. If you want to fully optimize your model, you need to install the custom version of onnxruntime from [here](https://github.com/Masao-Someki/espnet_onnx/releases/download/custom_ort_v1.11.1-espnet_onnx/onnxruntime-1.11.1_espnet_onnx-cp38-cp38-linux_x86_64.whl). Please read [this document](./docs/Optimization.md) for more detail.
 
 ```python
 from espnet_onnx.export import ASRModelExport
