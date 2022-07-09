@@ -33,6 +33,7 @@ from .get_config import (
     get_tokenizer_config,
     get_weights_transducer,
     get_trans_beam_config,
+    get_frontend_config,
 )
 from espnet_onnx.utils.config import (
     save_config,
@@ -85,14 +86,14 @@ class ASRModelExport:
         self._export_encoder(enc_model, export_dir, verbose)
         model_config.update(encoder=enc_model.get_model_config(
             model.asr_model, export_dir))
-        
+
         # export frontend-related models
-        frontend_models = get_frontend_models(model.asr_model.encoder.frontend)
-        self._export_frontend(model.asr_models.encoder, frontend_models, 
-                              export_dir, verbose)
-        model_config['encoder']['frontend'].update(
-            get_front_model_configs(model.asr_model.encoder, frontend_models, export_dir)
-        )
+        frontend_model = get_frontend_models(model.asr_model.frontend, self.export_config)
+        if frontend_model is not None:
+            self._export_frontend(frontend_model, export_dir, verbose)
+            model_config['encoder']['frontend'].update(
+                get_frontend_config(model.asr_model.frontend, frontend_model, path=export_dir)
+            )
 
         # # export decoder
         dec_model = get_decoder(model.asr_model.decoder, self.export_config)
@@ -157,6 +158,8 @@ class ASRModelExport:
                     model_config['decoder'].update(quantized_model_path=qt_config[m])
                 elif 'lm' in m:
                     model_config['lm'].update(quantized_model_path=qt_config[m])
+                elif 'frontend' in m:
+                    model_config['encoder']['frontend'].update(quantized_model_path=qt_config[m])
                 else:
                     model_config[m].update(quantized_model_path=qt_config[m])
 
@@ -243,26 +246,10 @@ class ASRModelExport:
             logging.info(f'Encoder model is saved in {file_name}')
         self._export_model(model, verbose, path)
     
-    def _export_frontend(self, model, frontend, models, path, verbose):
-        if model.frontend.apply_stft:
-            feat_dim = model.frontend.stft.n_fft
-        else:
-            if 'frontend::feat_dim' in self.export_options.keys():
-                raise RuntimeError('When apply_stft is False, then you have to set value for "frontend::feat_dim".')
-            feat_dim = self.export_options['frontend::feat_dim']
-            
-        if 'wpe' in frontend.keys():
-            file_name = os.path.join(path, 'wpe_mask_estimator.onnx')
-            self._export_model(frontend['wpe'], file_name, verbose, feat_dim)
-        
-        if 'beamformer' in frontend.keys():
-            # export mask estimator
-            file_name = os.path.join(path, 'beamformer_mask_estimator.onnx')
-            self._export_model(frontend['beamformer']['MaskEstimator'], file_name, verbose, feat_dim)
-            
-            # export AttentionReference
-            file_name = os.path.join(path, 'beamformer_att_ref.onnx')
-            self._export_model(frontend['beamformer']['AttentionReference'], file_name, verbose, feat_dim)
+    def _export_frontend(self, model, path, verbose):
+        if verbose:
+            logging.info(f'Frontend model is saved in {file_name}')
+        self._export_model(model, verbose, path)
 
     def _export_decoder(self, model, enc_size, path, verbose):
         if verbose:

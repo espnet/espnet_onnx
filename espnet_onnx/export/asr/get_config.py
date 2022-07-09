@@ -4,6 +4,7 @@ from espnet2.text.char_tokenizer import CharTokenizer
 from espnet2.text.phoneme_tokenizer import PhonemeTokenizer
 from espnet2.text.sentencepiece_tokenizer import SentencepiecesTokenizer
 from espnet2.text.word_tokenizer import WordTokenizer
+from espnet2.asr.frontend.s3prl import S3prlFrontend
 
 
 def get_ngram_config(model):
@@ -90,14 +91,15 @@ def get_tokenizer_config(model, path):
         }
 
 
-def get_frontend_config(frontend, **kwargs):
+def get_frontend_config(asr_frontend_model, frontend, **kwargs):
     # currently only default config is supported.
-    if isinstance(frontend, DefaultFrontend):
-        frontend_config = get_default_frontend(frontend, **kwargs)
+    if isinstance(asr_frontend_model, S3prlFrontend):
+        frontend_config = frontend.get_model_config(**kwargs)
     else:
-        raise ValueError('Currently only DefaultFrontend is supported.')
+        raise ValueError('Currently only s3prl is supported.')
     
     return frontend_config    
+
 
 def get_default_frontend(frontend, **kwargs):
     return {

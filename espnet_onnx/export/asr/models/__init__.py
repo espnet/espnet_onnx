@@ -1,6 +1,5 @@
 from .ctc import CTC
 from .joint_network import JointNetwork
-from .frontend import get_frontend_models
 
 # encoder
 from espnet2.asr.encoder.rnn_encoder import RNNEncoder as espnetRNNEncoder
@@ -31,6 +30,10 @@ from espnet2.lm.transformer_lm import TransformerLM as espnetTransformerLM
 from .language_models.seq_rnn import SequentialRNNLM
 from .language_models.transformer import TransformerLM
 
+# frontend
+from espnet2.asr.frontend.s3prl import S3prlFrontend as espnetS3PRLModel
+from .frontends.s3prl import S3PRLModel
+
 
 def get_encoder(model, export_config):
     if isinstance(model, espnetRNNEncoder) or isinstance(model, espnetVGGRNNEncoder):
@@ -57,3 +60,12 @@ def get_lm(model, export_config):
         return SequentialRNNLM(model, **export_config)
     elif isinstance(model, espnetTransformerLM):
         return TransformerLM(model, **export_config)
+
+
+def get_frontend_models(model, export_config):
+    if isinstance(model, espnetS3PRLModel):
+        return S3PRLModel(model, **export_config)
+    else:
+        return None
+    
+    
