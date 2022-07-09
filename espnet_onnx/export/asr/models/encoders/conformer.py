@@ -162,24 +162,24 @@ class ConformerEncoder(nn.Module, AbsExportModel):
 
     def get_frontend_config(self, frontend):
         # currently only default config is supported.
-        assert isinstance(
-            frontend, DefaultFrontend), 'Currently only DefaultFrontend is supported.'
-
-        stft_config = dict(
-            n_fft=frontend.stft.n_fft,
-            win_length=frontend.stft.win_length,
-            hop_length=frontend.stft.hop_length,
-            window=frontend.stft.window,
-            center=frontend.stft.center,
-            onesided=frontend.stft.onesided,
-            normalized=frontend.stft.normalized,
-        )
-        logmel_config = frontend.logmel.mel_options
-        logmel_config.update(log_base=frontend.logmel.log_base)
-        return {
-            "stft": stft_config,
-            "logmel": logmel_config
-        }
+        if isinstance(frontend, DefaultFrontend):
+            stft_config = dict(
+                n_fft=frontend.stft.n_fft,
+                win_length=frontend.stft.win_length,
+                hop_length=frontend.stft.hop_length,
+                window=frontend.stft.window,
+                center=frontend.stft.center,
+                onesided=frontend.stft.onesided,
+                normalized=frontend.stft.normalized,
+            )
+            logmel_config = frontend.logmel.mel_options
+            logmel_config.update(log_base=frontend.logmel.log_base)
+            return {
+                "stft": stft_config,
+                "logmel": logmel_config
+            }
+        else:
+            return {}
 
     def get_norm_config(self, normalize, path):
         if isinstance(normalize, GlobalMVN):

@@ -9,7 +9,7 @@ import onnxruntime
 import warnings
 
 from espnet_onnx.utils.abs_model import AbsModel
-from espnet_onnx.asr.frontend.global_mvn import GlobalMVN
+from espnet_onnx.asr.frontend.normalize.global_mvn import GlobalMVN
 from espnet_onnx.tts.model.preprocess.common_processor import CommonPreprocessor
 from espnet_onnx.tts.model.duration_calculator import DurationCalculator
 from espnet_onnx.tts.model.tts_model import get_tts_model

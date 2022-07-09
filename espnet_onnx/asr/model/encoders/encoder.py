@@ -7,8 +7,8 @@ import onnxruntime
 import numpy as np
 
 from espnet_onnx.asr.frontend.frontend import Frontend
-from espnet_onnx.asr.frontend.global_mvn import GlobalMVN
-from espnet_onnx.asr.frontend.utterance_mvn import UtteranceMVN
+from espnet_onnx.asr.frontend.normalize.global_mvn import GlobalMVN
+from espnet_onnx.asr.frontend.normalize.utterance_mvn import UtteranceMVN
 from espnet_onnx.utils.function import (
     make_pad_mask,
     mask_fill

@@ -19,8 +19,6 @@ from espnet_onnx.export.asr.get_config import (
     get_frontend_config,
     get_norm_config
 )
-from ..language_models.lm import Embedding
-from ..abs_model import AbsModel
 from espnet.nets.pytorch_backend.transformer.attention import MultiHeadedAttention
 
 from espnet_onnx.utils.torch_function import MakePadMask
