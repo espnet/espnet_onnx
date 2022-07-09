@@ -22,6 +22,12 @@ from espnet.nets.pytorch_backend.transformer.embedding import (
     StreamPositionalEncoding,
 )
 
+from .subsampling import (
+    OnnxConv2dSubsampling,
+    OnnxConv2dSubsampling2,
+    OnnxConv2dSubsampling6,
+    OnnxConv2dSubsampling8
+)
 
 def get_pos_emb(pos_emb, max_seq_len=512, use_cache=True):
     if isinstance(pos_emb, LegacyRelPositionalEncoding):
@@ -46,29 +52,26 @@ class Embedding(nn.Module):
         super().__init__()
         self.model = model
         if not isinstance(model, nn.Embedding):
-            if (
-                isinstance(model, Conv2dSubsampling)
-                or isinstance(model, Conv2dSubsampling2)
-                or isinstance(model, Conv2dSubsampling6)
-                or isinstance(model, Conv2dSubsampling8)
-            ):
-                self.model.out[-1] = get_pos_emb(model.out[-1], max_seq_len, use_cache)
+            if isinstance(model, Conv2dSubsampling):
+                self.model = OnnxConv2dSubsampling(model)
+                self.model.out[-1] = get_pos_emb(model.out[-1], max_seq_len)
+            elif isinstance(model, Conv2dSubsampling2):
+                self.model = OnnxConv2dSubsampling2(model)
+                self.model.out[-1] = get_pos_emb(model.out[-1], max_seq_len)
+            elif isinstance(model, Conv2dSubsampling6):
+                self.model = OnnxConv2dSubsampling6(model)
+                self.model.out[-1] = get_pos_emb(model.out[-1], max_seq_len)
+            elif isinstance(model, Conv2dSubsampling8):
+                self.model = OnnxConv2dSubsampling8(model)
+                self.model.out[-1] = get_pos_emb(model.out[-1], max_seq_len)
             else:
-                self.model[-1] = get_pos_emb(model[-1], max_seq_len, use_cache)
+                self.model[-1] = get_pos_emb(model[-1], max_seq_len)
 
     def forward(self, x, mask=None):
         if mask is None:
             return self.model(x)
         else:
-            xs = self.model(x, mask)
-            if isinstance(self.model, Conv2dSubsampling):
-                return xs, mask[:, :, :-2:2][:, :, :-2:2]
-            elif isinstance(self.model, Conv2dSubsampling2):
-                return xs, mask[:, :, :-2:2][:, :, :-2:1]
-            elif isinstance(self.model, Conv2dSubsampling6):
-                return xs, mask[:, :, :-2:2][:, :, :-4:3]
-            elif isinstance(self.model, Conv2dSubsampling8):
-                return xs, mask[:, :, :-2:2][:, :, :-2:2][:, :, :-2:2]
+            return self.model(x, mask)
 
 
 def _pre_hook(

@@ -24,6 +24,8 @@ class Encoder:
         use_quantized: bool = False,
     ):
         self.config = encoder_config
+        # Note that id model was optimized and quantized,
+        # then the quantized model should be optimized.
         if use_quantized:
             self.encoder = onnxruntime.InferenceSession(
                 self.config.quantized_model_path,

@@ -5,7 +5,7 @@ requirements = {
     "install": [
         "setuptools>=38.5.1",
         "librosa>=0.8.0",
-        "onnxruntime>=1.4.0",
+        "onnxruntime",
         "sentencepiece>=0.1.91,!=0.1.92",
         "typeguard>=2.7.0",
         "PyYAML>=5.1.2",

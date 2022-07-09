@@ -3,11 +3,20 @@ import os
 import torch
 import torch.nn as nn
 
-from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling
+from espnet.nets.pytorch_backend.transformer.subsampling import (
+    Conv2dSubsampling,
+    Conv2dSubsampling6,
+    Conv2dSubsampling8,
+)
+from espnet.nets.pytorch_backend.transducer.vgg2l import VGG2L
+from espnet.nets.pytorch_backend.transformer.attention import MultiHeadedAttention
 
 from espnet_onnx.utils.function import subsequent_mask
 from espnet_onnx.utils.abs_model import AbsExportModel
 from .embed import Embedding
+from ..encoder_layer import OnnxEncoderLayer
+from ..multihead_att import OnnxMultiHeadedAttention
+from espnet_onnx.utils.torch_function import MakePadMask
 
 
 class TransformerLM(nn.Module, AbsExportModel):
@@ -16,19 +25,45 @@ class TransformerLM(nn.Module, AbsExportModel):
         self.embed = Embedding(model.embed, max_seq_len)
         self.encoder = model.encoder
         self.decoder = model.decoder
+        self.make_pad_mask = MakePadMask(max_seq_len, flip=False)
+        # replace multihead attention module into customized module.
+        for i, d in enumerate(self.encoder.encoders):
+            # d is EncoderLayer
+            if isinstance(d.self_attn, MultiHeadedAttention):
+                d.self_attn = OnnxMultiHeadedAttention(d.self_attn)
+            self.encoder.encoders[i] = OnnxEncoderLayer(d)
+            
         self.model_name = 'transformer_lm'
+        self.num_heads = self.encoder.encoders[0].self_attn.h
+        self.hidden_size = self.encoder.encoders[0].self_attn.linear_out.out_features
+    
+    def prepare_mask(self, mask):
+        if len(mask.shape) == 2:
+            mask = mask[:, None, None, :]
+        elif len(mask.shape) == 3:
+            mask = mask[:, None, :]
+        mask = 1 - mask
+        return mask * -10000.0
 
-    def forward(self, y, mask, cache):
+    def forward(self, y, cache):
+        feats_length = torch.ones(y.shape).sum(dim=-1).type(torch.long)
+        mask = self.make_pad_mask(feats_length) # (B, T)
+        mask = (y != 0) * mask
+        
         xs = self.embed(y)
         # forward_one_step of Encoder
-        if isinstance(self.encoder.embed, Conv2dSubsampling):
+        if isinstance(
+            self.encoder.embed,
+            (Conv2dSubsampling, Conv2dSubsampling6, Conv2dSubsampling8, VGG2L),
+        ):
             xs, mask = self.encoder.embed(xs, mask)
         else:
             xs = self.encoder.embed(xs)
-
+            
         new_cache = []
+        mask = self.prepare_mask(mask)
         for c, e in zip(cache, self.encoder.encoders):
-            xs, mask = e(xs, mask, cache=c)
+            xs, mask = e(xs, mask, c)
             new_cache.append(xs)
 
         if self.encoder.normalize_before:
@@ -39,17 +74,17 @@ class TransformerLM(nn.Module, AbsExportModel):
 
     def get_dummy_inputs(self):
         tgt = torch.LongTensor([0, 1]).unsqueeze(0)
-        ys_mask = tgt != 0
-        m = torch.from_numpy(subsequent_mask(ys_mask.shape[-1])[None, :])
-        mask = ys_mask[None, :] * m
         cache = [
             torch.zeros((1, 1, self.encoder.encoders[0].size))
             for _ in range(len(self.encoder.encoders))
         ]
-        return (tgt, mask, cache)
+        return (tgt, cache)
+
+    def is_optimizable(self):
+        return True
 
     def get_input_names(self):
-        return ['tgt', 'tgt_mask'] \
+        return ['tgt'] \
             + ['cache_%d' % i for i in range(len(self.encoder.encoders))]
 
     def get_output_names(self):
@@ -61,11 +96,6 @@ class TransformerLM(nn.Module, AbsExportModel):
             'tgt': {
                 0: 'tgt_batch',
                 1: 'tgt_length'
-            },
-            'tgt_mask': {
-                0: 'tgt_mask_batch',
-                1: 'tgt_mask_length',
-                2: 'tgt_mask_height'
             }
         }
         ret.update({

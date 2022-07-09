@@ -14,7 +14,7 @@ def subsequent_mask(size):
         [1, 1, 0],
         [1, 1, 1]]
     """
-    return np.tril(np.ones((size, size)))
+    return np.tril(np.ones((size, size))).astype(np.float32)
 
 
 def mask_fill(arr, mask, mask_value):

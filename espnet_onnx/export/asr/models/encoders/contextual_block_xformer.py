@@ -16,9 +16,12 @@ import torch.nn as nn
 from espnet.nets.pytorch_backend.transformer.subsampling_without_posenc import (
     Conv2dSubsamplingWOPosEnc,  # noqa: H301
 )
+from espnet.nets.pytorch_backend.transformer.attention import MultiHeadedAttention
 from espnet2.asr.frontend.default import DefaultFrontend
 from espnet2.layers.global_mvn import GlobalMVN
 from espnet2.layers.utterance_mvn import UtteranceMVN
+from ..encoder_layer import OnnxEncoderLayer
+from ..multihead_att import OnnxMultiHeadedAttention
 
 from espnet_onnx.utils.abs_model import AbsExportModel
 
@@ -43,6 +46,11 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
         
         self.normalize_before = model.normalize_before
         self.encoders = model.encoders
+        for i, d in enumerate(self.encoders):
+            # d is EncoderLayer
+            if isinstance(d.self_attn, MultiHeadedAttention):
+                d.self_attn = OnnxMultiHeadedAttention(d.self_attn)
+            # self.encoders[i] = OnnxEncoderLayer(d)
         
         if self.normalize_before:
             self.after_norm = model.after_norm

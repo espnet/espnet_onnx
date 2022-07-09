@@ -6,9 +6,12 @@ import numpy as np
 
 
 class MakePadMask(nn.Module):
-    def __init__(self, max_seq_len=512):
+    def __init__(self, max_seq_len=512, flip=True):
         super().__init__()
-        self.mask_pad = torch.Tensor(1 - np.tri(max_seq_len)).type(torch.bool)
+        if flip:
+            self.mask_pad = torch.Tensor(1 - np.tri(max_seq_len)).type(torch.bool)
+        else:
+            self.mask_pad = torch.Tensor(np.tri(max_seq_len)).type(torch.bool)
     
     def forward(self, lengths, xs=None, length_dim=-1, maxlen=None):
         """Make mask tensor containing indices of padded part.

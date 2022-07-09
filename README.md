@@ -4,10 +4,12 @@
 ![](https://img.shields.io/badge/licence-MIT-blue)
 [![](https://img.shields.io/badge/pypi-0.1.9-brightgreen)](https://pypi.org/project/espnet-onnx/)
 
-**ESPNet without PyTorch!**
+**ESPnet without PyTorch!**
 
-Utility library to easily export espnet models to onnx format.
-There is no need to install PyTorch or ESPNet on your machine if you already have exported files!
+Utility library to easily export, quantize, and optimize espnet models to onnx format. 
+There is no need to install PyTorch or ESPnet on your machine if you already have exported files!
+
+
 
 ## Install
 
@@ -18,6 +20,9 @@ pip install espnet_onnx
 ```
 
 2. If you want to export pretrained model, you need to install `torch>=1.11.0`, `espnet`, `espnet_model_zoo`, `onnx` additionally.
+`onnx==1.12.0` might cause some errors. If you got an error while inference or exporting, please consider downgrading the onnx version.
+
+
 
 ## Usage
 
@@ -56,6 +61,7 @@ m.export_from_zip(
 
 - [Details for ASR models and configurations](./docs/ASRModelDetail.md)
 - [Details for TTS models and configurations](./docs/TTSModelDetail.md)
+- [Details for optimization configurations](./doc/optimize)
 
 ```python
 from espnet_onnx.export import ASRModelExport
@@ -68,6 +74,33 @@ m.export_from_zip(
   tag_name='tag_name_for_zipped_model',
 )
 ```
+
+4. You can easily optimize your model by using the `optimize` option. If you want to fully optimize your model, you need to install the custom version of onnxruntime from [here](https://github.com/Masao-Someki/espnet_onnx/releases/download/custom_ort_v1.11.1-espnet_onnx/onnxruntime-1.11.1_espnet_onnx-cp38-cp38-linux_x86_64.whl). Please read [this document](./docs/Optimization.md) for more detail.
+
+```python
+from espnet_onnx.export import ASRModelExport
+
+m = ASRModelExport()
+m.export_from_zip(
+  'path/to/the/zipfile',
+  tag_name='tag_name_for_zipped_model',
+  optimize=True,
+  quantize=True
+)
+```
+
+5. You can export model from the command line.
+
+```shell
+python -m espnet_onnx.export \
+  --model_type asr \
+  --input ${path_to_zip} \
+  --tag transformer_lm \
+  --apply_optimize \
+  --apply_quantize
+```
+
+
 
 #### Inference
 
@@ -121,6 +154,8 @@ nbest = stream_asr.simulate(y, True)
 print(nbest[0][0])
 # 'this is a pen'
 ```
+
+4. If yo uinstalled the custom version of onnxruntime, you can run optimized model for inference. You don't have to change any code from the above. If the model was optimized, then espnet_onnx would automatically load the optimized version. 
 
 #### Text2Speech inference
 

@@ -14,7 +14,13 @@ from espnet_onnx.asr.beam_search.batch_beam_search import BatchBeamSearch
 from espnet_onnx.asr.beam_search.beam_search_transducer import BeamSearchTransducer
 
 
-class AbsASRModel(AbsModel): 
+class AbsASRModel(AbsModel):
+    def _check_flags(self, use_quantized):
+        if use_quantized and 'quantized_model_path' not in self.config.encoder.keys():
+            # check if quantized model config is defined.
+            raise RuntimeError(
+                'Configuration for quantized model is not defined.')
+        
     def _build_beam_search(self, scorers, weights):
         if self.config.transducer.use_transducer_decoder:
             self.beam_search = BeamSearchTransducer(

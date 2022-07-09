@@ -35,8 +35,8 @@ encoder_cases = [
 decoder_cases = [
     ('transformer', [50, 100]),
     ('transducer', [1]),
-    ('lightweight_conv', [50, 100]),
-    ('lightweight_conv2d', [50, 100]),
+    # ('lightweight_conv', [50, 100]),
+    # ('lightweight_conv2d', [50, 100]),
     # ('dynamic_conv', [50, 100]),
     # ('dynamic_conv2d', [50, 100]),
     ('rnn_noatt', [50, 100]),
@@ -64,7 +64,7 @@ def check_output(out_t, out_o):
         f"The shape of output of onnx {out_o.shape} should be the same with the output of torch model {out_t.shape}"
 
     mean_dif = np.mean((out_t - out_o)**2)
-    assert mean_dif < 0.001, \
+    assert mean_dif < 0.0005, \
         f"Result of torch model and onnx model differs."
 
 
@@ -101,7 +101,7 @@ def test_infer_encoder(enc_type, feat_lens, load_config, get_class):
         model_config.encoder_conf,
         input_size=input_size
     )
-    encoder_espnet.load_state_dict(torch.load(str(model_dir / 'encoder.pth')))
+    encoder_espnet.load_state_dict(torch.load(glob.glob(str(model_dir / '*.pth'))[0]))
     encoder_espnet.eval()
     model_file = glob.glob(os.path.join(model_dir , '*encoder.onnx'))[0]
     encoder_onnx = ort.InferenceSession(model_file, providers=PROVIDERS)
@@ -127,20 +127,20 @@ def test_infer_decoder(dec_type, feat_lens, load_config, get_class):
     if model_config.decoder == 'transducer':
         kwargs = { 'vocab_size': 32000, 'embed_pad': 0 }
     else:
-        kwargs = { 'vocab_size': 32000, 'encoder_output_size': 512 }
+        kwargs = { 'vocab_size': 32000, 'encoder_output_size': 256 }
     decoder_espnet = get_class(
         'decoder',
         model_config.decoder,
         model_config.decoder_conf,
         **kwargs
     )
-    decoder_espnet.load_state_dict(torch.load(str(model_dir / 'decoder.pth')))
+    decoder_espnet.load_state_dict(torch.load(glob.glob(str(model_dir / '*.pth'))[0]))
     decoder_espnet.eval()
     decoder_onnx = get_decoder(get_config(model_dir / 'config.yaml'), providers=PROVIDERS)
     
     # test output
     for fl in feat_lens:
-        dummy_input = torch.randn(1, fl, 512)
+        dummy_input = torch.randn(1, fl, 256)
         dummy_yseq = torch.LongTensor([0, 1])
         if dec_type[:3] == 'rnn':
             torch_out = run_rnn_dec(decoder_espnet, dummy_input, dummy_yseq)
@@ -148,7 +148,7 @@ def test_infer_decoder(dec_type, feat_lens, load_config, get_class):
             
         elif dec_type == 'transducer':
             dummy_yseq = dummy_yseq.unsqueeze(0)
-            h = torch.randn(1, 1, 512)
+            h = torch.randn(1, 1, 256)
             torch_out = run_trans_dec(decoder_espnet, dummy_yseq, h, 'torch')
             onnx_out = run_trans_dec(decoder_onnx, dummy_yseq.numpy(), h.numpy(), 'onnx')
             
@@ -172,13 +172,13 @@ def test_infer_lm(lm_type, feat_lens, load_config, get_class):
         model_config.lm_conf,
         vocab_size=32000,
     )
-    torch_model.load_state_dict(torch.load(str(model_dir / 'lm.pth')))
+    torch_model.load_state_dict(torch.load(glob.glob(str(model_dir / '*.pth'))[0]))
     torch_model.eval()
     onnx_model = get_lm(get_config(model_dir / 'config.yaml'), providers=PROVIDERS)
     
     # test output
     for fl in feat_lens:
-        dummy_input = torch.randn(1, fl, 512)
+        dummy_input = torch.randn(1, fl, 256)
         tgt = torch.LongTensor([0, 1]).unsqueeze(0)
         
         torch_out, _ = torch_model.batch_score(tgt, [None], dummy_input)

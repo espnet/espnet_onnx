@@ -2,6 +2,6 @@ lm: seq_rnn
 lm_conf:
   nlayers: 2
   rnn_type: lstm
-  unit: 2024
+  unit: 256
 model_conf:
   ignore_id: 0

@@ -1,4 +1,6 @@
 from typing import List
+import warnings
+
 from espnet_onnx.utils.config import Config
 from espnet_onnx.asr.model.decoders.rnn import RNNDecoder
 from espnet_onnx.asr.model.decoders.xformer import XformerDecoder
