@@ -16,23 +16,29 @@ import torch.nn as nn
 from espnet.nets.pytorch_backend.transformer.subsampling_without_posenc import (
     Conv2dSubsamplingWOPosEnc,  # noqa: H301
 )
+from espnet.nets.pytorch_backend.transformer.attention import MultiHeadedAttention
 from espnet2.asr.frontend.default import DefaultFrontend
 from espnet2.layers.global_mvn import GlobalMVN
 from espnet2.layers.utterance_mvn import UtteranceMVN
 from espnet_onnx.export.asr.get_config import get_frontend_config
+from ..encoder_layer import OnnxEncoderLayer
+from ..multihead_att import OnnxMultiHeadedAttention
 
-from ..abs_model import AbsModel
+from espnet_onnx.utils.abs_model import AbsExportModel
 
 
-class ContextualBlockXformerEncoder(nn.Module, AbsModel):
+class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
     """Contextual Block Conformer encoder module.
     """
     def __init__(
         self,
-        model
+        model,
+        feats_dim=80,
+        **kwargs
     ):
         super().__init__()
         self.model = model
+        self.model_name = 'xformer_encoder'
         self._output_size = model._output_size
         self.pos_enc = model.pos_enc
         
@@ -41,6 +47,11 @@ class ContextualBlockXformerEncoder(nn.Module, AbsModel):
         
         self.normalize_before = model.normalize_before
         self.encoders = model.encoders
+        for i, d in enumerate(self.encoders):
+            # d is EncoderLayer
+            if isinstance(d.self_attn, MultiHeadedAttention):
+                d.self_attn = OnnxMultiHeadedAttention(d.self_attn)
+            # self.encoders[i] = OnnxEncoderLayer(d)
         
         if self.normalize_before:
             self.after_norm = model.after_norm
@@ -54,6 +65,9 @@ class ContextualBlockXformerEncoder(nn.Module, AbsModel):
         self.overlap_size = self.block_size - self.hop_size
         self.offset = self.block_size - self.look_ahead - self.hop_size
         self.xscale = model.pos_enc.xscale
+        
+        # for export configuration
+        self.feats_dim = feats_dim
 
     def output_size(self) -> int:
         return self._output_size
@@ -124,7 +138,7 @@ class ContextualBlockXformerEncoder(nn.Module, AbsModel):
         return self._output_size
 
     def get_dummy_inputs(self):
-        n_feats = 80
+        n_feats = self.feats_dim
         xs_pad = torch.randn(1, self.hop_size*self.subsample, n_feats)
         mask = torch.ones(1, 1, self.block_size + 2, self.block_size + 2)
         o = self.compute_embed(xs_pad)
@@ -162,8 +176,8 @@ class ContextualBlockXformerEncoder(nn.Module, AbsModel):
         ret = {}
         ret.update(
             enc_type='ContextualXformerEncoder',
-            model_path=os.path.join(path, 'encoder.onnx'),
-            frontend=get_frontend_config(asr_model.frontend, stft_center=False),
+            model_path=os.path.join(path, f'{self.model_name}.onnx'),
+            frontend=self.get_frontend_config(asr_model.frontend),
             do_normalize=asr_model.normalize is not None,
             do_preencoder=asr_model.preencoder is not None,
             do_postencoder=asr_model.postencoder is not None

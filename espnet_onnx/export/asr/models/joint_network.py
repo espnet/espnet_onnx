@@ -4,14 +4,15 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from .abs_model import AbsModel
+from espnet_onnx.utils.abs_model import AbsExportModel
 
 
-class JointNetwork(nn.Module, AbsModel):
+class JointNetwork(nn.Module, AbsExportModel):
     def __init__(self, model, search_type):
         super().__init__()
         self.model = model
         self.search_type = search_type
+        self.model_name = 'joint_network'
 
     def forward(self, enc_out, dec_out):
         return self.model(enc_out, dec_out)
@@ -43,5 +44,5 @@ class JointNetwork(nn.Module, AbsModel):
 
     def get_model_config(self, path):
         return {
-            "model_path": os.path.join(path, "joint_network.onnx")
+            "model_path": os.path.join(path, f'{self.model_name}.onnx')
         }

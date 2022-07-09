@@ -5,13 +5,14 @@ requirements = {
     "install": [
         "setuptools>=38.5.1",
         "librosa>=0.8.0",
-        "onnxruntime>=1.4.0",
+        "onnxruntime",
         "sentencepiece>=0.1.91,!=0.1.92",
         "typeguard>=2.7.0",
         "PyYAML>=5.1.2",
         "g2p-en",
         "jamo==0.4.1",  # For kss
         "numpy<=1.21.3",
+        "espnet_tts_frontend" # required for TTS preprocess.
     ],
     "test": [
         "torch>=1.11.0",
@@ -22,7 +23,7 @@ requirements = {
 
 setup(
     name="espnet_onnx",
-    version="0.1.5",
+    version="0.1.9",
     url="https://github.com/Masao-Someki/espnet_onnx",
     author="Masao Someki",
     author_email="masao.someki@gmail.com",
@@ -43,7 +44,7 @@ setup(
         "Programming Language :: Python :: 3.9",
         "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
-        "Operating System :: POSIX :: Linux",
+        "Operating System :: OS Independent",
         "License :: OSI Approved :: MIT License",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],

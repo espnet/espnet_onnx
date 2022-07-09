@@ -3,7 +3,10 @@ import pytest
 from pathlib import Path
 
 from espnet_onnx.utils.config import get_config
-from espnet_onnx.export import ModelExport
+from espnet_onnx.export import (
+    ASRModelExport,
+    TTSModelExport
+)
 
 from espnet2.asr.decoder.abs_decoder import AbsDecoder
 from espnet2.asr.decoder.rnn_decoder import RNNDecoder
@@ -44,6 +47,19 @@ from espnet2.lm.seq_rnn_lm import SequentialRNNLM
 from espnet2.lm.transformer_lm import TransformerLM
 from espnet2.train.class_choices import ClassChoices
 
+from espnet2.tts.abs_tts import AbsTTS
+from espnet2.gan_tts.joint import JointText2Wav
+from espnet2.gan_tts.vits import VITS
+from espnet2.gan_tts.jets import JETS
+from espnet2.tts.fastspeech import FastSpeech
+from espnet2.tts.fastspeech2 import FastSpeech2
+from espnet2.tts.tacotron2 import Tacotron2
+from espnet2.tts.transformer import Transformer
+
+from espnet2.gan_tts.hifigan import HiFiGANGenerator
+from espnet2.gan_tts.melgan import MelGANGenerator
+from espnet2.gan_tts.style_melgan import StyleMelGANGenerator
+from espnet2.gan_tts.parallel_wavegan import ParallelWaveGANGenerator
 
 def pytest_addoption(parser):
     parser.addoption('--config_dir', action='store',
@@ -54,29 +70,23 @@ def pytest_addoption(parser):
 @pytest.fixture
 def load_config(request):
     config_dir = request.config.getoption('--config_dir')
-
     def _method(config_name, model_type='encoder'):
         return get_config(os.path.join(config_dir, model_type, config_name + '.yml'))
     return _method
 
 
 @pytest.fixture
-def get_config_path(request):
-    config_dir = request.config.getoption('--config_dir')
-
-    def _method(config_name, model_type='encoder'):
-        return os.path.join(config_dir, model_type, config_name + '.yml')
-    return _method
-
-
-@pytest.fixture
 def model_export():
-    return ModelExport(Path.home() / ".cache" / "espnet_onnx")
+    return ASRModelExport(Path.home() / ".cache" / "espnet_onnx")
 
 
 @pytest.fixture
-def frontend_choices():
-    return ClassChoices(
+def model_export_tts():
+    return TTSModelExport(Path.home() / ".cache" / "espnet_onnx")
+
+
+class_choices = {
+    'frontend': ClassChoices(
         name="frontend",
         classes=dict(
             default=DefaultFrontend,
@@ -86,12 +96,8 @@ def frontend_choices():
         ),
         type_check=AbsFrontend,
         default="default",
-    )
-
-
-@pytest.fixture
-def encoder_choices():
-    return ClassChoices(
+    ),
+    'encoder': ClassChoices(
         "encoder",
         classes=dict(
             conformer=ConformerEncoder,
@@ -106,12 +112,8 @@ def encoder_choices():
         ),
         type_check=AbsEncoder,
         default="rnn",
-    )
-
-
-@pytest.fixture
-def decoder_choices():
-    return ClassChoices(
+    ),
+    'decoder': ClassChoices(
         "decoder",
         classes=dict(
             transformer=TransformerDecoder,
@@ -124,12 +126,8 @@ def decoder_choices():
         ),
         type_check=AbsDecoder,
         default="rnn",
-    )
-
-
-@pytest.fixture
-def lm_choices():
-    return ClassChoices(
+    ),
+    'lm': ClassChoices(
         "lm",
         classes=dict(
             seq_rnn=SequentialRNNLM,
@@ -137,4 +135,38 @@ def lm_choices():
         ),
         type_check=AbsLM,
         default="seq_rnn",
+    ),
+    'tts': ClassChoices(
+        "tts",
+        classes=dict(
+            tacotron2=Tacotron2,
+            transformer=Transformer,
+            fastspeech=FastSpeech,
+            fastspeech2=FastSpeech2,
+            # NOTE(kan-bayashi): available only for inference
+            vits=VITS,
+            joint_text2wav=JointText2Wav,
+            jets=JETS,
+        ),
+        type_check=AbsTTS,
+        default="tacotron2",
+    ),
+    'vocoder': ClassChoices(
+        "vocoder",
+        classes=dict(
+            hifigan_generator=HiFiGANGenerator,
+            melgan_generator=MelGANGenerator,
+            parallel_wavegan_generator=ParallelWaveGANGenerator,
+            style_melgan_generator=StyleMelGANGenerator,
+        )
     )
+}
+
+
+@pytest.fixture
+def get_class():
+    def _method(model_type, class_name, class_config, **kwargs):
+        cc = class_choices[model_type]
+        selected_class = cc.get_class(class_name)
+        return selected_class(**kwargs, **class_config.dic)
+    return _method

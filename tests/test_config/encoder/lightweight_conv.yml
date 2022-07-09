@@ -4,7 +4,7 @@ encoder_conf:
   attention_heads: 4
   dropout_rate: 0.1
   input_layer: conv2d
-  linear_units: 2048
+  linear_units: 256
   num_blocks: 12
   output_size: 256
 frontend: default

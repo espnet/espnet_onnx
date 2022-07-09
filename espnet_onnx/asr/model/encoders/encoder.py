@@ -7,11 +7,9 @@ import onnxruntime
 import numpy as np
 
 from espnet_onnx.asr.frontend.frontend import Frontend
-from espnet_onnx.asr.frontend.normalize.global_mvn import GlobalMVN
-from espnet_onnx.asr.frontend.normalize.utterance_mvn import UtteranceMVN
-from espnet_onnx.asr.scorer.interface import BatchScorerInterface
+from espnet_onnx.asr.frontend.global_mvn import GlobalMVN
+from espnet_onnx.asr.frontend.utterance_mvn import UtteranceMVN
 from espnet_onnx.utils.function import (
-    subsequent_mask,
     make_pad_mask,
     mask_fill
 )
@@ -26,6 +24,8 @@ class Encoder:
         use_quantized: bool = False,
     ):
         self.config = encoder_config
+        # Note that id model was optimized and quantized,
+        # then the quantized model should be optimized.
         if use_quantized:
             self.encoder = onnxruntime.InferenceSession(
                 self.config.quantized_model_path,
@@ -86,22 +86,13 @@ class Encoder:
         return feats, feat_length
 
     def forward_encoder(self, feats, feat_length):
+        encoder_out, encoder_out_lens = \
+            self.encoder.run(["encoder_out", "encoder_out_lens"], {
+                "feats": feats
+            })
+        
         if self.config.enc_type == 'RNNEncoder':
-            encoder_out, encoder_out_lens = \
-                self.encoder.run(["encoder_out", "encoder_out_lens"], {
-                    "feats": feats,
-                    "feats_length": feat_length
-                })
             encoder_out = mask_fill(encoder_out, make_pad_mask(
                 feat_length, encoder_out, 1), 0.0)
 
-        elif self.config.enc_type == 'XformerEncoder':
-            mask = (make_pad_mask(feat_length)[
-                :, None, :] == False).astype(np.float64)
-            # 3. forward encoder
-            encoder_out, encoder_out_lens = \
-                self.encoder.run(["encoder_out", "encoder_out_lens"], {
-                    "feats": feats,
-                    "mask": mask
-                })
         return encoder_out, encoder_out_lens

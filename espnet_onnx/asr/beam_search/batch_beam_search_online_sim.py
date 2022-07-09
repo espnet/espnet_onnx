@@ -27,7 +27,6 @@ class BatchBeamSearchOnlineSim(BatchBeamSearch):
         self.process_idx = 0
         self.max_frame_len = 10000
 
-
     def set_block_size(self, block_size: int):
         """Set block size for streaming decoding.
 
@@ -35,7 +34,6 @@ class BatchBeamSearchOnlineSim(BatchBeamSearch):
             block_size (int): The block size of encoder
         """
         self.block_size = block_size
-
 
     def set_hop_size(self, hop_size: int):
         """Set hop size for streaming decoding.
@@ -45,7 +43,6 @@ class BatchBeamSearchOnlineSim(BatchBeamSearch):
         """
         self.hop_size = hop_size
 
-
     def set_look_ahead(self, look_ahead: int):
         """Set look ahead size for streaming decoding.
 
@@ -53,8 +50,7 @@ class BatchBeamSearchOnlineSim(BatchBeamSearch):
             look_ahead (int): The look ahead size of encoder
         """
         self.look_ahead = look_ahead
-    
-    
+
     def start(self):
         self.conservative = True  # always true
         assert self.block_size and self.hop_size and self.look_ahead, "block_size, hop_size, and look_ahead must be set."
@@ -66,14 +62,12 @@ class BatchBeamSearchOnlineSim(BatchBeamSearch):
         self.prev_repeat = False
         self._init_hyp = True
 
-
     def end(self):
         # main loop of prefix search
         self.running_hyps = []
         self.ended_hyps = []
         self.prev_repeat = False
         self._init_hyp = False
-
 
     def __call__(self, h: np.ndarray) -> List[Hypothesis]:
         # extend states for ctc
@@ -82,8 +76,9 @@ class BatchBeamSearchOnlineSim(BatchBeamSearch):
             self.running_hyps = self.init_hyp(h)
             self.prev_hyps = []
             self._init_hyp = False
-        
-        maxlen = h.shape[0] if self.maxlenratio == 0 else max(1, int(maxlenratio * x.shape[0]))
+
+        maxlen = h.shape[0] if self.maxlenratio == 0 else max(
+            1, int(maxlenratio * x.shape[0]))
         move_to_next_block = False
         best = None
         # extend states for ctc
@@ -91,7 +86,7 @@ class BatchBeamSearchOnlineSim(BatchBeamSearch):
 
         while self.process_idx < h.shape[0]:
             best = self.search(self.running_hyps, h)
-            
+
             n_batch = best.yseq.shape[0]
             local_ended_hyps = []
             is_local_eos = (
@@ -109,7 +104,7 @@ class BatchBeamSearchOnlineSim(BatchBeamSearch):
                     move_to_next_block = True
                     self.prev_repeat = True
 
-            if len(local_ended_hyps) > 0 and self.cur_end_frame <  self.max_frame_len:
+            if len(local_ended_hyps) > 0 and self.cur_end_frame < self.max_frame_len:
                 move_to_next_block = True
 
             if move_to_next_block:
@@ -121,7 +116,7 @@ class BatchBeamSearchOnlineSim(BatchBeamSearch):
                     self.cur_end_frame += int(self.hop_size)
                 else:
                     self.cur_end_frame = h.shape[0]
-                    
+
                 if self.process_idx > 1 and len(self.prev_hyps) > 0 and self.conservative:
                     self.running_hyps = self.prev_hyps
                     self.process_idx -= 1
@@ -137,15 +132,14 @@ class BatchBeamSearchOnlineSim(BatchBeamSearch):
             if self.cur_end_frame >= h.shape[0]:
                 for hyp in local_ended_hyps:
                     self.ended_hyps.append(hyp)
-                    
+
             # increment number
             self.process_idx += 1
-        
+
         if best is not None:
             return sorted(self.unbatchfy(best), key=lambda x: x.score, reverse=True)
         else:
             return []
-
 
     def extend(self, x: np.ndarray, hyps: Hypothesis) -> List[Hypothesis]:
         for k, d in self.scorers.items():

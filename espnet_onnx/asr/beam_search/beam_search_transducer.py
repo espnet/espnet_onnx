@@ -100,13 +100,13 @@ class BeamSearchTransducer:
         self, enc_out: np.ndarray
     ) -> Union[List[TransducerHypothesis], List[ExtendedHypothesis]]:
         """Perform beam search.
-        
+
         Args:
             enc_out: Encoder output sequence. (T, D_enc)
-            
+
         Returns:
             nbest_hyps: N-best decoding results
-            
+
         """
         nbest_hyps = self.search_algorithm(enc_out)
         return nbest_hyps
@@ -115,13 +115,13 @@ class BeamSearchTransducer:
         self, hyps: Union[List[TransducerHypothesis], List[ExtendedHypothesis]]
     ) -> Union[List[TransducerHypothesis], List[ExtendedHypothesis]]:
         """Sort hypotheses by score or score given sequence length.
-        
+
         Args:
             hyps: TransducerHypothesis.
-            
+
         Return:
             hyps: Sorted hypothesis.
-            
+
         """
         if self.score_norm:
             hyps.sort(key=lambda x: x.score / len(x.yseq), reverse=True)
@@ -145,11 +145,13 @@ class BeamSearchTransducer:
                     is_prefix(hyp_j.yseq, hyp_i.yseq)
                     and (curr_id - pref_id) <= self.prefix_alpha
                 ):
-                    logp = log_softmax(self.joint_network(enc_out_t[None, :], hyp_i.dec_out[-1][None, :]), axis=-1)[0]
+                    logp = log_softmax(self.joint_network(
+                        enc_out_t[None, :], hyp_i.dec_out[-1][None, :]), axis=-1)[0]
                     curr_score = hyp_i.score + float(logp[hyp_j.yseq[pref_id]])
 
                     for k in range(pref_id, (curr_id - 1)):
-                        logp = log_softmax(self.joint_network(enc_out_t[None, :], hyp_i.dec_out[-1][None, :]), axis=-1)[0]
+                        logp = log_softmax(self.joint_network(
+                            enc_out_t[None, :], hyp_i.dec_out[-1][None, :]), axis=-1)[0]
                         curr_score += float(logp[hyp_j.yseq[k + 1]])
 
                     hyp_j.score = np.logaddexp(hyp_j.score, curr_score)
@@ -158,13 +160,13 @@ class BeamSearchTransducer:
 
     def greedy_search(self, enc_out: np.ndarray) -> List[TransducerHypothesis]:
         """Greedy search implementation.
-        
+
         Args:
             enc_out: Encoder output sequence. (T, D_enc)
-            
+
         Returns:
             hyp: 1-best hypotheses.
-            
+
         """
         dec_state = self.decoder.init_state()
 
@@ -191,13 +193,13 @@ class BeamSearchTransducer:
     def default_beam_search(self, enc_out: np.ndarray) -> List[TransducerHypothesis]:
         """Beam search implementation.
         Modified from https://arxiv.org/pdf/1211.3711.pdf
-        
+
         Args:
             enc_out: Encoder output sequence. (T, D)
-            
+
         Returns:
             nbest_hyps: N-best hypothesis.
-            
+
         """
         beam = min(self.beam_size, self.vocab_size)
         beam_k = min(beam, (self.vocab_size - 1))
@@ -207,7 +209,7 @@ class BeamSearchTransducer:
         kept_hyps = [TransducerHypothesis(
             score=0.0, yseq=[self.blank_id], dec_state=dec_state)]
         cache = {}
-        
+
         for enc_out_t in enc_out:
             hyps = kept_hyps
             kept_hyps = []
@@ -218,7 +220,8 @@ class BeamSearchTransducer:
 
                 dec_out, state, lm_tokens = self.decoder.score(max_hyp, cache)
 
-                logp = log_softmax(self.joint_network(enc_out_t, dec_out), axis=-1)
+                logp = log_softmax(self.joint_network(
+                    enc_out_t, dec_out), axis=-1)
                 top_k = topk(logp[1:], beam_k, require_value=True)
                 kept_hyps.append(
                     TransducerHypothesis(
@@ -266,13 +269,13 @@ class BeamSearchTransducer:
     def time_sync_decoding(self, enc_out: np.ndarray) -> List[TransducerHypothesis]:
         """Time synchronous beam search implementation.
         Based on https://ieeexplore.ieee.org/document/9053040
-        
+
         Args:
             enc_out: Encoder output sequence. (T, D)
-            
+
         Returns:
             nbest_hyps: N-best hypothesis.
-            
+
         """
         beam = min(self.beam_size, self.vocab_size)
         beam_state = self.decoder.init_state(beam)
@@ -288,13 +291,13 @@ class BeamSearchTransducer:
 
         if self.use_lm:
             B[0].lm_state = self.lm.zero_state()
-        
+
         for enc_out_t in enc_out:
             A = []
             C = B
-            
+
             enc_out_t = enc_out_t[None, :]
-            
+
             for v in range(self.max_sym_exp):
                 D = []
                 beam_dec_out, beam_state, beam_lm_tokens = self.decoder.batch_score(
@@ -303,7 +306,8 @@ class BeamSearchTransducer:
                     cache,
                     self.use_lm,
                 )
-                beam_logp = log_softmax(self.joint_network(enc_out_t, beam_dec_out), axis=-1)
+                beam_logp = log_softmax(self.joint_network(
+                    enc_out_t, beam_dec_out), axis=-1)
                 beam_topk = topk(beam_logp[:, 1:], beam, require_value=True)
 
                 seq_A = [h.yseq for h in A]
@@ -320,11 +324,12 @@ class BeamSearchTransducer:
                         )
                     else:
                         dict_pos = seq_A.index(hyp.yseq)
-                        
+
                         A[dict_pos].score = np.logaddexp(
-                            A[dict_pos].score, (hyp.score + float(beam_logp[i, 0]))
+                            A[dict_pos].score, (hyp.score +
+                                                float(beam_logp[i, 0]))
                         )
-                            
+
                 if v < (self.max_sym_exp - 1):
                     if self.use_lm:
                         beam_lm_scores, beam_lm_states = self.lm.batch_score(
@@ -357,13 +362,13 @@ class BeamSearchTransducer:
     def align_length_sync_decoding(self, enc_out: np.ndarray) -> List[TransducerHypothesis]:
         """Alignment-length synchronous beam search implementation.
         Based on https://ieeexplore.ieee.org/document/9053040
-        
+
         Args:
             h: Encoder output sequences. (T, D)
-            
+
         Returns:
             nbest_hyps: N-best hypothesis.
-            
+
         """
         beam = min(self.beam_size, self.vocab_size)
         t_max = int(enc_out.shape[0])
@@ -409,7 +414,8 @@ class BeamSearchTransducer:
 
                 beam_enc_out = np.stack([x[1] for x in B_enc_out])
 
-                beam_logp = log_softmax(self.joint_network(beam_enc_out, beam_dec_out), axis=-1)
+                beam_logp = log_softmax(self.joint_network(
+                    beam_enc_out, beam_dec_out), axis=-1)
                 beam_topk = topk(beam_logp[:, 1:], beam, require_value=True)
 
                 if self.use_lm:
@@ -460,13 +466,13 @@ class BeamSearchTransducer:
         Based on/Modified from https://arxiv.org/pdf/2002.03577.pdf.
         Please reference ESPnet (b-flo, PR #2444) for any usage outside ESPnet
         until further modifications.
-        
+
         Args:
             enc_out: Encoder output sequence. (T, D_enc)
-            
+
         Returns:
             nbest_hyps: N-best hypothesis.
-            
+
         """
         beam = min(self.beam_size, self.vocab_size)
         beam_k = min(beam, (self.vocab_size - 1))
@@ -527,7 +533,8 @@ class BeamSearchTransducer:
             for n in range(self.nstep):
                 beam_dec_out = np.stack([hyp.dec_out[-1] for hyp in hyps])
 
-                beam_logp = log_softmax(self.joint_network(beam_enc_out, beam_dec_out), axis=-1)
+                beam_logp = log_softmax(self.joint_network(
+                    beam_enc_out, beam_dec_out), axis=-1)
                 beam_topk = topk(beam_logp[:, 1:], beam_k, require_value=True)
 
                 for i, hyp in enumerate(hyps):
@@ -591,7 +598,8 @@ class BeamSearchTransducer:
 
                     hyps = V[:]
                 else:
-                    beam_logp = log_softmax(self.joint_network(beam_enc_out, beam_dec_out), axis=-1)
+                    beam_logp = log_softmax(self.joint_network(
+                        beam_enc_out, beam_dec_out), axis=-1)
 
                     for i, v in enumerate(V):
                         if self.nstep != 1:
@@ -614,13 +622,13 @@ class BeamSearchTransducer:
     ) -> List[ExtendedHypothesis]:
         """It's the modified Adaptive Expansion Search (mAES) implementation.
         Based on/modified from https://ieeexplore.ieee.org/document/9250505 and NSC.
-        
+
         Args:
             enc_out: Encoder output sequence. (T, D_enc)
-            
+
         Returns:
             nbest_hyps: N-best hypothesis.
-            
+
         """
         beam = min(self.beam_size, self.vocab_size)
         beam_state = self.decoder.init_state(beam)
@@ -678,7 +686,8 @@ class BeamSearchTransducer:
             for n in range(self.nstep):
                 beam_dec_out = np.array([h.dec_out[-1] for h in hyps])
 
-                beam_logp = log_softmax(self.joint_network(beam_enc_out, beam_dec_out), axis=-1)
+                beam_logp = log_softmax(self.joint_network(
+                    beam_enc_out, beam_dec_out), axis=-1)
                 k_expansions = select_k_expansions(
                     hyps, beam_logp, beam, self.expansion_gamma, self.expansion_beta
                 )
@@ -745,8 +754,9 @@ class BeamSearchTransducer:
 
                         hyps = list_exp[:]
                     else:
-                        beam_logp = log_softmax(self.joint_network(beam_enc_out, beam_dec_out), axis=-1)
-                        
+                        beam_logp = log_softmax(self.joint_network(
+                            beam_enc_out, beam_dec_out), axis=-1)
+
                         for i, hyp in enumerate(list_exp):
                             hyp.score += float(beam_logp[i, 0])
 

@@ -1,9 +1,9 @@
 encoder: contextual_block_transformer
 encoder_conf:
   output_size: 256
-  attention_heads: 8
-  linear_units: 2048
-  num_blocks: 18
+  attention_heads: 4
+  linear_units: 256
+  num_blocks: 3
   dropout_rate: 0.1
   positional_dropout_rate: 0.1
   attention_dropout_rate: 0.1
@@ -18,4 +18,4 @@ frontend: default
 frontend_conf:
   fs: 16k
   hop_length: 256
-  n_fft: 512
+  n_fft: 256

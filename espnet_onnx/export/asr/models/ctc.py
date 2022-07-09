@@ -4,13 +4,14 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from .abs_model import AbsModel
+from espnet_onnx.utils.abs_model import AbsExportModel
 
 
-class CTC(nn.Module, AbsModel):
+class CTC(nn.Module, AbsExportModel):
     def __init__(self, model):
         super().__init__()
         self.model = model
+        self.model_name = 'ctc'
 
     def forward(self, x):
         return torch.log_softmax(self.model(x), dim=2)
@@ -33,5 +34,5 @@ class CTC(nn.Module, AbsModel):
 
     def get_model_config(self, path):
         return {
-            "model_path": os.path.join(path, "ctc.onnx")
+            "model_path": os.path.join(path, f'{self.model_name}.onnx')
         }

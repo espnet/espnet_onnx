@@ -16,7 +16,7 @@ class TransformerLM(BatchScorerInterface):
         self,
         config,
         providers: List[str],
-        use_quantized=False
+        use_quantized: bool =False,
     ):
         if use_quantized:
             self.lm_session = onnxruntime.InferenceSession(
@@ -28,6 +28,7 @@ class TransformerLM(BatchScorerInterface):
                 config.model_path,
                 providers=providers
             )
+            
         self.enc_output_names = ['y'] \
             + [d.name for d in self.lm_session.get_outputs() if 'cache' in d.name]
         self.enc_in_cache_names = [
@@ -35,12 +36,6 @@ class TransformerLM(BatchScorerInterface):
 
         self.nlayers = config.nlayers
         self.odim = config.odim
-
-    def _target_mask(self, ys_in_pad):
-        # ys_in_pad : (B, D)
-        ys_mask = ys_in_pad != 0
-        m = subsequent_mask(ys_mask.shape[-1])[None, :]
-        return ys_mask[:, None, :] * m
 
     def score(
         self, y: np.ndarray, state: Any, x: np.ndarray
@@ -60,7 +55,7 @@ class TransformerLM(BatchScorerInterface):
         """
         y = y[None, :]
 
-        input_dic = {'tgt': y, 'tgt_mask': self._target_mask(y)}
+        input_dic = {'tgt': y}
         input_dic.update({
             k: v for k, v in zip(self.enc_in_cache_names, state)
         })
@@ -104,7 +99,7 @@ class TransformerLM(BatchScorerInterface):
                 for i in range(self.nlayers)
             ]
 
-        input_dic = {'tgt': ys, 'tgt_mask': self._target_mask(ys)}
+        input_dic = {'tgt': ys}
         input_dic.update({
             k: v for k, v in zip(self.enc_in_cache_names, batch_state)
         })

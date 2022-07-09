@@ -1,0 +1,4 @@
+vocoder_type: style_melgan_generator
+vocoder_params:
+  bias: true
+  channels: 64

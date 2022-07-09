@@ -22,6 +22,7 @@ from espnet_onnx.export.asr.get_config import (
     get_norm_config
 )
 from ..abs_model import AbsModel
+from espnet_onnx.utils.abs_model import AbsExportModel
 
 
 class OnnxRNNP(nn.Module):
@@ -133,16 +134,19 @@ class RNNEncoderLayer(nn.Module):
         return self.layer(*args, **kwargs)
 
 
-class RNNEncoder(nn.Module, AbsModel):
-    def __init__(self, model):
+class RNNEncoder(nn.Module, AbsExportModel):
+    def __init__(self, model, feats_dim=80, **kwargs):
         super().__init__()
         self.model = model
+        self.model_name = 'rnn_encoder'
         self.enc = nn.ModuleList()
+        self.feats_dim = feats_dim
         for e in model.enc:
             self.enc.append(RNNEncoderLayer(e))
 
-    def forward(self, feats, ilens):
+    def forward(self, feats):
         current_states = []
+        ilens = torch.ones(feats[:, :, 0].shape).sum(dim=-1).type(torch.long)
         for module in self.enc:
             feats, ilens, states = module(feats, ilens)
             current_states.append(states)
@@ -152,12 +156,11 @@ class RNNEncoder(nn.Module, AbsModel):
         return self.model._output_size
 
     def get_dummy_inputs(self):
-        feats = torch.randn(1, 100, 80)
-        feats_length = torch.LongTensor([feats.size(1)])
-        return (feats, feats_length)
+        feats = torch.randn(1, 100, self.feats_dim)
+        return (feats)
 
     def get_input_names(self):
-        return ['feats', 'feats_length']
+        return ['feats']
 
     def get_output_names(self):
         return ['encoder_out', 'encoder_out_lens']
@@ -173,7 +176,7 @@ class RNNEncoder(nn.Module, AbsModel):
         ret = {}
         ret.update(
             enc_type='RNNEncoder',
-            model_path=os.path.join(path, 'encoder.onnx'),
+            model_path=os.path.join(path, f'{self.model_name}.onnx'),
             is_vggrnn=isinstance(self.model, espnetVGGRNNEncoder),
             frontend=get_frontend_config(asr_model.frontend),
             do_normalize=asr_model.normalize is not None,
