@@ -10,7 +10,6 @@ from espnet.nets.pytorch_backend.transformer.subsampling import (
     Conv2dSubsampling6,
     Conv2dSubsampling8
 )
-from espnet2.asr.frontend.default import DefaultFrontend
 from espnet2.layers.global_mvn import GlobalMVN
 from espnet2.layers.utterance_mvn import UtteranceMVN
 

@@ -131,16 +131,16 @@ class ASRModelExport:
         
         if optimize:
             if enc_model.is_optimizable():
-                if self._optimize_model(enc_model, export_dir, 'encoder'):
-                    model_config['encoder']['optimized'] = True
+                self._optimize_model(enc_model, export_dir, 'encoder')
             
             if dec_model.is_optimizable():
-                if self._optimize_model(dec_model, export_dir, 'decoder'):
-                    model_config['decoder']['optimized'] = True
+                self._optimize_model(dec_model, export_dir, 'decoder')
             
             if lm_model is not None and lm_model.is_optimizable():
-                if self._optimize_model(lm_model, export_dir, 'lm'):
-                    model_config['lm']['optimized'] = True
+                self._optimize_model(lm_model, export_dir, 'lm')
+            
+            if frontend_model is not None and frontend_model.is_optimizable():
+                self._optimize_model(frontend_model, export_dir, 'frontend')
             
         if quantize:
             quantize_dir = base_dir / 'quantize'
@@ -325,7 +325,7 @@ class ASRModelExport:
                 model_type = 'espnet'
             else:
                 model_type = 'bert'
-        elif model_type in ('decoder', 'lm'):
+        elif model_type in ('decoder', 'lm', 'frontend'):
             if self.export_config['use_ort_for_espnet']:
                 model_type = 'espnet'
             else:

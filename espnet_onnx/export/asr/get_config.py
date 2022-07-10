@@ -5,7 +5,10 @@ from espnet2.text.phoneme_tokenizer import PhonemeTokenizer
 from espnet2.text.sentencepiece_tokenizer import SentencepiecesTokenizer
 from espnet2.text.word_tokenizer import WordTokenizer
 from espnet2.asr.frontend.s3prl import S3prlFrontend
+from espnet2.asr.frontend.default import DefaultFrontend
 
+from espnet2.layers.global_mvn import GlobalMVN
+from espnet2.layers.utterance_mvn import UtteranceMVN
 
 def get_ngram_config(model):
     return {
@@ -91,21 +94,19 @@ def get_tokenizer_config(model, path):
         }
 
 
-def get_frontend_config(asr_frontend_model, frontend, **kwargs):
+def get_frontend_config(asr_frontend_model, frontend=None, **kwargs):
     # currently only default config is supported.
     if isinstance(asr_frontend_model, S3prlFrontend):
         frontend_config = frontend.get_model_config(**kwargs)
+    elif isinstance(asr_frontend_model, DefaultFrontend):
+        frontend_config = get_default_frontend(asr_frontend_model)
     else:
         raise ValueError('Currently only s3prl is supported.')
     
     return frontend_config    
 
-
 def get_default_frontend(frontend, **kwargs):
     return {
-        "apply_stft": frontend.apply_stft,
-        "apply_enhance": False, # onnx conversion for SpeechEnhancement will be supported in the future.
-        "speech_enhance": get_enh_config(frontend.frontend),
         "stft": get_stft_config(frontend.stft, **kwargs),
         "logmel": get_logmel_config(frontend.logmel, **kwargs),
     }

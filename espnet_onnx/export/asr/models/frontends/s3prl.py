@@ -19,7 +19,7 @@ from espnet.nets.pytorch_backend.transformer.attention import MultiHeadedAttenti
 
 from espnet_onnx.utils.torch_function import MakePadMask
 from ..language_models.embed import Embedding
-from ..conformer_layer import OnnxConformerLayer
+from ..encoder_layer import OnnxEncoderLayer
 from ..multihead_att import OnnxMultiHeadedAttention
 from espnet_onnx.utils.abs_model import AbsExportModel
 
@@ -49,29 +49,57 @@ class Featurizer(nn.Module):
         return feats[:feat_len]
 
 
-class UpstreamExpert(nn.Module):
-    def __init__(self, model):
+class HubertModel(nn.Module):
+    def __init__(self, model, max_seq_len):
         super().__init__()
-        self.model = model
+        self.model = model.model
         self.task = model.task
-        self.extract_features = model.model.extract_features
-        
-    def get_downsample_rates(self, key: str) -> int:
-        return 320
-
+        self.encoder = model.model.encoder
+        self.layers = nn.ModuleList([])
+        self.make_pad_mask = MakePadMask(max_seq_len, flip=False)
+        self.downsample_rate = model.get_downsample_rates('')
+        for l in self.encoder.layers:
+            _l = OnnxEncoderLayer(l, model_type='hubert')
+            _l.self_attn = OnnxMultiHeadedAttention(_l.self_attn, model_type='hubert')
+            self.layers.append(_l)
+    
+    def prepare_mask(self, mask):
+        if len(mask.shape) == 2:
+            mask = 1 - mask[:, None, None, :]
+        elif len(mask.shape) == 3:
+            mask = 1 - mask[:, None, :]
+        return mask * -10000.0
+    
     def forward(self, wav, wav_length):
         if self.task.cfg.normalize:
             wav = F.layer_norm(wav, wav.shape)
 
-        wav_padding_mask = ~torch.lt(
-            torch.arange(wav_length[0]).unsqueeze(0),
-            wav_length.unsqueeze(1),
-        )
-        features, feat_padding_mask = self.extract_features(
-            wav,
-            padding_mask=wav_padding_mask,
-            mask=None,
-        )
+        # compute extract feature
+        features = self.model.forward_features(wav)
+        features = features.transpose(1, 2)
+        features = self.model.layer_norm(features)
+        if self.model.post_extract_proj is not None:
+            features = self.model.post_extract_proj(features)
+
+        # compute OnnxTransformerEncoderLayer
+        # residual pos_conv
+        res = features
+        features = self.encoder.pos_conv(features.transpose(1, 2))
+        features = features.transpose(1, 2)
+        features = features + res
+        
+        if not self.encoder.layer_norm_first:
+            features = self.encoder.layer_norm(features)
+        
+        mask = self.make_pad_mask(wav_length // self.downsample_rate - 1)
+        mask = self.prepare_mask(mask)
+        
+        for l in self.layers:
+            features, mask = l(features, mask)
+        
+        if self.encoder.layer_norm_first:
+            features = self.encoder.layer_norm(features)
+        
         return features
 
 
@@ -79,13 +107,16 @@ class S3PRLModel(nn.Module, AbsExportModel):
     def __init__(
         self,
         model,
+        max_seq_len=512,
         **kwargs
     ):
         super().__init__()
-        self.upstream = UpstreamExpert(model.upstream)
+        self.upstream = HubertModel(model.upstream, max_seq_len)
         # self.upstream = model.upstream
         self.featurizer = Featurizer(model.featurizer)
         self.model_name = 'hubert_frontend'
+        self.num_heads = self.upstream.layers[0].self_attn.h
+        self.hidden_size = self.upstream.layers[0].self_attn.all_head_size
 
     def forward(self, input, input_length):
         feats = self.upstream(input, input_length)
@@ -94,11 +125,11 @@ class S3PRLModel(nn.Module, AbsExportModel):
         return feats, input_length
 
     def is_optimizable(self):
-        return False
+        return True
 
     def get_dummy_inputs(self):
-        wav = torch.randn(1, 1000)
-        wav_length = torch.LongTensor([1000])
+        wav = torch.randn(1, 16000)
+        wav_length = torch.LongTensor([16000])
         return (wav, wav_length)
 
     def get_input_names(self):
