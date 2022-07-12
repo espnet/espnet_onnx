@@ -8,9 +8,8 @@ from typeguard import check_argument_types
 import numpy as np
 import onnxruntime
 
-from espnet_onnx.asr.frontend.stft import Stft
-from espnet_onnx.asr.frontend.logmel import LogMel
-from espnet_onnx.asr.frontend.default.speech_enhance import SpeechEnhance
+from espnet_onnx.asr.frontend.default.stft import Stft
+from espnet_onnx.asr.frontend.default.logmel import LogMel
 from espnet_onnx.utils.config import Config
 
 
@@ -29,24 +28,17 @@ class DefaultFrontend:
         use_quantized: bool = False,
     ):
         self.config = config
-        if self.config.apply_enhance:
-            self.speech_enhance = SpeechEnhance(config.speech_enhance, providers, use_quantized)
         self.stft = Stft(config.stft)
         self.logmel = LogMel(config.logmel)
 
     def __call__(self, inputs: np.ndarray, input_length: np.ndarray):
         assert check_argument_types()
         # 1. Domain-conversion: e.g. Stft: time -> time-freq
-        if self.config.apply_stft:
-            input_stft, feats_lens = self.stft(inputs, input_length)
-        else:
-            input_stft = inputs
-            feats_lens = input_length
+        input_stft, feats_lens = self.stft(inputs, input_length)
         
         # 2. [Option] Speech enhancement
         # Currently this is not supported.
         # if self.config.apply_enhance:
-        #     input_stft, _, mask = self.speech_enhance(input_stft, feats_lens)
 
         # 3. STFT -> Power spectrum
         # h: ComplexTensor(B, T, F) -> torch.Tensor(B, T, F)
