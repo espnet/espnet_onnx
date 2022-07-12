@@ -136,8 +136,8 @@ class ASRModelExport:
             if lm_model is not None and lm_model.is_optimizable():
                 self._optimize_model(lm_model, export_dir, 'lm')
             
-            if frontend_model is not None and frontend_model.is_optimizable():
-                self._optimize_model(frontend_model, export_dir, 'frontend')
+            if enc_model.frontend_model is not None and enc_model.frontend_model.is_optimizable():
+                self._optimize_model(enc_model.frontend_model, export_dir, 'frontend')
             
         if quantize:
             quantize_dir = base_dir / 'quantize'

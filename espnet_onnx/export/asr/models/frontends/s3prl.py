@@ -129,8 +129,8 @@ class S3PRLModel(nn.Module, AbsExportModel):
         self.num_heads = self.upstream.layers[0].self_attn.h
         self.hidden_size = self.upstream.layers[0].self_attn.all_head_size
 
-    def forward(self, input, input_length):
-        feats, feat_length = self.upstream(input, input_length)
+    def forward(self, input):
+        feats, feat_length = self.upstream(input)
         # feats = self.upstream(input)
         feats = self.featurizer(feats)
         return feats, feat_length
