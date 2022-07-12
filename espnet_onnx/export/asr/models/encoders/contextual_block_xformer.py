@@ -33,6 +33,7 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
     def __init__(
         self,
         model,
+        preencoder=None,
         feats_dim=80,
         **kwargs
     ):
@@ -68,6 +69,8 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
         
         # for export configuration
         self.feats_dim = feats_dim
+        if preencoder is not None:
+            self.preencoder = preencoder
 
     def output_size(self) -> int:
         return self._output_size
@@ -96,6 +99,10 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
             mask: zeros(1, 1, self.block_size + 2, self.block_size + 2)
             pos_enc_xs: (B, L, D) L = block_size
         """
+        # compute preencoder
+        if self.preencoder is not None:
+            xs_pad, _ = self.preencoder(feats, torch.Tensor([self.hop_size*self.subsample+1]))
+            
         xs_pad = torch.cat([buffer_before_downsampling, xs_pad], dim=1)
         buffer_before_downsampling = xs_pad[:, -self.subsample:] # (B, L, overlap)
         xs_pad = self.compute_embed(xs_pad)
@@ -179,7 +186,6 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
             model_path=os.path.join(path, f'{self.model_name}.onnx'),
             frontend=self.get_frontend_config(asr_model.frontend),
             do_normalize=asr_model.normalize is not None,
-            do_preencoder=asr_model.preencoder is not None,
             do_postencoder=asr_model.postencoder is not None
         )
         if ret['do_normalize']:
@@ -192,8 +198,6 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
             subsample=self.subsample,
         )
         # Currently preencoder, postencoder is not supported.
-        # if ret['do_preencoder']:
-        #     ret.update(preencoder=get_preenc_config(self.model.preencoder))
         # if ret['do_postencoder']:
         #     ret.update(postencoder=get_postenc_config(self.model.postencoder))
         return ret

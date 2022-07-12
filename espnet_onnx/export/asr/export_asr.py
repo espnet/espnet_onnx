@@ -81,19 +81,16 @@ class ASRModelExport:
         model_config = self._create_config(model, export_dir)
 
         # export encoder
-        enc_model = get_encoder(model.asr_model.encoder, self.export_config)
+        enc_model = get_encoder(
+            model.asr_model.encoder,
+            model.asr_model.frontend,
+            model.asr_model.preencoder,
+            self.export_config
+        )
         enc_out_size = enc_model.get_output_size()
         self._export_encoder(enc_model, export_dir, verbose)
         model_config.update(encoder=enc_model.get_model_config(
             model.asr_model, export_dir))
-
-        # export frontend-related models
-        frontend_model = get_frontend_models(model.asr_model.frontend, self.export_config)
-        if frontend_model is not None:
-            self._export_frontend(frontend_model, export_dir, verbose)
-            model_config['encoder']['frontend'].update(
-                get_frontend_config(model.asr_model.frontend, frontend_model, path=export_dir)
-            )
 
         # # export decoder
         dec_model = get_decoder(model.asr_model.decoder, self.export_config)

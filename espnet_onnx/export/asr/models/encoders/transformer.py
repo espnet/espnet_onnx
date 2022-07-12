@@ -31,6 +31,8 @@ class TransformerEncoder(nn.Module, AbsExportModel):
     def __init__(
         self,
         model,
+        frontend,
+        preencoder=None,
         max_seq_len=512,
         feats_dim=80, 
         **kwargs
@@ -38,6 +40,7 @@ class TransformerEncoder(nn.Module, AbsExportModel):
         super().__init__()
         self.embed = Embedding(model.embed, max_seq_len)
         self.model = model
+        self.frontend = frontend
         self.make_pad_mask = MakePadMask(max_seq_len, flip=False)
         self.feats_dim = feats_dim
         # replace multihead attention module into customized module.
@@ -50,6 +53,18 @@ class TransformerEncoder(nn.Module, AbsExportModel):
         self.model_name = 'xformer_encoder'
         self.num_heads = model.encoders[0].self_attn.h
         self.hidden_size = model.encoders[0].self_attn.linear_out.out_features
+        self.get_frontend()
+        if preencoder is not None:
+            self.preencoder = preencoder
+        
+    
+    def get_frontend(self):
+        from espnet_onnx.export.asr.models import get_frontend_models
+        self.frontend_model = get_frontend_models(self.frontend, kwargs)
+        if self.frontend_model is not None:
+            self.submodel = []
+            self.submodel.append(self.frontend_model)
+            self.feats_dim = self.frontend_model.output_dim
     
     def prepare_mask(self, mask):
         if len(mask.shape) == 2:
@@ -61,6 +76,10 @@ class TransformerEncoder(nn.Module, AbsExportModel):
 
     def forward(self, feats):
         feats_length = torch.ones(feats[:, :, 0].shape).sum(dim=-1).type(torch.long)
+        # compute preencoder
+        if self.preencoder is not None:
+            feats, feats_length = self.preencoder(feats, feats_length)
+            
         mask = self.make_pad_mask(feats_length)
         if (
             isinstance(self.model.embed, Conv2dSubsampling)
@@ -115,7 +134,7 @@ class TransformerEncoder(nn.Module, AbsExportModel):
             enc_type='XformerEncoder',
             model_path=os.path.join(path, f'{self.model_name}.onnx'),
             is_vggrnn=False,
-            frontend=get_frontend_config(asr_model.frontend),
+            frontend=get_frontend_config(asr_model.frontend, self.frontend_model, path=path),
             do_normalize=asr_model.normalize is not None,
             do_preencoder=asr_model.preencoder is not None,
             do_postencoder=asr_model.postencoder is not None

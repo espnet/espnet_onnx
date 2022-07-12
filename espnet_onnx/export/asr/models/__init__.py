@@ -35,15 +35,15 @@ from espnet2.asr.frontend.s3prl import S3prlFrontend as espnetS3PRLModel
 from .frontends.s3prl import S3PRLModel
 
 
-def get_encoder(model, export_config):
+def get_encoder(model, frontend, preencoder, export_config):
     if isinstance(model, espnetRNNEncoder) or isinstance(model, espnetVGGRNNEncoder):
-        return RNNEncoder(model, **export_config)
+        return RNNEncoder(model, preencoder, **export_config)
     elif isinstance(model, espnetContextualTransformer) or isinstance(model, espnetContextualConformer):
-        return ContextualBlockXformerEncoder(model, **export_config)
+        return ContextualBlockXformerEncoder(model, preencoder, **export_config)
     elif isinstance(model, espnetTransformerEncoder):
-        return TransformerEncoder(model, **export_config)
+        return TransformerEncoder(model, frontend, preencoder, **export_config)
     elif isinstance(model, espnetConformerEncoder):
-        return ConformerEncoder(model, **export_config)
+        return ConformerEncoder(model, frontend, preencoder, **export_config)
 
 
 def get_decoder(model, export_config):

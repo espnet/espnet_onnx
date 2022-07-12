@@ -134,7 +134,7 @@ class RNNEncoderLayer(nn.Module):
 
 
 class RNNEncoder(nn.Module, AbsExportModel):
-    def __init__(self, model, feats_dim=80, **kwargs):
+    def __init__(self, model, feats_dim=80, preencoder=None,**kwargs):
         super().__init__()
         self.model = model
         self.model_name = 'rnn_encoder'
@@ -179,15 +179,12 @@ class RNNEncoder(nn.Module, AbsExportModel):
             is_vggrnn=isinstance(self.model, espnetVGGRNNEncoder),
             frontend=get_frontend_config(asr_model.frontend),
             do_normalize=asr_model.normalize is not None,
-            do_preencoder=asr_model.preencoder is not None,
             do_postencoder=asr_model.postencoder is not None
         )
         if ret['do_normalize']:
             ret.update(normalize=get_norm_config(
                 asr_model.normalize, path))
-        # Currently preencoder, postencoder is not supported.
-        # if ret['do_preencoder']:
-        #     ret.update(preencoder=get_preenc_config(self.model.preencoder))
+        # Currently, postencoder is not supported.
         # if ret['do_postencoder']:
         #     ret.update(postencoder=get_postenc_config(self.model.postencoder))
         return ret

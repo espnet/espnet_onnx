@@ -31,22 +31,22 @@ class Featurizer(nn.Module):
         self.normalize = model.normalize
         self.layer_num = model.layer_num
         self.weights = model.weights
+        self.output_dim = model.output_dim
         self.downsample_rate = model.downsample_rate
     
-    def forward(self, feats, wav):
+    def forward(self, feats):
         # wav: (B, T)
         if self.normalize:
             feats = F.layer_norm(
                 feats, (feats.shape[-1],))
 
-        # _, *origin_shape = feats.shape
-        # feats = feats.view(self.layer_num, -1)
-        # norm_weights = F.softmax(self.weights, dim=-1)
-        # weighted_feature = (norm_weights.unsqueeze(-1) * stacked_feature).sum(dim=0)
-        # weighted_feature = weighted_feature.view(*origin_shape)
+        _, *origin_shape = feats.shape
+        feats = feats.view(self.layer_num, -1)
+        norm_weights = F.softmax(self.weights, dim=-1)
+        weighted_feature = (norm_weights.unsqueeze(-1) * feats).sum(dim=0)
+        weighted_feature = weighted_feature.view(*origin_shape)
 
-        feat_len = round(len(wav[0]) / self.downsample_rate)
-        return feats[:feat_len]
+        return weighted_feature
 
 
 class HubertModel(nn.Module):
@@ -62,6 +62,7 @@ class HubertModel(nn.Module):
             _l = OnnxEncoderLayer(l, model_type='hubert')
             _l.self_attn = OnnxMultiHeadedAttention(_l.self_attn, model_type='hubert')
             self.layers.append(_l)
+        self.eps = 1e-5
     
     def prepare_mask(self, mask):
         if len(mask.shape) == 2:
@@ -69,10 +70,15 @@ class HubertModel(nn.Module):
         elif len(mask.shape) == 3:
             mask = 1 - mask[:, None, :]
         return mask * -10000.0
+
+    def layer_norm(self, wav):
+        m = torch.mean(wav, dim=-1)
+        v = torch.std(wav, dim=-1)
+        return (wav - m) / torch.sqrt(v + self.eps)
     
-    def forward(self, wav, wav_length):
+    def forward(self, wav):
         if self.task.cfg.normalize:
-            wav = F.layer_norm(wav, wav.shape)
+            wav = self.layer_norm(wav)
 
         # compute extract feature
         features = self.model.forward_features(wav)
@@ -91,16 +97,20 @@ class HubertModel(nn.Module):
         if not self.encoder.layer_norm_first:
             features = self.encoder.layer_norm(features)
         
-        mask = self.make_pad_mask(wav_length // self.downsample_rate - 1)
+        feats_length = torch.ones(features[:, :, 0].shape).sum(dim=-1).type(torch.long)
+        mask = self.make_pad_mask(feats_length)
         mask = self.prepare_mask(mask)
+        hidden_states = []
         
         for l in self.layers:
             features, mask = l(features, mask)
+            hidden_states.append(features)
         
         if self.encoder.layer_norm_first:
             features = self.encoder.layer_norm(features)
         
-        return features
+        hidden_states.append(features)
+        return torch.stack(hidden_states, dim=0), feats_length
 
 
 class S3PRLModel(nn.Module, AbsExportModel):
@@ -115,33 +125,36 @@ class S3PRLModel(nn.Module, AbsExportModel):
         # self.upstream = model.upstream
         self.featurizer = Featurizer(model.featurizer)
         self.model_name = 'hubert_frontend'
+        self.output_dim = self.featurizer.output_dim
         self.num_heads = self.upstream.layers[0].self_attn.h
         self.hidden_size = self.upstream.layers[0].self_attn.all_head_size
 
     def forward(self, input, input_length):
-        feats = self.upstream(input, input_length)
+        feats, feat_length = self.upstream(input, input_length)
         # feats = self.upstream(input)
-        feats = self.featurizer(feats, input)
-        return feats, input_length
+        feats = self.featurizer(feats)
+        return feats, feat_length
 
     def is_optimizable(self):
         return True
 
+    def require_onnx(self):
+        return True
+
     def get_dummy_inputs(self):
         wav = torch.randn(1, 16000)
-        wav_length = torch.LongTensor([16000])
-        return (wav, wav_length)
+        return (wav)
 
     def get_input_names(self):
-        return ['wav', 'wav_length']
+        return ['wav']
 
     def get_output_names(self):
         return ['feats', 'feats_lens']
 
     def get_dynamic_axes(self):
         return {
-            'feats': {
-                1: 'feats_length'
+            'wav': {
+                1: 'wav_length'
             }
         }
 
@@ -149,6 +162,7 @@ class S3PRLModel(nn.Module, AbsExportModel):
         ret = {}
         ret.update(
             frontend_type='hubert',
+            output_dim=self.output_dim,
             model_path=os.path.join(path, f'{self.model_name}.onnx'),
         )
         return ret

@@ -107,6 +107,7 @@ def get_frontend_config(asr_frontend_model, frontend=None, **kwargs):
 
 def get_default_frontend(frontend, **kwargs):
     return {
+        "frontend_type": "default",
         "stft": get_stft_config(frontend.stft, **kwargs),
         "logmel": get_logmel_config(frontend.logmel, **kwargs),
     }

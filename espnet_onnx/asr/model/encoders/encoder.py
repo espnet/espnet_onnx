@@ -65,9 +65,6 @@ class Encoder:
         if self.config.do_normalize:
             feats, feat_length = self.normalize(feats, feat_length)
 
-        # if self.config.do_preencoder:
-        #     feats, feats_lengths = self.preencoder(feats, feats_lengths)
-
         # 3. forward encoder
         encoder_out, encoder_out_lens = \
             self.forward_encoder(feats, feat_length)
