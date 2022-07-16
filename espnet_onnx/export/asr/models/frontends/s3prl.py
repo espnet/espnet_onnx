@@ -72,8 +72,8 @@ class HubertModel(nn.Module):
         return mask * -10000.0
 
     def layer_norm(self, wav):
-        m = torch.mean(wav, dim=-1)
-        v = torch.std(wav, dim=-1)
+        m = torch.mean(wav, dim=-1, keepdim=True)
+        v = torch.std(wav, dim=-1, keepdim=True)
         return (wav - m) / torch.sqrt(v + self.eps)
     
     def forward(self, wav):
