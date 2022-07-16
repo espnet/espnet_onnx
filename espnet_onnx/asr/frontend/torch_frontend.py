@@ -74,7 +74,7 @@ class TorchFrontend:
         )
         
         self.frontend.run_with_iobinding(self.binding)
-        return output_tensor
+        return output_tensor, output_lens_tensor
     
     @staticmethod
     def get_frontend(tag_name, providers: list = ['CPUExecutionProvider'], use_quantized: bool = False, torch_input: bool = False):
