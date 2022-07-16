@@ -38,32 +38,5 @@ class Frontend:
 
     def __call__(self, inputs: np.ndarray, input_length: np.ndarray):
         # assert check_argument_types()
-        if self.torch_input:
-            return self.forward_torch(inputs, input_length)
-        else:
-            input_feats, feats_lens = self.frontend(inputs, input_length)
-            return input_feats, feats_lens
-    
-    def forward_torch(self, inputs, input_length):
-        import torch
-        device = inputs.device
-        input_feats, feats_lens = self.frontend(inputs.cpu().detach().numpy(), input_length.cpu().detach().numpy())
-        return torch.from_numpy(input_feats).to(device), torch.from_numpy(feats_lens).to(device)
-    
-    @staticmethod
-    def get_frontend(tag_name, providers: list = ['CPUExecutionProvider'], use_quantized: bool = False, torch_input: bool = False):
-        from espnet_onnx.utils.config import (
-            get_config,
-            get_tag_config
-        )
-        import os
-        import glob
-
-        tag_config = get_tag_config()
-        if tag_name not in tag_config.keys():
-            raise RuntimeError(f'Model path for tag_name "{tag_name}" is not set on tag_config.yaml.'
-                                + 'You have to export to onnx format with `espnet_onnx.export.asr.export_asr.ModelExport`,'
-                                + 'or have to set exported model path in tag_config.yaml.')
-        config_file = glob.glob(os.path.join(tag_config[tag_name], 'config.*'))[0]
-        config = get_config(config_file)
-        return Frontend(config.encoder.frontend, providers, use_quantized, torch_input)
+        input_feats, feats_lens = self.frontend(inputs, input_length)
+        return input_feats, feats_lens

@@ -50,7 +50,7 @@ class Featurizer(nn.Module):
 
 
 class HubertModel(nn.Module):
-    def __init__(self, model, max_seq_len):
+    def __init__(self, model, max_seq_len=512, **kwargs):
         super().__init__()
         self.model = model.model
         self.task = model.task
@@ -154,6 +154,7 @@ class S3PRLModel(nn.Module, AbsExportModel):
     def get_dynamic_axes(self):
         return {
             'wav': {
+                0: 'wav_batch',
                 1: 'wav_length'
             }
         }

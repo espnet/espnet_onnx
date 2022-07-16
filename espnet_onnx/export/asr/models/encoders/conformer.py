@@ -43,6 +43,7 @@ class ConformerEncoder(nn.Module, AbsExportModel):
         self.frontend = frontend
         self.make_pad_mask = MakePadMask(max_seq_len, flip=False)
         self.feats_dim = feats_dim
+        kwargs['max_seq_len'] = max_seq_len
         
         # replace multihead attention module into customized module.
         for i, d in enumerate(self.model.encoders):
