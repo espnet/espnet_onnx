@@ -9,7 +9,10 @@ import torch
 import torch.nn as nn
 
 from espnet_onnx.export.asr.models.language_models.embed import get_pos_emb
-from espnet_onnx.utils.torch_function import MakePadMask
+from espnet_onnx.utils.torch_function import (
+    MakePadMask,
+    normalize
+)
 from espnet_onnx.utils.abs_model import AbsExportModel
 
 
@@ -102,7 +105,7 @@ class OnnxVITSGenerator(nn.Module):
             g = self.model.global_emb(sids.view(-1)).unsqueeze(-1)
         if self.model.spk_embed_dim is not None:
             # (B, global_channels, 1)
-            g_ = self.model.spemb_proj(F.normalize(
+            g_ = self.model.spemb_proj(normalize(
                 spembs.unsqueeze(0))).unsqueeze(-1)
             if g is None:
                 g = g_
@@ -274,7 +277,7 @@ class OnnxVITSModel(nn.Module, AbsExportModel):
             if self.model.generator.spks is not None else None
 
         spembs = torch.randn(self.model.generator.spk_embed_dim) \
-            if self.model.generator.spks is not None else None
+            if self.model.generator.spk_embed_dim is not None else None
 
         lids = torch.LongTensor([0]) \
             if self.model.generator.langs is not None else None
@@ -285,7 +288,18 @@ class OnnxVITSModel(nn.Module, AbsExportModel):
         return (text, feats, sids, spembs, lids, duration)
 
     def get_input_names(self):
-        return ['text', 'feats', 'sids', 'spembs', 'lids', 'duration']
+        ret = ['text']
+        if self.use_teacher_forcing:
+            ret.append('feats')        
+        if self.model.generator.spks is not None:
+            ret.append('sids')
+        if self.model.generator.spk_embed_dim is not None:
+            ret.append('spembs')
+        if self.model.generator.langs is not None:
+            ret.append('lids')
+        if not self.predict_duration:
+            ret.append('duration')
+        return ret
 
     def get_output_names(self):
         return ['wav', 'att_w', 'dur']

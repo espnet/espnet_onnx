@@ -1,3 +1,4 @@
+from typing import Optional
 
 import torch
 import torch.nn as nn
@@ -42,3 +43,12 @@ class MakePadMask(nn.Module):
             return mask.transpose(1, 2)
         else:
             return mask
+
+
+def normalize(input: torch.Tensor, p: float = 2.0, dim: int = 1, out: Optional[torch.Tensor] = None) -> torch.Tensor:
+    if out is None:
+        denom = input.norm(p, dim, keepdim=True).expand_as(input)
+        return input / denom
+    else:
+        denom = input.norm(p, dim, keepdim=True).expand_as(input)
+        return torch.div(input, denom, out=out)

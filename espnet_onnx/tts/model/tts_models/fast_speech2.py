@@ -44,6 +44,7 @@ class FastSpeech2:
         self.use_sids = 'sids' in self.input_names
         self.use_lids = 'lids' in self.input_names
         self.use_feats = 'feats' in self.input_names
+        self.use_spk_embed_dim = 'spembs' in self.input_names
 
     def __call__(
         self,
