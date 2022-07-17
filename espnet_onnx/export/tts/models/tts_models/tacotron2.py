@@ -18,7 +18,10 @@ from espnet.nets.pytorch_backend.rnn.attentions import (
 )
 
 from espnet_onnx.export.asr.models.language_models.embed import Embedding
-from espnet_onnx.utils.torch_function import MakePadMask
+from espnet_onnx.utils.torch_function import (
+    MakePadMask,
+    normalize
+)
 from espnet_onnx.utils.abs_model import AbsExportModel
 from espnet_onnx.export.layers.predecoder import PreDecoder
 from espnet_onnx.export.layers.attention import (
@@ -90,11 +93,11 @@ class OnnxTacotron2Encoder(nn.Module, AbsExportModel):
     ) -> torch.Tensor:
         if self.spk_embed_integration_type == "add":
             # apply projection and then add to hidden states
-            spembs = self.projection(F.normalize(spembs))
+            spembs = self.projection(normalize(spembs))
             hs = hs + spembs.unsqueeze(1)
         elif self.spk_embed_integration_type == "concat":
             # concat hidden states with spk embeds
-            spembs = F.normalize(spembs).unsqueeze(1).expand(-1, hs.size(1), -1)
+            spembs = normalize(spembs).unsqueeze(1).expand(-1, hs.size(1), -1)
             hs = torch.cat([hs, spembs], dim=-1)
         else:
             raise NotImplementedError("support only add or concat.")
@@ -150,7 +153,16 @@ class OnnxTacotron2Encoder(nn.Module, AbsExportModel):
         return (text, feats, sids, spembs, lids)
 
     def get_input_names(self):
-        return ['text', 'feats', 'sids', 'spembs', 'lids']
+        ret = ['text']
+        if self.use_gst:
+            ret.append('feats')        
+        if self.spks is not None:
+            ret.append('sids')
+        if self.spk_embed_dim is not None:
+            ret.append('spembs')
+        if self.langs is not None:
+            ret.append('lids')
+        return ret
 
     def get_output_names(self):
         return ['h']
@@ -158,8 +170,9 @@ class OnnxTacotron2Encoder(nn.Module, AbsExportModel):
     def get_dynamic_axes(self):
         ret = {
             'text': {0: 'text_length'},
-            'feats': {0: 'feats_length'},
         }
+        if self.use_gst:
+            ret.update({'feats': {0: 'feats_length'}})
         return ret
 
     def get_model_config(self, path):
