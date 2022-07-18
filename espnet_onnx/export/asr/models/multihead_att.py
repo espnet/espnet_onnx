@@ -72,9 +72,7 @@ class OnnxRelPosMultiHeadedAttention(OnnxMultiHeadedAttention):
         q, k, v = self.forward_qkv(query, key, value)
         q = q.transpose(1, 2)  # (batch, time1, head, d_k)
 
-        n_batch_pos = pos_emb.size(0)
-        p = self.linear_pos(pos_emb).view(n_batch_pos, -1, self.h, self.d_k)
-        p = p.transpose(1, 2)  # (batch, head, time1, d_k)
+        p = self.transpose_for_scores(self.linear_pos(pos_emb)) # (batch, head, time1, d_k)
 
         # (batch, head, time1, d_k)
         q_with_bias_u = (q + self.pos_bias_u).transpose(1, 2)
