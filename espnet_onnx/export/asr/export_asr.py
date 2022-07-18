@@ -86,70 +86,70 @@ class ASRModelExport:
             model.asr_model, export_dir))
 
         # # export decoder
-        dec_model = get_decoder(model.asr_model.decoder, self.export_config)
-        self._export_decoder(dec_model, enc_out_size, export_dir, verbose)
-        model_config.update(decoder=dec_model.get_model_config(export_dir))
+        # dec_model = get_decoder(model.asr_model.decoder, self.export_config)
+        # self._export_decoder(dec_model, enc_out_size, export_dir, verbose)
+        # model_config.update(decoder=dec_model.get_model_config(export_dir))
         
-        # export joint_network if transducer decoder is used.
-        if model.asr_model.use_transducer_decoder:
-            joint_network = JointNetwork(
-                model.asr_model.joint_network,
-                model_config['beam_search']['search_type'],
-            )
-            self._export_joint_network(joint_network, export_dir, verbose)
-            model_config.update(joint_network=joint_network.get_model_config(export_dir))
+        # # export joint_network if transducer decoder is used.
+        # if model.asr_model.use_transducer_decoder:
+        #     joint_network = JointNetwork(
+        #         model.asr_model.joint_network,
+        #         model_config['beam_search']['search_type'],
+        #     )
+        #     self._export_joint_network(joint_network, export_dir, verbose)
+        #     model_config.update(joint_network=joint_network.get_model_config(export_dir))
 
-        # export ctc
-        ctc_model = CTC(model.asr_model.ctc.ctc_lo)
-        self._export_ctc(ctc_model, enc_out_size, export_dir, verbose)
-        model_config.update(ctc=ctc_model.get_model_config(export_dir))
+        # # export ctc
+        # ctc_model = CTC(model.asr_model.ctc.ctc_lo)
+        # self._export_ctc(ctc_model, enc_out_size, export_dir, verbose)
+        # model_config.update(ctc=ctc_model.get_model_config(export_dir))
 
-        # export lm
-        lm_model = None
-        if not model.asr_model.use_transducer_decoder:
-            if 'lm' in model.beam_search.scorers.keys():
-                lm_model = get_lm(model.beam_search.scorers['lm'], self.export_config)
-        else:
-            if model.beam_search_transducer.use_lm:
-                lm_model = get_lm(model.beam_search_transducer.lm, self.export_config)
+        # # export lm
+        # lm_model = None
+        # if not model.asr_model.use_transducer_decoder:
+        #     if 'lm' in model.beam_search.scorers.keys():
+        #         lm_model = get_lm(model.beam_search.scorers['lm'], self.export_config)
+        # else:
+        #     if model.beam_search_transducer.use_lm:
+        #         lm_model = get_lm(model.beam_search_transducer.lm, self.export_config)
         
-        if lm_model is not None:
-            self._export_lm(lm_model, export_dir, verbose)
-            model_config.update(lm=lm_model.get_model_config(export_dir))
-        else:
-            model_config.update(lm=dict(use_lm=False))
+        # if lm_model is not None:
+        #     self._export_lm(lm_model, export_dir, verbose)
+        #     model_config.update(lm=lm_model.get_model_config(export_dir))
+        # else:
+        #     model_config.update(lm=dict(use_lm=False))
         
         if optimize:
             if enc_model.is_optimizable():
                 if self._optimize_model(enc_model, export_dir, 'encoder'):
                     model_config['encoder']['optimized'] = True
             
-            if dec_model.is_optimizable():
-                if self._optimize_model(dec_model, export_dir, 'decoder'):
-                    model_config['decoder']['optimized'] = True
+            # if dec_model.is_optimizable():
+            #     if self._optimize_model(dec_model, export_dir, 'decoder'):
+            #         model_config['decoder']['optimized'] = True
             
-            if lm_model is not None and lm_model.is_optimizable():
-                if self._optimize_model(lm_model, export_dir, 'lm'):
-                    model_config['lm']['optimized'] = True
+            # if lm_model is not None and lm_model.is_optimizable():
+            #     if self._optimize_model(lm_model, export_dir, 'lm'):
+            #         model_config['lm']['optimized'] = True
             
-        if quantize:
-            quantize_dir = base_dir / 'quantize'
-            quantize_dir.mkdir(exist_ok=True)
-            qt_config = self._quantize_model(export_dir, quantize_dir, optimize, verbose)
+        # if quantize:
+        #     quantize_dir = base_dir / 'quantize'
+        #     quantize_dir.mkdir(exist_ok=True)
+        #     qt_config = self._quantize_model(export_dir, quantize_dir, optimize, verbose)
                 
-            for m in qt_config.keys():
-                if 'predecoder' in m:
-                    model_idx = int(m.split('_')[1])
-                    model_config['decoder']['predecoder'][model_idx].update(
-                        quantized_model_path=qt_config[m])
-                elif 'encoder' in m:
-                    model_config['encoder'].update(quantized_model_path=qt_config[m])
-                elif 'decoder' in m:
-                    model_config['decoder'].update(quantized_model_path=qt_config[m])
-                elif 'lm' in m:
-                    model_config['lm'].update(quantized_model_path=qt_config[m])
-                else:
-                    model_config[m].update(quantized_model_path=qt_config[m])
+        #     for m in qt_config.keys():
+        #         if 'predecoder' in m:
+        #             model_idx = int(m.split('_')[1])
+        #             model_config['decoder']['predecoder'][model_idx].update(
+        #                 quantized_model_path=qt_config[m])
+        #         elif 'encoder' in m:
+        #             model_config['encoder'].update(quantized_model_path=qt_config[m])
+        #         elif 'decoder' in m:
+        #             model_config['decoder'].update(quantized_model_path=qt_config[m])
+        #         elif 'lm' in m:
+        #             model_config['lm'].update(quantized_model_path=qt_config[m])
+        #         else:
+        #             model_config[m].update(quantized_model_path=qt_config[m])
 
         config_name = base_dir / 'config.yaml'
         save_config(model_config, config_name)
