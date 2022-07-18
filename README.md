@@ -157,6 +157,29 @@ print(nbest[0][0])
 
 4. If yo uinstalled the custom version of onnxruntime, you can run optimized model for inference. You don't have to change any code from the above. If the model was optimized, then espnet_onnx would automatically load the optimized version. 
 
+5. You can use only hubert model for your frontend.
+
+```python
+from espnet_onnx.export import ASRModelExport
+
+# export your model
+tag_name = 'ESPnet pretrained model with hubert'
+m = ASRModelExport()
+m.export_from_pretrained(tag_name, optimize=True)
+
+# load only the frontend model
+from espnet_onnx.asr.frontend import Frontend
+frontend = Frontend.get_frontend(tag_name)
+
+# use the model in your application
+import librosa
+y, sr = librosa.load('wav file')
+# y: (B, T)
+# y_len: (B,)
+feats = frontend(y[None,:], np.array([len(y)]))
+
+```
+
 #### Text2Speech inference
 
 1. You can export TTS models as ASR models.

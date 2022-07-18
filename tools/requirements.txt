@@ -6,4 +6,5 @@ typeguard
 pyyaml
 g2p_en
 jamo
+nara_wpe
 espnet_tts_frontend

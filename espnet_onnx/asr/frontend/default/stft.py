@@ -68,4 +68,7 @@ class Stft:
                 olens, output, dim=1), 0.0)
         else:
             olens = None
+        
+        # create complex array
+        output = output[..., 0] + output[..., 1] * 1j
         return output, olens

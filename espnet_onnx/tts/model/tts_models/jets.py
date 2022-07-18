@@ -9,8 +9,8 @@ import onnxruntime
 import numpy as np
 
 from espnet_onnx.asr.frontend.frontend import Frontend
-from espnet_onnx.asr.frontend.global_mvn import GlobalMVN
-from espnet_onnx.asr.frontend.utterance_mvn import UtteranceMVN
+from espnet_onnx.asr.frontend.normalize.global_mvn import GlobalMVN
+from espnet_onnx.asr.frontend.normalize.utterance_mvn import UtteranceMVN
 from espnet_onnx.asr.scorer.interface import BatchScorerInterface
 from espnet_onnx.utils.function import (
     subsequent_mask,

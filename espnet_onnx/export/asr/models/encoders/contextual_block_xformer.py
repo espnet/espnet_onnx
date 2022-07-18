@@ -20,6 +20,7 @@ from espnet.nets.pytorch_backend.transformer.attention import MultiHeadedAttenti
 from espnet2.asr.frontend.default import DefaultFrontend
 from espnet2.layers.global_mvn import GlobalMVN
 from espnet2.layers.utterance_mvn import UtteranceMVN
+from espnet_onnx.export.asr.get_config import get_frontend_config
 from ..encoder_layer import OnnxEncoderLayer
 from ..multihead_att import OnnxMultiHeadedAttention
 
@@ -32,6 +33,7 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
     def __init__(
         self,
         model,
+        preencoder=None,
         feats_dim=80,
         **kwargs
     ):
@@ -67,6 +69,8 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
         
         # for export configuration
         self.feats_dim = feats_dim
+        if preencoder is not None:
+            self.preencoder = preencoder
 
     def output_size(self) -> int:
         return self._output_size
@@ -95,6 +99,10 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
             mask: zeros(1, 1, self.block_size + 2, self.block_size + 2)
             pos_enc_xs: (B, L, D) L = block_size
         """
+        # compute preencoder
+        if self.preencoder is not None:
+            xs_pad, _ = self.preencoder(feats, torch.Tensor([self.hop_size*self.subsample+1]))
+            
         xs_pad = torch.cat([buffer_before_downsampling, xs_pad], dim=1)
         buffer_before_downsampling = xs_pad[:, -self.subsample:] # (B, L, overlap)
         xs_pad = self.compute_embed(xs_pad)
@@ -178,11 +186,10 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
             model_path=os.path.join(path, f'{self.model_name}.onnx'),
             frontend=self.get_frontend_config(asr_model.frontend),
             do_normalize=asr_model.normalize is not None,
-            do_preencoder=asr_model.preencoder is not None,
             do_postencoder=asr_model.postencoder is not None
         )
         if ret['do_normalize']:
-            ret.update(normalize=self.get_norm_config(
+            ret.update(normalize=get_norm_config(
                 asr_model.normalize, path))
         # streaming config
         ret.update(
@@ -191,46 +198,7 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
             subsample=self.subsample,
         )
         # Currently preencoder, postencoder is not supported.
-        # if ret['do_preencoder']:
-        #     ret.update(preencoder=get_preenc_config(self.model.preencoder))
         # if ret['do_postencoder']:
         #     ret.update(postencoder=get_postenc_config(self.model.postencoder))
         return ret
 
-    def get_frontend_config(self, frontend):
-        # currently only default config is supported.
-        assert isinstance(
-            frontend, DefaultFrontend), 'Currently only DefaultFrontend is supported.'
-
-        stft_config = dict(
-            n_fft=frontend.stft.n_fft,
-            win_length=frontend.stft.win_length,
-            hop_length=frontend.stft.hop_length,
-            window=frontend.stft.window,
-            center=False, # Set false to compute stft continuously
-            onesided=frontend.stft.onesided,
-            normalized=frontend.stft.normalized,
-        )
-        logmel_config = frontend.logmel.mel_options
-        logmel_config.update(log_base=frontend.logmel.log_base)
-        return {
-            "stft": stft_config,
-            "logmel": logmel_config
-        }
-
-    def get_norm_config(self, normalize, path):
-        if isinstance(normalize, GlobalMVN):
-            return {
-                "type": "gmvn",
-                "norm_means": normalize.norm_means,
-                "norm_vars": normalize.norm_vars,
-                "eps": normalize.eps,
-                "stats_file": str(path.parent / 'feats_stats.npz')
-            }
-        elif isinstance(normalize, UtteranceMVN):
-            return {
-                "type": "utterance_mvn",
-                "norm_means": normalize.norm_means,
-                "norm_vars": normalize.norm_vars,
-                "eps": normalize.eps,
-            }

@@ -4,7 +4,11 @@ from espnet2.text.char_tokenizer import CharTokenizer
 from espnet2.text.phoneme_tokenizer import PhonemeTokenizer
 from espnet2.text.sentencepiece_tokenizer import SentencepiecesTokenizer
 from espnet2.text.word_tokenizer import WordTokenizer
+from espnet2.asr.frontend.s3prl import S3prlFrontend
+from espnet2.asr.frontend.default import DefaultFrontend
 
+from espnet2.layers.global_mvn import GlobalMVN
+from espnet2.layers.utterance_mvn import UtteranceMVN
 
 def get_ngram_config(model):
     return {
@@ -87,4 +91,66 @@ def get_tokenizer_config(model, path):
     elif isinstance(model, PhonemeTokenizer):
         return {
             "token_type": "phn"
+        }
+
+
+def get_frontend_config(asr_frontend_model, frontend=None, **kwargs):
+    # currently only default config is supported.
+    if isinstance(asr_frontend_model, S3prlFrontend):
+        frontend_config = frontend.get_model_config(**kwargs)
+    elif isinstance(asr_frontend_model, DefaultFrontend):
+        frontend_config = get_default_frontend(asr_frontend_model)
+    else:
+        raise ValueError('Currently only s3prl is supported.')
+    
+    return frontend_config    
+
+def get_default_frontend(frontend, **kwargs):
+    return {
+        "frontend_type": "default",
+        "stft": get_stft_config(frontend.stft, **kwargs),
+        "logmel": get_logmel_config(frontend.logmel, **kwargs),
+    }
+
+def get_enh_config(frontend):
+    if frontend is None:
+        return {}
+    else:
+        return {
+            "use_wpe": frontend.use_wpe,
+            "use_dnn_mask_for_wpe": frontend.use_dnn_mask_for_wpe,
+            "use_beamformer": frontend.use_beamformer,
+        }
+
+def get_stft_config(stft, stft_center: bool = True):
+    return {
+        'n_fft': stft.n_fft,
+        'win_length': stft.win_length,
+        "hop_length": stft.hop_length,
+        'window': stft.window,
+        'center': stft_center, # This could be False in streaming model.
+        'onesided': stft.onesided,
+        'normalized': stft.normalized
+    }
+
+def get_logmel_config(logmel):
+    logmel_config = logmel.mel_options
+    logmel_config.update(log_base=logmel.log_base)
+    return logmel_config
+
+def get_norm_config(normalize, path):
+    if isinstance(normalize, GlobalMVN):
+        return {
+            "type": "gmvn",
+            "norm_means": normalize.norm_means,
+            "norm_vars": normalize.norm_vars,
+            "eps": normalize.eps,
+            "stats_file": str(path.parent / 'feats_stats.npz')
+        }
+    elif isinstance(normalize, UtteranceMVN):
+        return {
+            "type": "utterance_mvn",
+            "norm_means": normalize.norm_means,
+            "norm_vars": normalize.norm_vars,
+            "eps": normalize.eps,
         }

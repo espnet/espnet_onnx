@@ -9,6 +9,7 @@ jamo
 espnet
 espnet_model_zoo
 onnx
+nara_wpe
 espnet_tts_frontend
 coloredlogs
 sympy

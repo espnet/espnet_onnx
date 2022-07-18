@@ -7,8 +7,8 @@ import onnxruntime
 import numpy as np
 
 from espnet_onnx.asr.frontend.frontend import Frontend
-from espnet_onnx.asr.frontend.global_mvn import GlobalMVN
-from espnet_onnx.asr.frontend.utterance_mvn import UtteranceMVN
+from espnet_onnx.asr.frontend.normalize.global_mvn import GlobalMVN
+from espnet_onnx.asr.frontend.normalize.utterance_mvn import UtteranceMVN
 from espnet_onnx.utils.function import (
     make_pad_mask,
     mask_fill
@@ -37,7 +37,7 @@ class Encoder:
                 providers=providers
             )
 
-        self.frontend = Frontend(self.config.frontend)
+        self.frontend = Frontend(self.config.frontend, providers, use_quantized)
         if self.config.do_normalize:
             if self.config.normalize.type == 'gmvn':
                 self.normalize = GlobalMVN(self.config.normalize)
@@ -64,9 +64,6 @@ class Encoder:
         # 2. normalize with global MVN
         if self.config.do_normalize:
             feats, feat_length = self.normalize(feats, feat_length)
-
-        # if self.config.do_preencoder:
-        #     feats, feats_lengths = self.preencoder(feats, feats_lengths)
 
         # 3. forward encoder
         encoder_out, encoder_out_lens = \
