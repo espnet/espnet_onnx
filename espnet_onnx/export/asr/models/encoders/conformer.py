@@ -14,12 +14,15 @@ from espnet2.asr.frontend.default import DefaultFrontend
 from espnet2.layers.global_mvn import GlobalMVN
 from espnet2.layers.utterance_mvn import UtteranceMVN
 
-from espnet.nets.pytorch_backend.transformer.attention import MultiHeadedAttention
+from espnet.nets.pytorch_backend.transformer.attention import (
+    LegacyRelPositionMultiHeadedAttention,
+    RelPositionMultiHeadedAttention
+)
 
 from espnet_onnx.utils.torch_function import MakePadMask
 from ..language_models.embed import Embedding
 from ..conformer_layer import OnnxConformerLayer
-from ..multihead_att import OnnxMultiHeadedAttention
+from ..multihead_att import OnnxRelPosMultiHeadedAttention
 from espnet_onnx.utils.abs_model import AbsExportModel
 
 
@@ -42,8 +45,10 @@ class ConformerEncoder(nn.Module, AbsExportModel):
         for i, d in enumerate(self.model.encoders):
             # d is EncoderLayer
             # Conformer optimization is currently not supported.
-            # if isinstance(d.self_attn, MultiHeadedAttention):
-            #     d.self_attn = OnnxMultiHeadedAttention(d.self_attn)
+            if isinstance(d.self_attn, LegacyRelPositionMultiHeadedAttention):
+                d.self_attn = OnnxRelPosMultiHeadedAttention(d.self_attn, is_legacy=True)
+            elif isinstance(d.self_attn, RelPositionMultiHeadedAttention):
+                d.self_attn = OnnxRelPosMultiHeadedAttention(d.self_attn, is_legacy=False)
             self.model.encoders[i] = OnnxConformerLayer(d)
         
         self.model_name = 'xformer_encoder'
@@ -75,7 +80,7 @@ class ConformerEncoder(nn.Module, AbsExportModel):
         else:
             xs_pad = self.embed(feats)
 
-        # mask = self.prepare_mask(mask)
+        mask = self.prepare_mask(mask)
         
         intermediate_outs = []
         if len(self.model.interctc_layer_idx) == 0:
