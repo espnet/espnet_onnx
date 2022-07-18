@@ -53,12 +53,13 @@ class TransformerEncoder(nn.Module, AbsExportModel):
         self.model_name = 'xformer_encoder'
         self.num_heads = model.encoders[0].self_attn.h
         self.hidden_size = model.encoders[0].self_attn.linear_out.out_features
-        self.get_frontend()
+        self.get_frontend(kwargs)
+        self.preencoder = None
         if preencoder is not None:
             self.preencoder = preencoder
         
     
-    def get_frontend(self):
+    def get_frontend(self, kwargs):
         from espnet_onnx.export.asr.models import get_frontend_models
         self.frontend_model = get_frontend_models(self.frontend, kwargs)
         if self.frontend_model is not None:
