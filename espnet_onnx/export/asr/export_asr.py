@@ -300,7 +300,7 @@ class ASRModelExport:
         models = glob.glob(os.path.join(model_from, "*.onnx"))
         
         if self.export_config['use_ort_for_espnet']:
-            op_types_to_quantize = ['Attention', 'CrossAttention', 'MatMul']
+            op_types_to_quantize = ['Attention', 'CrossAttention', 'RelPosAttention', 'MatMul']
         else:
             op_types_to_quantize=['Attention', 'MatMul']
             
