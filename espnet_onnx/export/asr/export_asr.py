@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, Dict
 from pathlib import Path
 from typeguard import check_argument_types
 
@@ -161,9 +161,10 @@ class ASRModelExport:
         tag_name: str,
         quantize: bool = False,
         optimize: bool = False,
+        pretrained_config: Dict = None
     ):
         assert check_argument_types()
-        model = Speech2Text.from_pretrained(tag_name)
+        model = Speech2Text.from_pretrained(tag_name, **pretrained_config)
         self.export(model, tag_name, quantize, optimize)
     
     def export_from_zip(
