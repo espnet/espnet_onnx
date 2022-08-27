@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, Dict
 from pathlib import Path
 from typeguard import check_argument_types
 
@@ -100,9 +100,10 @@ class ASRModelExport:
             model_config.update(joint_network=joint_network.get_model_config(export_dir))
 
         # export ctc
-        ctc_model = CTC(model.asr_model.ctc.ctc_lo)
-        self._export_ctc(ctc_model, enc_out_size, export_dir, verbose)
-        model_config.update(ctc=ctc_model.get_model_config(export_dir))
+        if model.asr_model.ctc is not None:
+            ctc_model = CTC(model.asr_model.ctc.ctc_lo)
+            self._export_ctc(ctc_model, enc_out_size, export_dir, verbose)
+            model_config.update(ctc=ctc_model.get_model_config(export_dir))
 
         # export lm
         lm_model = None
@@ -160,9 +161,10 @@ class ASRModelExport:
         tag_name: str,
         quantize: bool = False,
         optimize: bool = False,
+        pretrained_config: Dict = None
     ):
         assert check_argument_types()
-        model = Speech2Text.from_pretrained(tag_name)
+        model = Speech2Text.from_pretrained(tag_name, **pretrained_config)
         self.export(model, tag_name, quantize, optimize)
     
     def export_from_zip(
