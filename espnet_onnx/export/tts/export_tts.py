@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, Dict
 from pathlib import Path
 from typeguard import check_argument_types
 
