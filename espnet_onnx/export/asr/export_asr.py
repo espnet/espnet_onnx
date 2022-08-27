@@ -100,9 +100,10 @@ class ASRModelExport:
             model_config.update(joint_network=joint_network.get_model_config(export_dir))
 
         # export ctc
-        ctc_model = CTC(model.asr_model.ctc.ctc_lo)
-        self._export_ctc(ctc_model, enc_out_size, export_dir, verbose)
-        model_config.update(ctc=ctc_model.get_model_config(export_dir))
+        if model.asr_model.ctc is not None:
+            ctc_model = CTC(model.asr_model.ctc.ctc_lo)
+            self._export_ctc(ctc_model, enc_out_size, export_dir, verbose)
+            model_config.update(ctc=ctc_model.get_model_config(export_dir))
 
         # export lm
         lm_model = None
