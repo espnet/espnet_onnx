@@ -86,7 +86,7 @@ def test_export_encoder(enc_type, load_config, model_export, get_class):
     torch.save(encoder.state_dict(), str(export_dir / f'{enc_type}.pth'))
     
     # create encoder onnx wrapper and export
-    enc_wrapper = get_encoder(encoder, {})
+    enc_wrapper = get_encoder(encoder, frontend, None, {})
     save_model(enc_wrapper, export_dir, model_export, 'encoder')
     
     if enc_type in ('contextual_block_conformer', 'contextual_block_transformer'):

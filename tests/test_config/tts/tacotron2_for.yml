@@ -3,7 +3,7 @@ tts_conf:                        # keyword arguments for the selected model
     embed_dim: 512               # char or phn embedding dimension
     elayers: 1                   # number of blstm layers in encoder
     eunits: 512                  # number of blstm units
-    econv_layers: 3              # number of convolutional layers in encoder
+    econv_layers: 1              # number of convolutional layers in encoder
     econv_chans: 512             # number of channels in convolutional layer
     econv_filts: 5               # filter size of convolutional layer
     atype: forward              # attention function type
@@ -11,11 +11,11 @@ tts_conf:                        # keyword arguments for the selected model
     aconv_chans: 32              # number of channels in convolutional layer of attention
     aconv_filts: 15              # filter size of convolutional layer of attention
     cumulate_att_w: true         # whether to cumulate attention weight
-    dlayers: 2                   # number of lstm layers in decoder
+    dlayers: 1                   # number of lstm layers in decoder
     dunits: 1024                 # number of lstm units in decoder
-    prenet_layers: 2             # number of layers in prenet
+    prenet_layers: 1             # number of layers in prenet
     prenet_units: 256            # number of units in prenet
-    postnet_layers: 5            # number of layers in postnet
+    postnet_layers: 1            # number of layers in postnet
     postnet_chans: 512           # number of channels in postnet
     postnet_filts: 5             # filter size of postnet layer
     output_activation: null      # activation function for the final output

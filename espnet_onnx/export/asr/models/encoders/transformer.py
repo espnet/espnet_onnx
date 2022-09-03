@@ -32,7 +32,7 @@ class TransformerEncoder(nn.Module, AbsExportModel):
         self,
         model,
         frontend,
-        preencoder=None,
+        preencoder,
         max_seq_len=512,
         feats_dim=80, 
         **kwargs
@@ -53,9 +53,8 @@ class TransformerEncoder(nn.Module, AbsExportModel):
         self.model_name = 'xformer_encoder'
         self.num_heads = model.encoders[0].self_attn.h
         self.hidden_size = model.encoders[0].self_attn.linear_out.out_features
-        self.get_frontend()
-        if preencoder is not None:
-            self.preencoder = preencoder
+        self.get_frontend(kwargs)
+        self.preencoder = preencoder
     
     def get_frontend(self, kwargs):
         from espnet_onnx.export.asr.models import get_frontend_models

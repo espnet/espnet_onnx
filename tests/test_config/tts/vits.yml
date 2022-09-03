@@ -31,26 +31,26 @@ tts_conf:
     - 2
     flow_base_dilation: 1
     flow_dropout_rate: 0.0
-    flow_flows: 4
+    flow_flows: 1
     flow_kernel_size: 5
-    flow_layers: 4
+    flow_layers: 1
     global_channels: -1
     hidden_channels: 192
     posterior_encoder_base_dilation: 1
     posterior_encoder_dropout_rate: 0.0
     posterior_encoder_kernel_size: 5
-    posterior_encoder_layers: 16
+    posterior_encoder_layers: 1
     posterior_encoder_stacks: 1
     segment_size: 32
     spks: -1
-    stochastic_duration_predictor_dds_conv_layers: 3
+    stochastic_duration_predictor_dds_conv_layers: 1
     stochastic_duration_predictor_dropout_rate: 0.5
     stochastic_duration_predictor_flows: 4
     stochastic_duration_predictor_kernel_size: 3
     text_encoder_activation_type: swish
     text_encoder_attention_dropout_rate: 0.1
     text_encoder_attention_heads: 2
-    text_encoder_blocks: 6
+    text_encoder_blocks: 1
     text_encoder_conformer_kernel_size: -1
     text_encoder_dropout_rate: 0.1
     text_encoder_ffn_expand: 4

@@ -134,18 +134,18 @@ class RNNEncoderLayer(nn.Module):
 
 
 class RNNEncoder(nn.Module, AbsExportModel):
-    def __init__(self, model, frontend, feats_dim=80, preencoder=None,**kwargs):
+    def __init__(self, model, frontend, preencoder, feats_dim=80, **kwargs):
         super().__init__()
         self.model = model
         self.model_name = 'rnn_encoder'
         self.enc = nn.ModuleList()
         self.feats_dim = feats_dim
+        self.frontend = frontend
         for e in model.enc:
             self.enc.append(RNNEncoderLayer(e))
         
         self.get_frontend(kwargs)
-        if preencoder is not None:
-            self.preencoder = preencoder
+        self.preencoder = preencoder
     
     def get_frontend(self, kwargs):
         from espnet_onnx.export.asr.models import get_frontend_models
