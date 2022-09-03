@@ -29,7 +29,7 @@ def save_model(onnx_model, export_dir, model_export, model_type):
 
 
 @pytest.mark.parametrize('enc_type', encoder_cases)
-def test_export_encoder(enc_type, load_config, model_export, get_class):
+def test_export_frontend(enc_type, load_config, model_export, get_class):
     model_config = load_config(enc_type, model_type='frontend')
     # prepare input_dim from frontend
     frontend = get_class(
@@ -47,19 +47,13 @@ def test_export_encoder(enc_type, load_config, model_export, get_class):
         input_size=input_size
     )
     export_dir = Path(model_export.cache_dir) / 'test' / \
-        'encoder' / f'./cache_{enc_type}'
+        'frontend' / f'./cache_{enc_type}'
     export_dir.mkdir(parents=True, exist_ok=True)
-    torch.save(encoder.state_dict(), str(export_dir / f'{enc_type}.pth'))
+    torch.save(frontend.state_dict(), str(export_dir / f'{enc_type}_frontend.pth'))
     
     # create encoder onnx wrapper and export
     enc_wrapper = get_encoder(encoder, frontend, None, {})
     save_model(enc_wrapper, export_dir, model_export, 'encoder')
-    
-    if enc_type in ('contextual_block_conformer', 'contextual_block_transformer'):
-        # save position encoder parameters.
-        np.save(
-            export_dir / 'pe',
-            encoder.pos_enc.pe.numpy()
-        )
-    assert len(os.path.join(export_dir, '*encoder.onnx')) > 0
+
+    assert len(os.path.join(export_dir, '*frontend.onnx')) > 0
 

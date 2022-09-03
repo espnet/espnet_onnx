@@ -170,7 +170,7 @@ class ASRModelExport:
         tag_name: str,
         quantize: bool = False,
         optimize: bool = False,
-        pretrained_config: Dict = None
+        pretrained_config: Dict = {}
     ):
         assert check_argument_types()
         model = Speech2Text.from_pretrained(tag_name, **pretrained_config)
