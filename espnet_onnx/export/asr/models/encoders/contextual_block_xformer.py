@@ -33,7 +33,6 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
     def __init__(
         self,
         model,
-        preencoder=None,
         feats_dim=80,
         **kwargs
     ):
@@ -52,7 +51,6 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
             # d is EncoderLayer
             if isinstance(d.self_attn, MultiHeadedAttention):
                 d.self_attn = OnnxMultiHeadedAttention(d.self_attn)
-            # self.encoders[i] = OnnxEncoderLayer(d)
         
         if self.normalize_before:
             self.after_norm = model.after_norm
@@ -66,12 +64,10 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
         self.overlap_size = self.block_size - self.hop_size
         self.offset = self.block_size - self.look_ahead - self.hop_size
         self.xscale = model.pos_enc.xscale
-        
+    
         # for export configuration
         self.feats_dim = feats_dim
-        if preencoder is not None:
-            self.preencoder = preencoder
-
+        
     def output_size(self) -> int:
         return self._output_size
 
@@ -100,9 +96,6 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
             pos_enc_xs: (B, L, D) L = block_size
         """
         # compute preencoder
-        if self.preencoder is not None:
-            xs_pad, _ = self.preencoder(feats, torch.Tensor([self.hop_size*self.subsample+1]))
-            
         xs_pad = torch.cat([buffer_before_downsampling, xs_pad], dim=1)
         buffer_before_downsampling = xs_pad[:, -self.subsample:] # (B, L, overlap)
         xs_pad = self.compute_embed(xs_pad)

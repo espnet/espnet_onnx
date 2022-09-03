@@ -134,7 +134,7 @@ class RNNEncoderLayer(nn.Module):
 
 
 class RNNEncoder(nn.Module, AbsExportModel):
-    def __init__(self, model, feats_dim=80, preencoder=None,**kwargs):
+    def __init__(self, model, frontend, feats_dim=80, preencoder=None,**kwargs):
         super().__init__()
         self.model = model
         self.model_name = 'rnn_encoder'
@@ -142,10 +142,25 @@ class RNNEncoder(nn.Module, AbsExportModel):
         self.feats_dim = feats_dim
         for e in model.enc:
             self.enc.append(RNNEncoderLayer(e))
+        
+        self.get_frontend(kwargs)
+        if preencoder is not None:
+            self.preencoder = preencoder
+    
+    def get_frontend(self, kwargs):
+        from espnet_onnx.export.asr.models import get_frontend_models
+        self.frontend_model = get_frontend_models(self.frontend, kwargs)
+        if self.frontend_model is not None:
+            self.submodel = []
+            self.submodel.append(self.frontend_model)
+            self.feats_dim = self.frontend_model.output_dim
 
     def forward(self, feats):
         current_states = []
         ilens = torch.ones(feats[:, :, 0].shape).sum(dim=-1).type(torch.long)
+        if self.preencoder is not None:
+            feats, ilens = self.preencoder(feats, ilens)
+            
         for module in self.enc:
             feats, ilens, states = module(feats, ilens)
             current_states.append(states)
