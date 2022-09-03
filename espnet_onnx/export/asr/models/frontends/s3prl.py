@@ -29,24 +29,40 @@ class Featurizer(nn.Module):
         super().__init__()
         self.feature_selection = model.feature_selection
         self.normalize = model.normalize
-        self.layer_num = model.layer_num
-        self.weights = model.weights
         self.output_dim = model.output_dim
         self.downsample_rate = model.downsample_rate
+        
+        if self.feature_selection == 'hidden_states':
+            self.weights = model.weights
+            self.layer_num = model.layer_num
     
+    def _select_feature(self, feats):
+        # if self.feature_selection == 'hidden_states':
+        if self.feature_selection == 'last_hidden_state':
+            feats = feats[-1]
+        elif 'hidden_state_' in self.feature_selection:
+            fs = self.feature_selection.split('_')
+            assert len(fs) == 3
+            feats = feats[int(fs[2])]
+        return feats
+            
     def forward(self, feats):
-        # wav: (B, T)
-        if self.normalize:
-            feats = F.layer_norm(
-                feats, (feats.shape[-1],))
+        feats = self._select_feature(feats)
+        
+        if len(feats) > 1:
+            # wav: (B, T)
+            if self.normalize:
+                feats = F.layer_norm(
+                    feats, (feats.shape[-1],))
 
-        _, *origin_shape = feats.shape
-        feats = feats.view(self.layer_num, -1)
-        norm_weights = F.softmax(self.weights, dim=-1)
-        weighted_feature = (norm_weights.unsqueeze(-1) * feats).sum(dim=0)
-        weighted_feature = weighted_feature.view(*origin_shape)
-
-        return weighted_feature
+            _, *origin_shape = feats.shape
+            feats = feats.view(self.layer_num, -1)
+            norm_weights = F.softmax(self.weights, dim=-1)
+            weighted_feature = (norm_weights.unsqueeze(-1) * feats).sum(dim=0)
+            weighted_feature = weighted_feature.view(*origin_shape)
+            return weighted_feature
+        
+        return feats
 
 
 class HubertModel(nn.Module):
