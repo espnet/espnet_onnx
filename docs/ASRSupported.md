@@ -42,7 +42,8 @@
 | --------------- | --------- |
 | DefaultFrontend | ◯         |
 | SlidingWindow   | x         |
-| S3prlFrontend   | x         |
+| HuBERT          | ◯         |
+| Wav2Vec         | x         |
 | FusedFrontends  | x         |
 
 **normalize**
@@ -81,8 +82,14 @@
 | AttForward              | x         |
 | AttForwardTA            | x         |
 
-**pre encoder**  
-not supported.
+**pre encoder**
+The following shows the encoder module that support preencoder export and inference.
+| arch name       | supported |
+| --------------- | --------- |
+| RNN             | ◯         |
+| Transformer     | ◯         |
+| Conformer       | ◯         |
+| ContextualBlock | x         |
 
 **post encoder**  
 not supported.
