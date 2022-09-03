@@ -3,7 +3,6 @@ from typing import (
     List
 )
 from pathlib import Path
-from typeguard import check_argument_types
 
 import numpy as np
 import onnxruntime
@@ -41,7 +40,6 @@ class HubertFrontend:
         self.output_names = ['feats', 'feats_lens']
 
     def __call__(self, inputs: np.ndarray, input_length: np.ndarray):
-        assert check_argument_types()
         input_dic = {
             'wav': inputs,
         }
