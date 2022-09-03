@@ -87,7 +87,6 @@ class HubertModel(nn.Module):
         if self.model.post_extract_proj is not None:
             features = self.model.post_extract_proj(features)
 
-        # compute OnnxTransformerEncoderLayer
         # residual pos_conv
         res = features
         features = self.encoder.pos_conv(features.transpose(1, 2))
@@ -103,8 +102,8 @@ class HubertModel(nn.Module):
         hidden_states = []
         
         for l in self.layers:
-            features, mask = l(features, mask)
             hidden_states.append(features)
+            features, mask = l(features, mask)
         
         if self.encoder.layer_norm_first:
             features = self.encoder.layer_norm(features)
