@@ -53,7 +53,7 @@ class HubertModel(nn.Module):
     def __init__(self, model, max_seq_len=512, **kwargs):
         super().__init__()
         self.model = model.model
-        self.task = model.task
+        self.task_cfg = model.task_cfg
         self.encoder = model.model.encoder
         self.layers = nn.ModuleList([])
         self.make_pad_mask = MakePadMask(max_seq_len, flip=False)
@@ -77,7 +77,7 @@ class HubertModel(nn.Module):
         return (wav - m) / torch.sqrt(v + self.eps)
     
     def forward(self, wav):
-        if self.task.cfg.normalize:
+        if self.task_cfg.normalize:
             wav = self.layer_norm(wav)
 
         # compute extract feature
