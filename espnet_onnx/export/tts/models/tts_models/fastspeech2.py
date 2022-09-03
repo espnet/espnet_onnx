@@ -10,7 +10,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from espnet_onnx.export.asr.models.language_models.embed import Embedding
-from espnet_onnx.utils.torch_function import MakePadMask
+from espnet_onnx.utils.torch_function import (
+    MakePadMask,
+    normalize
+)
 from espnet_onnx.utils.abs_model import AbsExportModel
 
 
@@ -112,11 +115,11 @@ class OnnxFastSpeech2(nn.Module, AbsExportModel):
     ) -> torch.Tensor:
         if self.spk_embed_integration_type == "add":
             # apply projection and then add to hidden states
-            spembs = self.projection(F.normalize(spembs))
+            spembs = self.projection(normalize(spembs))
             hs = hs + spembs.unsqueeze(1)
         elif self.spk_embed_integration_type == "concat":
             # concat hidden states with spk embeds and then apply projection
-            spembs = F.normalize(spembs).unsqueeze(1).expand(-1, hs.size(1), -1)
+            spembs = normalize(spembs).unsqueeze(1).expand(-1, hs.size(1), -1)
             hs = self.projection(torch.cat([hs, spembs], dim=-1))
         else:
             raise NotImplementedError("support only add or concat.")
@@ -182,6 +185,7 @@ class OnnxFastSpeech2(nn.Module, AbsExportModel):
         if self.spks is not None:
             sid_embs = self.sid_emb(sids.view(-1))
             hs = hs + sid_embs.unsqueeze(1)
+            
         if self.langs is not None:
             lid_embs = self.lid_emb(lids.view(-1))
             hs = hs + lid_embs.unsqueeze(1)
@@ -237,7 +241,16 @@ class OnnxFastSpeech2(nn.Module, AbsExportModel):
         return (text, feats, sids, spembs, lids)
 
     def get_input_names(self):
-        return ['text', 'feats', 'sids', 'spembs', 'lids']
+        ret = ['text']
+        if self.use_gst:
+            ret.append('feats')        
+        if self.spks is not None:
+            ret.append('sids')
+        if self.spk_embed_dim is not None:
+            ret.append('spembs')
+        if self.langs is not None:
+            ret.append('lids')
+        return ret
 
     def get_output_names(self):
         return ['feat_gen', 'out_duration', 'out_pitch', 'out_energy']
@@ -245,8 +258,9 @@ class OnnxFastSpeech2(nn.Module, AbsExportModel):
     def get_dynamic_axes(self):
         ret = {
             'text': {0: 'text_length'},
-            'feats': {0: 'feats_length'},
         }
+        if self.use_gst:
+            ret.update({'feats': {0: 'feats_length'}})
         return ret
 
     def get_model_config(self, path):

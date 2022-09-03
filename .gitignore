@@ -134,3 +134,4 @@ dmypy.json
 *.mp3
 *.onnx
 tag_config.yaml
+hub/*

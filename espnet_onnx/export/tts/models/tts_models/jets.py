@@ -10,7 +10,10 @@ import torch
 import torch.nn as nn
 
 from espnet_onnx.export.asr.models.language_models.embed import get_pos_emb
-from espnet_onnx.utils.torch_function import MakePadMask
+from espnet_onnx.utils.torch_function import (
+    MakePadMask,
+    normalize
+)
 from espnet_onnx.utils.abs_model import AbsExportModel
 from espnet_onnx.export.tts.models.tts_models.fastspeech2 import OnnxStyleEncoder
 from espnet_onnx.export.tts.models.vocoders.hifigan import OnnxHiFiGANVocoder
@@ -144,11 +147,11 @@ class OnnxJETSGenerator(nn.Module):
     ) -> torch.Tensor:
         if self.spk_embed_integration_type == "add":
             # apply projection and then add to hidden states
-            spembs = self.projection(F.normalize(spembs))
+            spembs = self.projection(normalize(spembs))
             hs = hs + spembs.unsqueeze(1)
         elif self.spk_embed_integration_type == "concat":
             # concat hidden states with spk embeds and then apply projection
-            spembs = F.normalize(spembs).unsqueeze(1).expand(-1, hs.size(1), -1)
+            spembs = normalize(spembs).unsqueeze(1).expand(-1, hs.size(1), -1)
             hs = self.projection(torch.cat([hs, spembs], dim=-1))
         else:
             raise NotImplementedError("support only add or concat.")
@@ -197,7 +200,7 @@ class OnnxJETSModel(nn.Module, AbsExportModel):
             if self.model.generator.spks is not None else None
 
         spembs = torch.randn(self.model.generator.spk_embed_dim) \
-            if self.model.generator.spks is not None else None
+            if self.model.generator.spk_embed_dim is not None else None
 
         lids = torch.LongTensor([0]) \
             if self.model.generator.langs is not None else None
@@ -205,7 +208,14 @@ class OnnxJETSModel(nn.Module, AbsExportModel):
         return (text, sids, spembs, lids)
 
     def get_input_names(self):
-        return ['text', 'sids', 'spembs', 'lids']
+        ret = ['text']   
+        if self.model.generator.spks is not None:
+            ret.append('sids')
+        if self.model.generator.spk_embed_dim is not None:
+            ret.append('spembs')
+        if self.model.generator.langs is not None:
+            ret.append('lids')
+        return ret
 
     def get_output_names(self):
         return ['wav', 'dur']

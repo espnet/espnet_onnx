@@ -67,9 +67,14 @@ class Text2Speech(AbsTTSModel):
         options = dict()
         if self.tts_model.use_sids:
             if sids is None or spembs is None:
-                raise RuntimeError("'sids' or 'spembs' is missing.")
+                raise RuntimeError("'sids' is missing.")
             else:
-                options.update(sids=sids, spembs=spembs)
+                options.update(sids=sids)
+        if self.tts_model.use_spk_embed_dim:
+            if spembs is None:
+                raise RuntimeError("'spembs' is missing.")
+            else:
+                options.update(spembs=spembs)
         if self.tts_model.use_lids:
             if lids is None:
                 raise RuntimeError("Missing required argument: 'lids'")

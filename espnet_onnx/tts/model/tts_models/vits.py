@@ -41,6 +41,7 @@ class VITS:
 
         self.input_names = [d.name for d in self.model.get_inputs()]
         self.use_sids = 'sids' in self.input_names
+        self.use_spk_embed_dim = 'spembs' in self.input_names
         self.use_lids = 'lids' in self.input_names
         self.use_feats = 'feats' in self.input_names
 

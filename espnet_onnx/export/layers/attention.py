@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from espnet_onnx.utils.torch_function import normalize
 from espnet.nets.pytorch_backend.rnn.attentions import (
     NoAtt,
     AttDot,
@@ -492,7 +493,7 @@ class OnnxAttForward(torch.nn.Module):
         att_prev_shift = F.pad(att_prev, (1, 0))[:, :-1]
         w = (att_prev + att_prev_shift) * w
         # NOTE: clamp is needed to avoid nan gradient
-        w = F.normalize(torch.clamp(w, 1e-6), p=1, dim=1)
+        w = normalize(torch.clamp(w, 1e-6), p=1, dim=1)
 
         # weighted sum over flames
         # utt x hdim
