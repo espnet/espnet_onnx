@@ -121,17 +121,16 @@ class S3PRLModel(nn.Module, AbsExportModel):
         **kwargs
     ):
         super().__init__()
+        # Currently only HuBERT is supported
         self.upstream = HubertModel(model.upstream, max_seq_len)
-        # self.upstream = model.upstream
         self.featurizer = Featurizer(model.featurizer)
         self.model_name = 'hubert_frontend'
         self.output_dim = self.featurizer.output_dim
         self.num_heads = self.upstream.layers[0].self_attn.h
         self.hidden_size = self.upstream.layers[0].self_attn.all_head_size
 
-    def forward(self, input):
-        feats, feat_length = self.upstream(input)
-        # feats = self.upstream(input)
+    def forward(self, inputs):
+        feats, feat_length = self.upstream(inputs)
         feats = self.featurizer(feats)
         return feats, feat_length
 
