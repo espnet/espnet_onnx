@@ -24,6 +24,7 @@ from .models import (
     PreDecoder,
     CTC,
     JointNetwork,
+    get_frontend_models,
 )
 from .get_config import (
     get_ngram_config,
@@ -32,6 +33,7 @@ from .get_config import (
     get_tokenizer_config,
     get_weights_transducer,
     get_trans_beam_config,
+    get_frontend_config,
 )
 from espnet_onnx.utils.config import (
     save_config,
@@ -79,7 +81,12 @@ class ASRModelExport:
         model_config = self._create_config(model, export_dir)
 
         # export encoder
-        enc_model = get_encoder(model.asr_model.encoder, self.export_config)
+        enc_model = get_encoder(
+            model.asr_model.encoder,
+            model.asr_model.frontend,
+            model.asr_model.preencoder,
+            self.export_config
+        )
         enc_out_size = enc_model.get_output_size()
         self._export_encoder(enc_model, export_dir, verbose)
         model_config.update(encoder=enc_model.get_model_config(
@@ -122,16 +129,16 @@ class ASRModelExport:
         
         if optimize:
             if enc_model.is_optimizable():
-                if self._optimize_model(enc_model, export_dir, 'encoder'):
-                    model_config['encoder']['optimized'] = True
+                self._optimize_model(enc_model, export_dir, 'encoder')
             
             if dec_model.is_optimizable():
-                if self._optimize_model(dec_model, export_dir, 'decoder'):
-                    model_config['decoder']['optimized'] = True
+                self._optimize_model(dec_model, export_dir, 'decoder')
             
             if lm_model is not None and lm_model.is_optimizable():
-                if self._optimize_model(lm_model, export_dir, 'lm'):
-                    model_config['lm']['optimized'] = True
+                self._optimize_model(lm_model, export_dir, 'lm')
+            
+            if enc_model.frontend_model is not None and enc_model.frontend_model.is_optimizable():
+                self._optimize_model(enc_model.frontend_model, export_dir, 'frontend')
             
         if quantize:
             quantize_dir = base_dir / 'quantize'
@@ -149,6 +156,8 @@ class ASRModelExport:
                     model_config['decoder'].update(quantized_model_path=qt_config[m])
                 elif 'lm' in m:
                     model_config['lm'].update(quantized_model_path=qt_config[m])
+                elif 'frontend' in m:
+                    model_config['encoder']['frontend'].update(quantized_model_path=qt_config[m])
                 else:
                     model_config[m].update(quantized_model_path=qt_config[m])
 
@@ -161,7 +170,7 @@ class ASRModelExport:
         tag_name: str,
         quantize: bool = False,
         optimize: bool = False,
-        pretrained_config: Dict = None
+        pretrained_config: Dict = {}
     ):
         assert check_argument_types()
         model = Speech2Text.from_pretrained(tag_name, **pretrained_config)
@@ -234,6 +243,11 @@ class ASRModelExport:
     def _export_encoder(self, model, path, verbose):
         if verbose:
             logging.info(f'Encoder model is saved in {file_name}')
+        self._export_model(model, verbose, path)
+    
+    def _export_frontend(self, model, path, verbose):
+        if verbose:
+            logging.info(f'Frontend model is saved in {file_name}')
         self._export_model(model, verbose, path)
 
     def _export_decoder(self, model, enc_size, path, verbose):
@@ -310,7 +324,7 @@ class ASRModelExport:
                 model_type = 'espnet'
             else:
                 model_type = 'bert'
-        elif model_type in ('decoder', 'lm'):
+        elif model_type in ('decoder', 'lm', 'frontend'):
             if self.export_config['use_ort_for_espnet']:
                 model_type = 'espnet'
             else:

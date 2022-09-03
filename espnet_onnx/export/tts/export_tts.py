@@ -107,7 +107,7 @@ class TTSModelExport:
         self,
         tag_name: str,
         quantize: bool = False,
-        pretrained_config: Dict = None
+        pretrained_config: Dict = {}
     ):
         assert check_argument_types()
         model = Text2Speech.from_pretrained(tag_name, **pretrained_config)

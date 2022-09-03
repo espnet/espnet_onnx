@@ -4,13 +4,13 @@ tts_conf:
     generator_params:
         adim: 256
         aheads: 2
-        elayers: 4
+        elayers: 2
         eunits: 1024
-        dlayers: 4
+        dlayers: 2
         dunits: 1024
         positionwise_layer_type: conv1d
         positionwise_conv_kernel_size: 3
-        duration_predictor_layers: 2
+        duration_predictor_layers: 1
         duration_predictor_chans: 256
         duration_predictor_kernel_size: 3
         use_masking: true
@@ -33,14 +33,14 @@ tts_conf:
         transformer_dec_dropout_rate: 0.2
         transformer_dec_positional_dropout_rate: 0.2
         transformer_dec_attn_dropout_rate: 0.2
-        pitch_predictor_layers: 5
+        pitch_predictor_layers: 1
         pitch_predictor_chans: 256
         pitch_predictor_kernel_size: 5
         pitch_predictor_dropout: 0.5
         pitch_embed_kernel_size: 1
         pitch_embed_dropout: 0.0
         stop_gradient_from_pitch_predictor: true
-        energy_predictor_layers: 2
+        energy_predictor_layers: 1
         energy_predictor_chans: 256
         energy_predictor_kernel_size: 3
         energy_predictor_dropout: 0.5
@@ -52,28 +52,18 @@ tts_conf:
         generator_global_channels: -1
         generator_kernel_size: 7
         generator_upsample_scales:
-        - 8
-        - 8
-        - 2
-        - 2
+        - 16
+        - 16
         generator_upsample_kernel_sizes:
-        - 16
-        - 16
-        - 4
-        - 4
+        - 32
+        - 32
         generator_resblock_kernel_sizes:
         - 3
         - 7
-        - 11
         generator_resblock_dilations:
-        -   - 1
-            - 3
+        -   - 3
             - 5
-        -   - 1
-            - 3
-            - 5
-        -   - 1
-            - 3
+        -   - 3
             - 5
         generator_use_additional_convs: true
         generator_bias: true

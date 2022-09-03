@@ -10,10 +10,14 @@ from espnet.nets.pytorch_backend.transformer.subsampling import (
     Conv2dSubsampling6,
     Conv2dSubsampling8
 )
-from espnet2.asr.frontend.default import DefaultFrontend
 from espnet2.layers.global_mvn import GlobalMVN
 from espnet2.layers.utterance_mvn import UtteranceMVN
 
+from espnet_onnx.utils.function import make_pad_mask
+from espnet_onnx.export.asr.get_config import (
+    get_frontend_config,
+    get_norm_config
+)
 from espnet.nets.pytorch_backend.transformer.attention import MultiHeadedAttention
 
 from espnet_onnx.utils.torch_function import MakePadMask
@@ -27,6 +31,8 @@ class TransformerEncoder(nn.Module, AbsExportModel):
     def __init__(
         self,
         model,
+        frontend,
+        preencoder,
         max_seq_len=512,
         feats_dim=80, 
         **kwargs
@@ -34,6 +40,7 @@ class TransformerEncoder(nn.Module, AbsExportModel):
         super().__init__()
         self.embed = Embedding(model.embed, max_seq_len)
         self.model = model
+        self.frontend = frontend
         self.make_pad_mask = MakePadMask(max_seq_len, flip=False)
         self.feats_dim = feats_dim
         # replace multihead attention module into customized module.
@@ -46,6 +53,16 @@ class TransformerEncoder(nn.Module, AbsExportModel):
         self.model_name = 'xformer_encoder'
         self.num_heads = model.encoders[0].self_attn.h
         self.hidden_size = model.encoders[0].self_attn.linear_out.out_features
+        self.get_frontend(kwargs)
+        self.preencoder = preencoder
+    
+    def get_frontend(self, kwargs):
+        from espnet_onnx.export.asr.models import get_frontend_models
+        self.frontend_model = get_frontend_models(self.frontend, kwargs)
+        if self.frontend_model is not None:
+            self.submodel = []
+            self.submodel.append(self.frontend_model)
+            self.feats_dim = self.frontend_model.output_dim
     
     def prepare_mask(self, mask):
         if len(mask.shape) == 2:
@@ -57,6 +74,10 @@ class TransformerEncoder(nn.Module, AbsExportModel):
 
     def forward(self, feats):
         feats_length = torch.ones(feats[:, :, 0].shape).sum(dim=-1).type(torch.long)
+        # compute preencoder
+        if self.preencoder is not None:
+            feats, feats_length = self.preencoder(feats, feats_length)
+            
         mask = self.make_pad_mask(feats_length)
         if (
             isinstance(self.model.embed, Conv2dSubsampling)
@@ -111,55 +132,15 @@ class TransformerEncoder(nn.Module, AbsExportModel):
             enc_type='XformerEncoder',
             model_path=os.path.join(path, f'{self.model_name}.onnx'),
             is_vggrnn=False,
-            frontend=self.get_frontend_config(asr_model.frontend),
+            frontend=get_frontend_config(asr_model.frontend, self.frontend_model, path=path),
             do_normalize=asr_model.normalize is not None,
             do_preencoder=asr_model.preencoder is not None,
             do_postencoder=asr_model.postencoder is not None
         )
         if ret['do_normalize']:
-            ret.update(normalize=self.get_norm_config(
+            ret.update(normalize=get_norm_config(
                 asr_model.normalize, path))
         # Currently preencoder, postencoder is not supported.
-        # if ret['do_preencoder']:
-        #     ret.update(preencoder=get_preenc_config(self.model.preencoder))
         # if ret['do_postencoder']:
         #     ret.update(postencoder=get_postenc_config(self.model.postencoder))
         return ret
-
-    def get_frontend_config(self, frontend):
-        # currently only default config is supported.
-        assert isinstance(
-            frontend, DefaultFrontend), 'Currently only DefaultFrontend is supported.'
-
-        stft_config = dict(
-            n_fft=frontend.stft.n_fft,
-            win_length=frontend.stft.win_length,
-            hop_length=frontend.stft.hop_length,
-            window=frontend.stft.window,
-            center=frontend.stft.center,
-            onesided=frontend.stft.onesided,
-            normalized=frontend.stft.normalized,
-        )
-        logmel_config = frontend.logmel.mel_options
-        logmel_config.update(log_base=frontend.logmel.log_base)
-        return {
-            "stft": stft_config,
-            "logmel": logmel_config
-        }
-
-    def get_norm_config(self, normalize, path):
-        if isinstance(normalize, GlobalMVN):
-            return {
-                "type": "gmvn",
-                "norm_means": normalize.norm_means,
-                "norm_vars": normalize.norm_vars,
-                "eps": normalize.eps,
-                "stats_file": str(path.parent / 'feats_stats.npz')
-            }
-        elif isinstance(normalize, UtteranceMVN):
-            return {
-                "type": "utterance_mvn",
-                "norm_means": normalize.norm_means,
-                "norm_vars": normalize.norm_vars,
-                "eps": normalize.eps,
-            }

@@ -9,21 +9,24 @@ from espnet.nets.pytorch_backend.transformer.attention import MultiHeadedAttenti
 
 
 class OnnxMultiHeadedAttention(nn.Module):
-    def __init__(self, model):
+    def __init__(self, model, model_type='espnet'):
         super().__init__()
-        self.d_k = model.d_k
-        self.h = model.h
-        self.linear_q = model.linear_q
-        self.linear_k = model.linear_k
-        self.linear_v = model.linear_v
-        self.linear_out = model.linear_out
-        self.attn = model.attn
-        self.dropout = model.dropout
-        self.model = model
+        if model_type == 'espnet':
+            self.d_k = model.d_k
+            self.h = model.h
+            self.linear_q = model.linear_q
+            self.linear_k = model.linear_k
+            self.linear_v = model.linear_v
+            self.linear_out = model.linear_out
+        elif model_type == 'hubert':
+            self.d_k = model.head_dim
+            self.h = model.num_heads
+            self.linear_q = model.q_proj
+            self.linear_k = model.k_proj
+            self.linear_v = model.v_proj
+            self.linear_out = model.out_proj
+        self.attn = None
         self.all_head_size = self.h * self.d_k
-        self.min_value = float(
-                np.finfo(torch.tensor(0, dtype=torch.float32).numpy().dtype).min
-            )
     
     def forward(self, query, key, value, mask):
         q, k, v = self.forward_qkv(query, key, value)
