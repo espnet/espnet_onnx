@@ -54,10 +54,7 @@ class TransformerEncoder(nn.Module, AbsExportModel):
         self.num_heads = model.encoders[0].self_attn.h
         self.hidden_size = model.encoders[0].self_attn.linear_out.out_features
         self.get_frontend(kwargs)
-        self.preencoder = None
-        if preencoder is not None:
-            self.preencoder = preencoder
-        
+        self.preencoder = preencoder
     
     def get_frontend(self, kwargs):
         from espnet_onnx.export.asr.models import get_frontend_models
@@ -144,8 +141,6 @@ class TransformerEncoder(nn.Module, AbsExportModel):
             ret.update(normalize=get_norm_config(
                 asr_model.normalize, path))
         # Currently preencoder, postencoder is not supported.
-        # if ret['do_preencoder']:
-        #     ret.update(preencoder=get_preenc_config(self.model.preencoder))
         # if ret['do_postencoder']:
         #     ret.update(postencoder=get_postenc_config(self.model.postencoder))
         return ret

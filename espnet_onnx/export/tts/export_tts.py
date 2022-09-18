@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, Dict
 from pathlib import Path
 from typeguard import check_argument_types
 
@@ -103,9 +103,14 @@ class TTSModelExport:
         save_config(model_config, config_name)
         update_model_path(tag_name, base_dir)
 
-    def export_from_pretrained(self, tag_name: str, quantize: bool = False):
+    def export_from_pretrained(
+        self,
+        tag_name: str,
+        quantize: bool = False,
+        pretrained_config: Dict = {}
+    ):
         assert check_argument_types()
-        model = Text2Speech.from_pretrained(tag_name)
+        model = Text2Speech.from_pretrained(tag_name, **pretrained_config)
         self.export(model, tag_name, quantize)
     
     def export_from_zip(self, path: Union[Path, str], tag_name: str, quantize: bool = False):

@@ -1,6 +1,7 @@
 from typing import List
 import torch
 from typeguard import check_argument_types
+import warnings
 
 import numpy as np
 import onnxruntime
@@ -18,9 +19,15 @@ class TorchFrontend:
     def __init__(
         self,
         config: Config,
-        providers: List[str],
+        providers: List[str] = ['CUDAExecutionProvider'],
         use_quantized: bool = False
     ):
+        if providers != ['CUDAExecutionProvider']:
+            warnings.warn("Currently TorchFrontend supports only GPU input."
+                          + "Please check your device and providers option.")
+        if use_quantized:
+            warnings.warn("Using quantized model on GPU may cause performance degradation.")
+
         if config.frontend_type == 'default':
             raise ValueError("Use the original frontend.")
         elif config.frontend_type == 'hubert':

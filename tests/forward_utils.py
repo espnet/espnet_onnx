@@ -55,3 +55,10 @@ def run_trans_dec(model, dummy_input, h, model_type):
         }
         y = model.decoder.run(['sequence'], input_dict)[0]
     return y
+
+def run_onnx_front(model, dummy_input):
+    input_dic = {
+        'wav': dummy_input,
+    }
+    y = model.run(['feats', 'feats_lens'], input_dic)[0]
+    return y

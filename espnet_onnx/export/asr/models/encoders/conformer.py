@@ -66,9 +66,7 @@ class ConformerEncoder(nn.Module, AbsExportModel):
             assert ctc is not None, 'You have to specify "ctc" in export_config to use interctc'
             self.ctc = ctc
         self.get_frontend(kwargs)
-        self.preencoder = None
-        if preencoder is not None:
-            self.preencoder = preencoder
+        self.preencoder = preencoder
         
     def get_frontend(self, kwargs):
         from espnet_onnx.export.asr.models import get_frontend_models

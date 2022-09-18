@@ -155,7 +155,7 @@ print(nbest[0][0])
 # 'this is a pen'
 ```
 
-4. If yo uinstalled the custom version of onnxruntime, you can run optimized model for inference. You don't have to change any code from the above. If the model was optimized, then espnet_onnx would automatically load the optimized version. 
+4. If you installed the custom version of onnxruntime, you can run optimized model for inference. You don't have to change any code from the above. If the model was optimized, then espnet_onnx would automatically load the optimized version. 
 
 5. You can use only hubert model for your frontend.
 
@@ -177,7 +177,23 @@ y, sr = librosa.load('wav file')
 # y: (B, T)
 # y_len: (B,)
 feats = frontend(y[None,:], np.array([len(y)]))
+```
 
+6. If you installed `torch` in your environment, you can use frontend in your training.
+
+```python
+from espnet_onnx.asr.frontend import TorchFrontend
+frontend = TorchFrontend.get_frontend(tag_name) # load pretrained frontend model
+
+# use the model while training
+import librosa
+y, sr = librosa.load('wav file')
+
+# You need to place your data on GPU,
+# and specify the output shape in tuple
+y = torch.Tensor(y).unsqueeze(0).to('cuda') # (1, wav_length)
+output_shape = (batch_size, feat_length, feats_dims)
+feats = frontend(y, y.size(1), output_shape)
 ```
 
 #### Text2Speech inference
