@@ -54,11 +54,11 @@ jobs:
             git clone https://github.com/s3prl/s3prl
 
 workflows:
-  install_s3prl:
-    when:
-      condition: << pipeline.parameters.flag_install_s3prl >>
-    jobs:
-      - run_install_s3prl
+  # install_s3prl:
+  #   when:
+  #     condition: << pipeline.parameters.flag_install_s3prl >>
+  #   jobs:
+  #     - run_install_s3prl
 
   build_and_test:
     jobs:
