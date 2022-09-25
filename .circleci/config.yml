@@ -26,8 +26,8 @@ jobs:
             pip install pytest
       - run: # install custom onnxruntime for optimization
           command: |
-            wget https://github.com/Masao-Someki/espnet_onnx/releases/download/custom_ort_v1.11.1-espnet_onnx/onnxruntime-1.11.1_espnet_onnx-cp38-cp38-linux_x86_64.whl
-            pip install onnxruntime-1.11.1_espnet_onnx-cp38-cp38-linux_x86_64.whl
+            wget https://github.com/espnet/espnet_onnx/releases/download/custom_ort_v1.11.1.espnet.3/onnxruntime-1.11.1.espnet-cp38-cp38-linux_x86_64.whl
+            pip install onnxruntime-1.11.1.espnet-cp38-cp38-linux_x86_64.whl
       - restore_cache: # restore s3prl folder
           key: s3prl
       - run: # install s3prl
@@ -54,11 +54,11 @@ jobs:
             git clone https://github.com/s3prl/s3prl
 
 workflows:
-  # install_s3prl:
-  #   when:
-  #     condition: << pipeline.parameters.flag_install_s3prl >>
-  #   jobs:
-  #     - run_install_s3prl
+  install_s3prl:
+    when:
+      condition: << pipeline.parameters.flag_install_s3prl >>
+    jobs:
+      - run_install_s3prl
 
   build_and_test:
     jobs:
