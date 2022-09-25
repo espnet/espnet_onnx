@@ -15,7 +15,7 @@ test_cases = [
     ['encoder', 'transformer', 4, 256, 'Attention', 3, False],
     # ['encoder', 'contextual_block_transformer', 4, 256, 3, 0, False],
     ['encoder', 'transformer', 4, 256, 'Attention', 3, True],
-    ['encoder', 'conformer_rpe_latest', 4, 256, 'RelPosAttention', 3, True],
+    ['encoder', 'conformer_rpe_latest', 4, 256, 'RelativeShift', 3, True],
     # ['encoder', 'contextual_block_transformer', 4, 256, 3, 0, True],
     ['decoder', 'transformer', 4, 256, 'CrossAttention', 6, True],
     ['lm', 'transformer_pe', 4, 256, 'CrossAttention', 3, True],
