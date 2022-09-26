@@ -56,11 +56,12 @@ Here is the comparison of the inference time for each model. All test was execut
 
 - test data : `np.random.random((1, 100, 80), dtype=np.float32)`
 
-| layer | number of layers | before optimize (msec) | after optimize (msec) | torch (msec) |
-| ----- |18 | ---------------------- | --------------------- | ------------ |
-| TransformerEncoderLayer| 6| 45.02                  | **37.52**             | 89.85        |
-| TransformerDecoderLayer| 12| 9.37                   | **6.88**              | 20.32        |
-| ConformerEncoderLayer (RelativeShift) | 26.82                      | **23.76**                     | 48.59            |
+| layer                                   | number of layers | before optimize (msec) | after optimize (msec) | torch (msec) |
+| --------------------------------------- | ---------------- | ---------------------- | --------------------- | ------------ |
+| TransformerEncoderLayer                 | 18               | 45.02                  | **37.52**             | 89.85        |
+| TransformerDecoderLayer                 | 6                | 9.37                   | **6.88**              | 20.32        |
+| ConformerEncoderLayer (RelativeShift)   | 12               | 26.82                  | **23.76**             | 48.59        |
+| ConformerEncoderLayer (RelPosAttention) | 12               | -                      | **22.68**             | -            |
 
 
 
@@ -68,11 +69,12 @@ Here is the comparison of the inference time for each model. All test was execut
 
 - test data : `np.random.random((1, 100, 80), dtype=np.float32)`
 
-| layer                              | before optimize (msec) | after optimize (msec) | torch (msec) |
-| ---------------------------------- | ---------------------- | --------------------- | ------------ |
-| TransformerEncoderLayer (18 layer) | 39.55                  | **34.07**             | 53.65        |
-| TransformerDecoderLayer (6 layer)  | 5.98                   | **4.32**              | 8.71         |
-| ConformerEncoderLayer              | 20.29                  | **19.04**             | 32.21        |
+| layer                                   | number of layers | before optimize (msec) | after optimize (msec) | torch (msec) |
+| --------------------------------------- | ---------------- | ---------------------- | --------------------- | ------------ |
+| TransformerEncoderLayer                 | 18               | 39.55                  | **34.07**             | 53.65        |
+| TransformerDecoderLayer                 | 6                | 5.98                   | **4.32**              | 8.71         |
+| ConformerEncoderLayer (RelativeShift)   | 12               | 20.29                  | **19.04**             | 32.21        |
+| ConformerEncoderLayer (RelPosAttention) | 12               | -                      | **17.69**             | -            |
 
 
 
