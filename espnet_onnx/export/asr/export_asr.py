@@ -92,7 +92,7 @@ class ASRModelExport:
         model_config.update(encoder=enc_model.get_model_config(
             model.asr_model, export_dir))
 
-        # # export decoder
+        # export decoder
         dec_model = get_decoder(model.asr_model.decoder, self.export_config)
         self._export_decoder(dec_model, enc_out_size, export_dir, verbose)
         model_config.update(decoder=dec_model.get_model_config(export_dir))
@@ -302,7 +302,7 @@ class ASRModelExport:
         models = glob.glob(os.path.join(model_from, "*.onnx"))
         
         if self.export_config['use_ort_for_espnet']:
-            op_types_to_quantize = ['Attention', 'CrossAttention', 'MatMul']
+            op_types_to_quantize = ['Attention', 'CrossAttention', 'RelPosAttention', 'MatMul']
         else:
             op_types_to_quantize=['Attention', 'MatMul']
             

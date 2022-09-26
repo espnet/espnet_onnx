@@ -39,11 +39,14 @@ python -m espnet_onnx.export \
 | ----------------------- | ------ | -------- | ------ | ------- |
 | TransformerEncoderLayer | ◯      | ◯        | ◯      | ◯       |
 | TransformerDecoderLayer | ◯      | ◯        | x      | x       |
-| ConformerEncoderLayer   | x      | x        | x      | x       |
+| ConformerEncoderLayer   | ◯      | ◯        | ◯      | x       |
 
-**NOTE**: The original onnxruntime supports only `TransformerEncoderLayer`. If you want to optimize decoder and conformer layer, please follow the instruction to install the custom version of onnxruntime.
-
-
+**NOTE**
+- The original onnxruntime supports only `TransformerEncoderLayer`. If you want to optimize decoder and conformer layer, please follow the instruction to install the custom version of onnxruntime.
+- As for Conformer optimization, CPU supports `RelPosAttention` node to improve performance.
+  However, this op cannot efficiently calculate when sequence length is long or hidden dimension is large. (e.g., sequence length > 256 or hidden dimensios > 512)
+  `RelativeShift` op can be effectively improve inference speed for both CPU and GPU op.
+- Currently optimization with `RelPosAttention` node is not supported with torch==1.12
 
 ## Performance comparison
 
@@ -53,11 +56,12 @@ Here is the comparison of the inference time for each model. All test was execut
 
 - test data : `np.random.random((1, 100, 80), dtype=np.float32)`
 
-| layer                              | before optimize (msec) | after optimize (msec) | torch (msec) |
-| ---------------------------------- | ---------------------- | --------------------- | ------------ |
-| TransformerEncoderLayer (18 layer) | 45.02                  | **37.52**             | 89.85        |
-| TransformerDecoderLayer (6 layer)  | 9.37                   | **6.88**              | 20.32        |
-| ConformerEncoderLayer              | x                      | x                     | x            |
+| layer                                   | number of layers | before optimize (msec) | after optimize (msec) | torch (msec) |
+| --------------------------------------- | ---------------- | ---------------------- | --------------------- | ------------ |
+| TransformerEncoderLayer                 | 18               | 45.02                  | **37.52**             | 89.85        |
+| TransformerDecoderLayer                 | 6                | 9.37                   | **6.88**              | 20.32        |
+| ConformerEncoderLayer (RelativeShift)   | 12               | 26.82                  | **23.76**             | 48.59        |
+| ConformerEncoderLayer (RelPosAttention) | 12               | -                      | **22.68**             | -            |
 
 
 
@@ -65,11 +69,12 @@ Here is the comparison of the inference time for each model. All test was execut
 
 - test data : `np.random.random((1, 100, 80), dtype=np.float32)`
 
-| layer                              | before optimize (msec) | after optimize (msec) | torch (msec) |
-| ---------------------------------- | ---------------------- | --------------------- | ------------ |
-| TransformerEncoderLayer (18 layer) | 39.55                  | **34.07**             | 53.65        |
-| TransformerDecoderLayer (6 layer)  | 5.98                   | **4.32**              | 8.71         |
-| ConformerEncoderLayer              | x                      | x                     | x            |
+| layer                                   | number of layers | before optimize (msec) | after optimize (msec) | torch (msec) |
+| --------------------------------------- | ---------------- | ---------------------- | --------------------- | ------------ |
+| TransformerEncoderLayer                 | 18               | 39.55                  | **34.07**             | 53.65        |
+| TransformerDecoderLayer                 | 6                | 5.98                   | **4.32**              | 8.71         |
+| ConformerEncoderLayer (RelativeShift)   | 12               | 20.29                  | **19.04**             | 32.21        |
+| ConformerEncoderLayer (RelPosAttention) | 12               | -                      | **17.69**             | -            |
 
 
 

@@ -32,7 +32,7 @@ class TransformerEncoder(nn.Module, AbsExportModel):
         self,
         model,
         frontend,
-        preencoder,
+        preencoder=None,
         max_seq_len=512,
         feats_dim=80, 
         **kwargs
