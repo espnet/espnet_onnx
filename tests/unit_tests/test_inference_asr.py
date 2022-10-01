@@ -64,7 +64,7 @@ def check_output(out_t, out_o):
         f"The shape of output of onnx {out_o.shape} should be the same with the output of torch model {out_t.shape}"
 
     mean_dif = np.mean((out_t - out_o)**2)
-    assert mean_dif < 0.0005, \
+    assert mean_dif < 0.00005, \
         f"Result of torch model and onnx model differs."
 
 
