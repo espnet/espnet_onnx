@@ -1,5 +1,7 @@
 tag_name: pyf98/librispeech_conformer_hop_length160
 optimization:
+  CPU:
+  Quantize:
 use_ort_for_espnet: false
 check_optimize:
 check_export:
@@ -8,4 +10,5 @@ check_export:
   - ctc
   - lm
 device:
-  - 
+  - CPU
+  - Quantize

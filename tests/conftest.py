@@ -1,4 +1,5 @@
 import os
+import glob
 import pytest
 from pathlib import Path
 
@@ -65,6 +66,9 @@ def pytest_addoption(parser):
     parser.addoption('--config_dir', action='store',
                      default=None, type=str,
                      help='Path to the config directory.')
+    parser.addoption('--wav_dir', action='store',
+                     default=None, type=str,
+                     help='Path to the wav files for integration test.')
 
 
 @pytest.fixture
@@ -168,5 +172,11 @@ def get_class():
     def _method(model_type, class_name, class_config, **kwargs):
         cc = class_choices[model_type]
         selected_class = cc.get_class(class_name)
-        return selected_class(**kwargs, **class_config.dic)
+        return selected_class(**kwargs, **class_config)
     return _method
+
+
+@pytest.fixture
+def wav_files(request):
+    wav_dir = request.config.getoption('--wav_dir')
+    return glob.glob(os.path.join(wav_dir, '*'))

@@ -18,7 +18,7 @@ from espnet_onnx.export.layers.attention import OnnxNoAtt
 from espnet_onnx.utils.config import save_config
 
 from espnet_onnx.export.optimize.optimizer import optimize_model
-from .op_test_utils import check_op_type_count
+from ..op_test_utils import check_op_type_count
 
 
 encoder_cases = [
