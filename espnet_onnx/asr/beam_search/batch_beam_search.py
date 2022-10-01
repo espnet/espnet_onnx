@@ -111,7 +111,7 @@ class BatchBeamSearch(BeamSearch):
                     score=0.0,
                     scores=init_scores,
                     states=init_states,
-                    yseq=np.array([0, self.sos], dtype=np.int64),
+                    yseq=np.array([self.sos], dtype=np.int64),
                 )
             ]
         )

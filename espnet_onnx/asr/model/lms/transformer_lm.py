@@ -87,11 +87,13 @@ class TransformerLM(BatchScorerInterface):
         # merge states
         ys = ys.astype(np.int64)
         n_batch = len(ys)
+        is_first_iteration = False
         if states[0] is None:
             batch_state = [
                 np.zeros((1, 1, self.odim), dtype=np.float32)
                 for _ in range(self.nlayers)
             ]
+            is_first_iteration = True
         else:
             # transpose state of [batch, layer] into [layer, batch]
             batch_state = [
@@ -108,6 +110,10 @@ class TransformerLM(BatchScorerInterface):
             input_dic
         )
         logp = log_softmax(decoded, axis=-1)
+
+        # if first iteration, remove the first row
+        if is_first_iteration:
+            new_state = [new_state[i][:, -1:] for i in range(len(new_state))]
 
         # transpose state of [layer, batch] into [batch, layer]
         state_list = [[new_state[i][b]
