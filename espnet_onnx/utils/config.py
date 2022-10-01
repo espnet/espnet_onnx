@@ -3,6 +3,7 @@ import json
 import yaml
 import warnings
 from pathlib import Path
+from types import SimpleNamespace
 
 
 def get_config(path):
@@ -15,8 +16,9 @@ def get_config(path):
             dic = yaml.safe_load(f)
     else:
         raise ValueError('Configuration format is not supported.')
-    # return Config(dic)
-    return dic
+    return Config(dic)
+    # return SimpleNamespace(**dic)
+    # return dic
 
 def save_config(config, path):
     _, ext = os.path.splitext(path)
@@ -42,6 +44,7 @@ def update_model_path(tag_name, model_path):
         config = get_config(tag_config_path)
     else:
         config = {}
+    # if tag_name in config.keys():
     if tag_name in config.keys():
         warnings.warn(f'Onnx model "{tag_name}" is already saved in {config[tag_name]}. ' \
                       + f'Update model path to "{model_path}".')
@@ -56,23 +59,15 @@ def get_tag_config():
         config = {}
     return config
 
-class Config(object):
+class Config(SimpleNamespace):
     def __init__(self, dic=None):
-        if dic is not None:
-            for j, k in dic.items():
-                if isinstance(k, dict):
-                    setattr(self, j, Config(k))
-                elif isinstance(k, list) and len(k) > 0:
-                    if isinstance(k[0], dict):
-                        setattr(self, j, [Config(el) for el in k])
-                    else:
-                        setattr(self, j, k)
-                else:
-                    if k is not None:
-                        setattr(self, j, k)
-                    else:
-                        setattr(self, j, None)
-
+        super().__init__(**dic)
+        for k,v in self.__dict__.items():
+            if isinstance(v, dict):
+                setattr(self, k, Config(v))
+            elif isinstance(v, list):
+                if isinstance(v[0], dict):
+                    setattr(self, k, [Config(_v) for _v in v])
 
     def __len__(self):
         return len(self.__dict__.keys())
