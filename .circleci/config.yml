@@ -18,24 +18,49 @@ jobs:
     steps:
       - checkout
       - run: sudo apt-get -y update; sudo apt-get install libsndfile1
-      - run: # install dependencies
+      - run:
           command: |
+            cd ~
+            python3 -m venv venv
+            mkdir -p ~/models
+      - run:
+          command: |
+            source ~/venv/bin/activate
             pip install --upgrade pip
-            pip install torch==1.11.0+cu113 torchvision==0.12.0+cu113 torchaudio==0.11.0 --extra-index-url https://download.pytorch.org/whl/cu113
+            pip install torch==1.11.0 torchvision==0.12.0 torchaudio==0.11.0
             pip install -r tools/requirements_export.txt
             pip install pytest
-      - run: # install custom onnxruntime for optimization
+      - run:
           command: |
+            cd ~
+            source venv/bin/activate
             wget https://github.com/espnet/espnet_onnx/releases/download/custom_ort_v1.11.1.espnet.3/onnxruntime-1.11.1.espnet-cp38-cp38-linux_x86_64.whl
             pip install onnxruntime-1.11.1.espnet-cp38-cp38-linux_x86_64.whl
+      - run: # test model download
+          command: |
+            wget https://github.com/git-lfs/git-lfs/releases/download/v3.2.0/git-lfs-linux-amd64-v3.2.0.tar.gz
+            tar -xvf git-lfs-linux-amd64-v3.2.0.tar.gz
+            cd git-lfs-3.2.0
+            sudo ./install.sh
+            git lfs install
+      - run: # install conformer
+          command: |
+            git clone https://huggingface.co/pyf98/librispeech_conformer_hop_length160
+            cd librispeech_conformer_hop_length160
+            tar czvf librispeech_conformer_hop_length160.tgz ./README.md data exp meta.yaml
+            mv librispeech_conformer_hop_length160.tgz ~/models
       - restore_cache: # restore s3prl folder
           key: s3prl
       - run: # install s3prl
           command: |
+            source ~/venv/bin/activate
             cd ~/s3prl
             pip install -e .
             cd ~/espnet_onnx
-      - run: pytest tests --config_dir tests/test_config
+      - run:
+          command: | 
+            source ~/venv/bin/activate
+            pytest tests --config_dir tests/test_config --wav_dir tests/test_wavs
       - save_cache:
           key: s3prl
           paths:
@@ -59,9 +84,7 @@ jobs:
             - ~/.cache/s3prl
 
 workflows:
-  # install_s3prl:
-  #   when:
-  #     condition: << pipeline.parameters.flag_install_s3prl >>
+  # setup_environment:
   #   jobs:
   #     - run_install_s3prl
 

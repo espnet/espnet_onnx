@@ -28,7 +28,8 @@ def export_model(model_export, config):
         use_ort_for_espnet=config['use_ort_for_espnet'],
         use_gpu=('GPU' in config['device'])
     )
-    model_export.export_from_pretrained(
+    model_export.export_from_zip(
+        config['model_dir'],
         config['tag_name'],
         quantize=('Quantize' in config['device']),
         optimize=(config['check_optimize'] is not None)
@@ -81,7 +82,7 @@ def test_asr(config, load_config, wav_files, model_export):
     check_optimize(model_config, file_paths)
 
     # parity check with espnet model
-    espnet_model = espnetSpeech2Text.from_pretrained(model_config['tag_name'])
+    espnet_model = espnetSpeech2Text.from_pretrained(model_config['model_dir'])
     onnx_model = onnxSpeech2Text(model_config['tag_name'])
     for wav_file in wav_files:
         y, _ = librosa.load(wav_file, sr=16000)
