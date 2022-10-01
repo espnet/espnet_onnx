@@ -1,0 +1,19 @@
+tag_name: Shinji Watanabe/librispeech_asr_train_asr_transformer_e18_raw_bpe_sp_valid.acc.best
+optimization:
+  CPU:
+    encoder:
+      Attention: 18
+  Quantize:
+    encoder:
+      QAttention: 18
+use_ort_for_espnet: false
+check_optimize:
+  - encoder
+check_export:
+  - encoder
+  - decoder
+  - ctc
+  - lm
+device: 
+  - CPU
+  - Quantize

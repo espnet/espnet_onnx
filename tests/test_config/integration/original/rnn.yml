@@ -1,0 +1,11 @@
+tag_name: kamo-naoyuki/timit_asr_train_asr_raw_word_valid.acc.ave
+optimization:
+use_ort_for_espnet: false
+check_optimize:
+check_export:
+  - encoder
+  - decoder
+  - predecoder_0
+  - ctc
+device:
+  -
