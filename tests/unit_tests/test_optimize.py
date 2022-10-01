@@ -9,7 +9,7 @@ import glob
 import onnx
 
 from espnet_onnx.export.optimize.optimizer import optimize_model
-from .op_test_utils import check_op_type_count
+from ..op_test_utils import check_op_type_count
 
 test_cases = [
     ['encoder', 'transformer', 4, 256, 'Attention', 3, False, False],
