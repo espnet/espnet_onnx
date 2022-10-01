@@ -6,7 +6,7 @@ import numpy as np
 import onnxruntime
 from pathlib import Path
 
-def check_op_type_count(model_path, **kwargs):
+def check_op_type_count(model_path, kwargs):
     model = onnx.load(Path(model_path))
     optype2count = {}
     for op_type in kwargs:

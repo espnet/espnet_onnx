@@ -51,5 +51,5 @@ def test_optimize(model_type, model_name, n_head, h_size, node_name, node_num, u
     
     # load the optimized model and check if the number of fused nodes is correct.
     nodes = {node_name : node_num}
-    check_op_type_count(str(output_dir / model_name), **nodes)
+    check_op_type_count(str(output_dir / model_name), nodes)
     

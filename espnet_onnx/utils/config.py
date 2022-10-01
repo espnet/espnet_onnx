@@ -15,7 +15,8 @@ def get_config(path):
             dic = yaml.safe_load(f)
     else:
         raise ValueError('Configuration format is not supported.')
-    return Config(dic)
+    # return Config(dic)
+    return dic
 
 def save_config(config, path):
     _, ext = os.path.splitext(path)
@@ -38,7 +39,7 @@ def update_model_path(tag_name, model_path):
     # get configuration of the tag name.
     tag_config_path = Path.home() / ".cache" / "espnet_onnx" / 'tag_config.yaml'
     if os.path.exists(tag_config_path):
-        config = get_config(tag_config_path).dic
+        config = get_config(tag_config_path)
     else:
         config = {}
     if tag_name in config.keys():
@@ -71,7 +72,7 @@ class Config(object):
                         setattr(self, j, k)
                     else:
                         setattr(self, j, None)
-        self.dic = dic
+
 
     def __len__(self):
         return len(self.__dict__.keys())
