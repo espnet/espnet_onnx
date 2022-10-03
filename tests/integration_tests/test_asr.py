@@ -15,7 +15,7 @@ from ..op_test_utils import check_op_type_count
 
 asr_config_names = [
     # 'original/rnn',
-    'original/transformer',
+    # 'original/transformer',
     'original/conformer',
     'custom/conformer_cpu',
     'custom/conformer_gpu',
