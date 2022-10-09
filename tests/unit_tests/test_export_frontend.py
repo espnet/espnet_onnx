@@ -11,8 +11,6 @@ import numpy as np
 
 from espnet_onnx.export.asr.models import (
     get_encoder,
-    get_decoder,
-    get_lm,
 )
 from espnet_onnx.export.layers.attention import OnnxNoAtt
 from espnet_onnx.utils.config import save_config
@@ -45,7 +43,7 @@ def test_export_frontend(enc_type, load_config, model_export, get_class):
     frontend = get_class(
         'frontend',
         model_config.frontend,
-        model_config.frontend_conf
+        model_config.frontend_conf.dic
     )
     
     export_dir = Path(model_export.cache_dir) / 'test' / \
@@ -59,7 +57,7 @@ def test_export_frontend(enc_type, load_config, model_export, get_class):
     encoder = get_class(
         'encoder',
         model_config.encoder,
-        model_config.encoder_conf,
+        model_config.encoder_conf.dic,
         input_size=input_size
     )
     enc_wrapper = get_encoder(encoder, frontend, None, {})

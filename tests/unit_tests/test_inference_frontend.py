@@ -50,7 +50,7 @@ def test_infer_frontend(enc_type, wav_lens, load_config, get_class):
     frontend_espnet = get_class(
         'frontend',
         model_config.frontend,
-        model_config.frontend_conf
+        model_config.frontend_conf.dic
     )
     frontend_espnet.load_state_dict(torch.load(glob.glob(str(model_dir / '*frontend.pth'))[0]))
     frontend_espnet.eval()

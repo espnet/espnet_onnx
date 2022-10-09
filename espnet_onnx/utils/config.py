@@ -17,8 +17,6 @@ def get_config(path):
     else:
         raise ValueError('Configuration format is not supported.')
     return Config(dic)
-    # return SimpleNamespace(**dic)
-    # return dic
 
 def save_config(config, path):
     _, ext = os.path.splitext(path)
@@ -86,3 +84,11 @@ class Config(SimpleNamespace):
 
     def values(self):
         return self.__dict__.values()
+    
+    @property
+    def dic(self):
+        ret = self.__dict__
+        for k,v in ret.items():
+            if isinstance(v, Config):
+                ret[k] = v.dic
+        return ret

@@ -53,7 +53,7 @@ def test_export_tts(tts_type, cls, load_config, model_export_tts, get_class):
     tts = get_class(
         'tts',
         model_config.tts,
-        model_config.tts_conf,
+        model_config.tts_conf.dic,
         idim=78, odim=513
     )
     if 'tacotron' in tts_type:
