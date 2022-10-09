@@ -1,5 +1,4 @@
 model_dir: /home/circleci/models/librispeech_conformer_hop_length160.tgz
-# model_dir: /home/masao/doc/temp/lfs/librispeech_conformer_hop_length160.tgz
 tag_name: conformer_cpu
 optimization:
   CPU:

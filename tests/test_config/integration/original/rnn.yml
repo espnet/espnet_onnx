@@ -1,5 +1,4 @@
 model_dir: /home/circleci/models/kamo-naoyuki-mini_an4_asr_train_raw_bpe_valid.acc.best.tgz
-# model_dir: /home/masao/doc/temp/lfs/librispeech_conformer_hop_length160.tgz
 tag_name: rnn
 optimization:
   CPU:

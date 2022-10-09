@@ -1,5 +1,4 @@
 model_dir: /home/circleci/models/shinji-watanabe-librispeech_asr_train_asr_transformer_e18_raw_bpe_sp_valid.acc.best.tgz
-# model_dir: /home/masao/doc/temp/lfs/librispeech_conformer_hop_length160.tgz
 tag_name: transformer
 optimization:
   CPU:
