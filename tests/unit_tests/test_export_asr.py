@@ -69,7 +69,7 @@ def test_export_encoder(enc_type, load_config, model_export, get_class):
     frontend = get_class(
         'frontend',
         model_config.frontend,
-        model_config.frontend_conf
+        model_config.frontend_conf.dic
     )
     input_size = frontend.output_size()
     
@@ -77,7 +77,7 @@ def test_export_encoder(enc_type, load_config, model_export, get_class):
     encoder = get_class(
         'encoder',
         model_config.encoder,
-        model_config.encoder_conf,
+        model_config.encoder_conf.dic,
         input_size=input_size
     )
     export_dir = Path(model_export.cache_dir) / 'test' / \
@@ -111,7 +111,7 @@ def test_export_decoder(dec_type, load_config, model_export, get_class):
     decoder = get_class(
         'decoder',
         model_config.decoder,
-        model_config.decoder_conf,
+        model_config.decoder_conf.dic,
         **kwargs
     )
     export_dir = Path(model_export.cache_dir) / 'test' / \
@@ -120,7 +120,6 @@ def test_export_decoder(dec_type, load_config, model_export, get_class):
     torch.save(decoder.state_dict(), str(export_dir / f'{dec_type}.pth'))
     
     dec_wrapper = get_decoder(decoder, {})
-    print(dec_wrapper)
     save_model(dec_wrapper, export_dir, model_export, 'decoder')
     
     decoder_config = dec_wrapper.get_model_config(export_dir)
@@ -136,7 +135,7 @@ def test_export_lm(lm_type, load_config, model_export, get_class):
     lm = get_class(
         'lm',
         model_config.lm,
-        model_config.lm_conf,
+        model_config.lm_conf.dic,
         vocab_size=32000,
     )
     lm.eval()

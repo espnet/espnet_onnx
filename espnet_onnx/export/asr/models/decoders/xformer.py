@@ -61,7 +61,7 @@ class XformerDecoder(nn.Module, AbsExportModel):
         return y, new_cache
 
     def get_dummy_inputs(self, enc_size):
-        tgt = torch.LongTensor([0, 1]).unsqueeze(0)
+        tgt = torch.LongTensor([1]).unsqueeze(0)
         enc_out = torch.randn(1, 100, enc_size)
         cache = [
             torch.zeros((1, 1, self.model.decoders[0].size))

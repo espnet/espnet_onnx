@@ -1,0 +1,20 @@
+model_dir: /home/circleci/models/shinji-watanabe-librispeech_asr_train_asr_transformer_e18_raw_bpe_sp_valid.acc.best.tgz
+tag_name: transformer
+optimization:
+  CPU:
+    encoder:
+      Attention: 18
+  Quantize:
+    encoder:
+      QAttention: 18
+use_ort_for_espnet: false
+check_optimize:
+  - encoder
+check_export:
+  - encoder
+  - decoder
+  - ctc
+  - lm
+device: 
+  - CPU
+  - Quantize

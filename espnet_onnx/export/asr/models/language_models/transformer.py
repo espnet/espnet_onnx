@@ -73,7 +73,7 @@ class TransformerLM(nn.Module, AbsExportModel):
         return h, new_cache
 
     def get_dummy_inputs(self):
-        tgt = torch.LongTensor([0, 1]).unsqueeze(0)
+        tgt = torch.LongTensor([1]).unsqueeze(0)
         cache = [
             torch.zeros((1, 1, self.encoder.encoders[0].size))
             for _ in range(len(self.encoder.encoders))

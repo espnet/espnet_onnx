@@ -64,7 +64,7 @@ def check_output(out_t, out_o):
         f"The shape of output of onnx {out_o.shape} should be the same with the output of torch model {out_t.shape}"
 
     mean_dif = np.mean((out_t - out_o)**2)
-    assert mean_dif < 0.0005, \
+    assert mean_dif < 0.00005, \
         f"Result of torch model and onnx model differs."
 
 
@@ -90,7 +90,7 @@ def test_infer_encoder(enc_type, feat_lens, load_config, get_class):
     frontend = get_class(
         'frontend',
         model_config.frontend,
-        model_config.frontend_conf
+        model_config.frontend_conf.dic
     )
     input_size = frontend.output_size()
     
@@ -98,7 +98,7 @@ def test_infer_encoder(enc_type, feat_lens, load_config, get_class):
     encoder_espnet = get_class(
         'encoder',
         model_config.encoder,
-        model_config.encoder_conf,
+        model_config.encoder_conf.dic,
         input_size=input_size
     )
     encoder_espnet.load_state_dict(torch.load(glob.glob(str(model_dir / '*.pth'))[0]))
@@ -131,7 +131,7 @@ def test_infer_decoder(dec_type, feat_lens, load_config, get_class):
     decoder_espnet = get_class(
         'decoder',
         model_config.decoder,
-        model_config.decoder_conf,
+        model_config.decoder_conf.dic,
         **kwargs
     )
     decoder_espnet.load_state_dict(torch.load(glob.glob(str(model_dir / '*.pth'))[0]))
@@ -169,7 +169,7 @@ def test_infer_lm(lm_type, feat_lens, load_config, get_class):
     torch_model = get_class(
         'lm',
         model_config.lm,
-        model_config.lm_conf,
+        model_config.lm_conf.dic,
         vocab_size=32000,
     )
     torch_model.load_state_dict(torch.load(glob.glob(str(model_dir / '*.pth'))[0]))

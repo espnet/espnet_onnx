@@ -46,7 +46,7 @@ class Speech2Text(AbsASRModel):
             self.start_idx = 1
             self.last_idx = None
         else:
-            self.start_idx = 2
+            self.start_idx = 1
             self.last_idx = -1
 
 

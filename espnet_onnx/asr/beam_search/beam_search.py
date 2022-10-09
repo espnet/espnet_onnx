@@ -123,7 +123,7 @@ class BeamSearch:
                 scores=init_scores,
                 states=init_states,
                 # Add blank token before sos for onnx inference
-                yseq=np.array([0, self.sos]),
+                yseq=np.array([self.sos]),
             )
         ]
 
