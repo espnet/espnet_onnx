@@ -111,40 +111,29 @@ class OnnxPositionalEncoding(torch.nn.Module):
         """Construct an PositionalEncoding object."""
         super(OnnxPositionalEncoding, self).__init__()
         self.d_model = model.d_model
-        self.reverse = model.reverse
+        self.reverse = reverse
+        self.max_seq_len = max_seq_len
         self.xscale = math.sqrt(self.d_model)
         self._register_load_state_dict_pre_hook(_pre_hook)
-        self.pe = None
+        self.pe = model.pe
         self.use_cache = use_cache
-        if self.use_cache:
-            self.extend_pe(torch.tensor(0.0).expand(1, max_seq_len))
+        self.model = model
+        if not self.use_cache:
+            self.extend_pe()
         else:
             self.div_term = torch.exp(
                 torch.arange(0, self.d_model, 2, dtype=torch.float32)
                 * -(math.log(10000.0) / self.d_model)
             )
 
-    def extend_pe(self, x):
+    def extend_pe(self):
         """Reset the positional encodings."""
-        if self.pe is not None and self.pe.size(1) >= x.size(1):
-            if self.pe.dtype != x.dtype or self.pe.device != x.device:
-                self.pe = self.pe.to(dtype=x.dtype, device=x.device)
-            return
-        pe = torch.zeros(x.size(1), self.d_model)
-        if self.reverse:
-            position = torch.arange(
-                x.size(1) - 1, -1, -1.0, dtype=torch.float32
-            ).unsqueeze(1)
+        pe_length = len(self.pe[0])
+        if self.max_seq_len < pe_length:
+            self.pe = self.pe[:, :self.max_seq_len]
         else:
-            position = torch.arange(
-                0, x.size(1), dtype=torch.float32).unsqueeze(1)
-        div_term = torch.exp(
-            torch.arange(0, self.d_model, 2, dtype=torch.float32)
-            * -(math.log(10000.0) / self.d_model)
-        )
-        pe[:, 0::2] = torch.sin(position * div_term)
-        pe[:, 1::2] = torch.cos(position * div_term)
-        self.pe = pe.unsqueeze(0)
+            self.model.extend_pe(self.max_seq_len)
+            self.pe = self.model.pe
     
     def _add_pe(self, x):
         """Computes positional encoding"""
@@ -266,7 +255,7 @@ class OnnxLegacyRelPositionalEncoding(OnnxPositionalEncoding):
         pe[:, :, 1::2] += torch.cos(position * self.div_term)
         return pe
 
-    def forward(self, x, use_cache=True):
+    def forward(self, x):
         """Compute positional encoding.
 
         Args:
@@ -304,46 +293,26 @@ class OnnxRelPositionalEncoding(torch.nn.Module):
         super(OnnxRelPositionalEncoding, self).__init__()
         self.d_model = model.d_model
         self.xscale = math.sqrt(self.d_model)
-        self.pe = None
+        self.pe = model.pe
         self.use_cache = use_cache
+        self.model = model
+        self.max_seq_len = max_seq_len
         if self.use_cache:
-            self.extend_pe(torch.tensor(0.0).expand(1, max_seq_len))
+            self.extend_pe()
         else:
             self.div_term = torch.exp(
                 torch.arange(0, self.d_model, 2, dtype=torch.float32)
                 * -(math.log(10000.0) / self.d_model)
             )
 
-    def extend_pe(self, x):
+    def extend_pe(self):
         """Reset the positional encodings."""
-        if self.pe is not None and self.pe.size(1) >= x.size(1) * 2 - 1:
-            # self.pe contains both positive and negative parts
-            # the length of self.pe is 2 * input_len - 1
-            if self.pe.dtype != x.dtype or self.pe.device != x.device:
-                self.pe = self.pe.to(dtype=x.dtype, device=x.device)
-            return
-        # Suppose `i` means to the position of query vecotr and `j` means the
-        # position of key vector. We use position relative positions when keys
-        # are to the left (i>j) and negative relative positions otherwise (i<j).
-        pe_positive = torch.zeros(x.size(1), self.d_model)
-        pe_negative = torch.zeros(x.size(1), self.d_model)
-        position = torch.arange(0, x.size(1), dtype=torch.float32).unsqueeze(1)
-        div_term = torch.exp(
-            torch.arange(0, self.d_model, 2, dtype=torch.float32)
-            * -(math.log(10000.0) / self.d_model)
-        )
-        pe_positive[:, 0::2] = torch.sin(position * div_term)
-        pe_positive[:, 1::2] = torch.cos(position * div_term)
-        pe_negative[:, 0::2] = torch.sin(-1 * position * div_term)
-        pe_negative[:, 1::2] = torch.cos(-1 * position * div_term)
-
-        # Reserve the order of positive indices and concat both positive and
-        # negative indices. This is used to support the shifting trick
-        # as in https://arxiv.org/abs/1901.02860
-        pe_positive = torch.flip(pe_positive, [0]).unsqueeze(0)
-        pe_negative = pe_negative[1:].unsqueeze(0)
-        pe = torch.cat([pe_positive, pe_negative], dim=1)
-        self.pe = pe.to(device=x.device, dtype=x.dtype)
+        pe_length = len(self.pe[0])
+        if self.max_seq_len < pe_length:
+            self.pe = self.pe[:, :self.max_seq_len]
+        else:
+            self.model.extend_pe(self.max_seq_len)
+            self.pe = self.model.pe
     
     def _get_pe(self, x):
         pe_positive = torch.zeros(x.size(1), self.d_model)
@@ -361,7 +330,7 @@ class OnnxRelPositionalEncoding(torch.nn.Module):
         pe_negative = pe_negative[1:].unsqueeze(0)
         return torch.cat([pe_positive, pe_negative], dim=1)
 
-    def forward(self, x: torch.Tensor, use_cache=True):
+    def forward(self, x: torch.Tensor):
         """Add positional encoding.
 
         Args:
@@ -392,11 +361,11 @@ class OnnxStreamPositionalEncoding(torch.nn.Module):
         self.use_cache = use_cache
         self.d_model = model.d_model
         self.xscale = model.xscale
-        self.pe = None
+        self.pe = model.pe
         self.use_cache = use_cache
+        self.max_seq_len = max_seq_len
         if self.use_cache:
-            tmp = torch.tensor(0.0).expand(1, max_seq_len)
-            self.extend_pe(tmp.size(1), tmp.device, tmp.dtype)
+            self.extend_pe()
         else:
             self.div_term = torch.exp(
                 torch.arange(0, self.d_model, 2, dtype=torch.float32)
@@ -404,17 +373,14 @@ class OnnxStreamPositionalEncoding(torch.nn.Module):
             )
         self._register_load_state_dict_pre_hook(_pre_hook)
 
-    def extend_pe(self, length, device, dtype):
+    def extend_pe(self):
         """Reset the positional encodings."""
-        pe = torch.zeros(length, self.d_model)
-        position = torch.arange(0, length, dtype=torch.float32).unsqueeze(1)
-        div_term = torch.exp(
-            torch.arange(0, self.d_model, 2, dtype=torch.float32)
-            * -(math.log(10000.0) / self.d_model)
-        )
-        pe[:, 0::2] = torch.sin(position * div_term)
-        pe[:, 1::2] = torch.cos(position * div_term)
-        self.pe = pe.unsqueeze(0)
+        pe_length = len(self.pe[0])
+        if self.max_seq_len < pe_length:
+            self.pe = self.pe[:, :self.max_seq_len]
+        else:
+            self.model.extend_pe(self.max_seq_len)
+            self.pe = self.model.pe
     
     def _add_pe(self, x, start_idx):
         position = torch.arange(start_idx, x.size(1), dtype=torch.float32).unsqueeze(1)
@@ -423,7 +389,7 @@ class OnnxStreamPositionalEncoding(torch.nn.Module):
         x[:, :, 1::2] += torch.cos(position * self.div_term)
         return x
 
-    def forward(self, x: torch.Tensor, start_idx: int = 0, use_cache=True):
+    def forward(self, x: torch.Tensor, start_idx: int = 0):
         """Add positional encoding.
 
         Args:
