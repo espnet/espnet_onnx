@@ -96,5 +96,5 @@ def test_optimize_frontend(model_type, model_name, n_head, h_size, n_att, n_cros
     if n_cross_att > 0:
         nodes['CrossAttention'] = n_cross_att
         
-    check_op_type_count(str(output_dir / model_name), **nodes)
+    check_op_type_count(str(output_dir / model_name), nodes)
     
