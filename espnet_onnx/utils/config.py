@@ -64,7 +64,9 @@ class Config(SimpleNamespace):
             if isinstance(v, dict):
                 setattr(self, k, Config(v))
             elif isinstance(v, list):
-                if isinstance(v[0], dict):
+                if len(v) == 0:
+                    setattr(self, k, [])
+                elif isinstance(v[0], dict):
                     setattr(self, k, [Config(_v) for _v in v])
 
     def __len__(self):
