@@ -6,6 +6,7 @@
 
 """Encoder self-attention layer definition."""
 
+from espnet_onnx.utils.torch_function import normalize
 import torch
 
 from torch import nn
@@ -54,7 +55,7 @@ class OnnxDecoderLayer(nn.Module):
             self.concat_linear1 = model.concat_linear1
             self.concat_linear2 = model.concat_linear2
 
-    def forward(self, x, mask, memory, memory_mask, cache=None):
+    def forward(self, x, mask, memory, memory_mask, cache=None, is_first_layer=False):
         """Compute encoded features.
 
         Args:
@@ -67,21 +68,33 @@ class OnnxDecoderLayer(nn.Module):
             torch.Tensor: Mask tensor (#batch, time).
 
         """
+        if cache is not None and not is_first_layer:
+            # when this decoder layer is not the first layer and we need to consider cache,
+            # then x = torch.cat([cache, x]),
+            # and the first sequence of the cache is always a dummy cache in this espnet_onnx.
+            # So we need to remove this dummy cache to compute normalization.
+            x = x[:, 1:]
+        
         residual = x
+
         if self.normalize_before:
             x = self.norm1(x)
 
         if cache is not None:
             x_q = x[:, -1:, :]
             residual = residual[:, -1:, :]
+            tgt_q_mask = None
+            if mask is not None:
+                tgt_q_mask = mask[:, :, -1:]
         else:
             x_q = x
+            tgt_q_mask = mask
 
         if self.concat_after:
-            x_concat = torch.cat((x, self.self_attn(x_q, x, x, mask)), dim=-1)
+            x_concat = torch.cat((x, self.self_attn(x_q, x, x, tgt_q_mask)), dim=-1)
             x = self.concat_linear(x_concat) + residual
         else:
-            x = self.self_attn(x_q, x, x, mask) + residual
+            x = self.self_attn(x_q, x, x, tgt_q_mask) + residual
             
         if not self.normalize_before:
             x = self.norm1(x)

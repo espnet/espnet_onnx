@@ -64,13 +64,11 @@ class XformerDecoder(BatchScorerInterface):
             ys = ys[None, :]
 
         n_batch = len(ys)
-        is_first_iteration = False
         if states[0] is None:
             batch_state = [
                 np.zeros((1, 1, self.odim), dtype=np.float32)
                 for _ in range(self.n_layers)
             ]
-            is_first_iteration = True
         else:
             # transpose state of [batch, layer] into [layer, batch]
             batch_state = [
@@ -86,10 +84,6 @@ class XformerDecoder(BatchScorerInterface):
             input_dict
         )
         
-        # if first iteration, remove the first row
-        if is_first_iteration:
-            states = [states[i][:, -1:] for i in range(len(states))]
-
         # transpose state of [layer, batch] into [batch, layer]
         state_list = [[states[i][b]
                        for i in range(self.n_layers)] for b in range(n_batch)]
