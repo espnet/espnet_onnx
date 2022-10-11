@@ -118,7 +118,7 @@ class OnnxPositionalEncoding(torch.nn.Module):
         self.pe = model.pe
         self.use_cache = use_cache
         self.model = model
-        if not self.use_cache:
+        if self.use_cache:
             self.extend_pe()
         else:
             self.div_term = torch.exp(
@@ -132,7 +132,7 @@ class OnnxPositionalEncoding(torch.nn.Module):
         if self.max_seq_len < pe_length:
             self.pe = self.pe[:, :self.max_seq_len]
         else:
-            self.model.extend_pe(self.max_seq_len)
+            self.model.extend_pe(torch.tensor(0.0).expand(1, self.max_seq_len))
             self.pe = self.model.pe
     
     def _add_pe(self, x):
