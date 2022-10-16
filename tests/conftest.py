@@ -42,11 +42,14 @@ from espnet2.asr.frontend.default import DefaultFrontend
 from espnet2.asr.frontend.fused import FusedFrontends
 from espnet2.asr.frontend.s3prl import S3prlFrontend
 from espnet2.asr.frontend.windowing import SlidingWindow
-from espnet2.asr.transducer.transducer_decoder import TransducerDecoder
 from espnet2.lm.abs_model import AbsLM
 from espnet2.lm.seq_rnn_lm import SequentialRNNLM
 from espnet2.lm.transformer_lm import TransformerLM
 from espnet2.train.class_choices import ClassChoices
+try:
+    from espnet2.asr.transducer.transducer_decoder import TransducerDecoder
+except:
+    from espnet2.asr.decoder.transducer_decoder import TransducerDecoder
 
 from espnet2.tts.abs_tts import AbsTTS
 from espnet2.gan_tts.joint import JointText2Wav

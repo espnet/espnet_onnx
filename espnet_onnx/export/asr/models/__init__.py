@@ -16,13 +16,17 @@ from .encoders.contextual_block_xformer import ContextualBlockXformerEncoder
 # decoder
 from espnet2.asr.decoder.rnn_decoder import RNNDecoder as espnetRNNDecoder
 from espnet2.asr.decoder.transformer_decoder import TransformerDecoder as espnetTransformerDecoder
-from espnet2.asr.transducer.transducer_decoder import TransducerDecoder as espnetTransducerDecoder
 from .decoders.rnn import (
     RNNDecoder,
     PreDecoder
 )
 from .decoders.xformer import XformerDecoder
 from .decoders.transducer import TransducerDecoder
+try:
+    from espnet2.asr.transducer.transducer_decoder import TransducerDecoder as espnetTransducerDecoder
+except:
+    from espnet2.asr.decoder.transducer_decoder import TransducerDecoder as espnetTransducerDecoder
+
 
 # lm
 from espnet2.lm.seq_rnn_lm import SequentialRNNLM as espnetSequentialRNNLM
