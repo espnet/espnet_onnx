@@ -25,13 +25,13 @@ pip install espnet_onnx
 
 #### Install guide for developers
 
-1. Clone this repository
+1. Clone this repository.
 
 ```shell
 git clone git@github.com:espnet/espnet_onnx.git
 ```
 
-2. Create virtual environment
+2. Create virtual environment.
 
 ```shell
 cd tools
@@ -56,7 +56,7 @@ cd s3prl
 pip install .
 ```
 
-5. Install warp_transducer
+5. Install warp_transducer for developing transducer model.
 
 ```shell
 cd tools
