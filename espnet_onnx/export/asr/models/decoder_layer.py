@@ -55,7 +55,7 @@ class OnnxDecoderLayer(nn.Module):
             self.concat_linear1 = model.concat_linear1
             self.concat_linear2 = model.concat_linear2
 
-    def forward(self, x, mask, memory, memory_mask, cache=None, is_first_layer=False):
+    def forward(self, x, mask, memory, memory_mask, cache=None):
         """Compute encoded features.
 
         Args:
@@ -68,13 +68,6 @@ class OnnxDecoderLayer(nn.Module):
             torch.Tensor: Mask tensor (#batch, time).
 
         """
-        if cache is not None and not is_first_layer:
-            # when this decoder layer is not the first layer and we need to consider cache,
-            # then x = torch.cat([cache, x]),
-            # and the first sequence of the cache is always a dummy cache in this espnet_onnx.
-            # So we need to remove this dummy cache to compute normalization.
-            x = x[:, 1:]
-        
         residual = x
 
         if self.normalize_before:

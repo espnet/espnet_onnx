@@ -46,22 +46,18 @@ class XformerDecoder(nn.Module, AbsExportModel):
         return mask * -10000.0
 
     def forward(self, tgt, memory, cache):
-        # feats_length = torch.ones(tgt.shape).sum(dim=-1).type(torch.long)
-        # mask = self.make_pad_mask(feats_length) # (B, T)
-        # pad_mask = self.make_pad_mask(feats_length).unsqueeze(1)
-        # mask = subsequent_mask(pad_mask.shape[-1]).unsqueeze(0) # (B, T)
-        mask = subsequent_mask(tgt.size(-1)).unsqueeze(0) # (B, T)``
+        mask = subsequent_mask(tgt.size(-1)).unsqueeze(0) # (B, T)
         
         x = self.embed(tgt)
         mask = self.prepare_mask(mask)
         new_cache = []
-        for i_layer, (c, decoder) in enumerate(zip(cache, self.model.decoders)):
-            is_first_layer = i_layer == 0
+        for c, decoder in zip(cache, self.model.decoders):
             x, mask = decoder(
-                x, mask, memory, None, c, is_first_layer
+                x, mask, memory, None, c
             )
             new_cache.append(x)
-        
+            x = x[:, 1:, :]
+
         if self.model.normalize_before:
             y = self.model.after_norm(x[:, -1])
         else:
