@@ -69,7 +69,14 @@ class HubertModel(nn.Module):
     def __init__(self, model, max_seq_len=512, **kwargs):
         super().__init__()
         self.model = model.model
-        self.task_cfg = model.task_cfg
+        
+        if hasattr(model, 'task'):
+            self.task_cfg = model.task.cfg
+        elif hasattr(model, 'task_cfg'):
+            self.task_cfg = model.task_cfg
+        else:
+            raise RuntimeError('S3PRL version is not supported. Please install v0.3 or v0.4')
+
         self.encoder = model.model.encoder
         self.layers = nn.ModuleList([])
         self.make_pad_mask = MakePadMask(max_seq_len, flip=False)
