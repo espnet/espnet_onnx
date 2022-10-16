@@ -6,6 +6,7 @@
 
 """Encoder self-attention layer definition."""
 
+from espnet_onnx.utils.torch_function import normalize
 import torch
 
 from torch import nn
@@ -68,20 +69,25 @@ class OnnxDecoderLayer(nn.Module):
 
         """
         residual = x
+
         if self.normalize_before:
             x = self.norm1(x)
 
         if cache is not None:
             x_q = x[:, -1:, :]
             residual = residual[:, -1:, :]
+            tgt_q_mask = None
+            if mask is not None:
+                tgt_q_mask = mask[:, :, -1:]
         else:
             x_q = x
+            tgt_q_mask = mask
 
         if self.concat_after:
-            x_concat = torch.cat((x, self.self_attn(x_q, x, x, mask)), dim=-1)
+            x_concat = torch.cat((x, self.self_attn(x_q, x, x, tgt_q_mask)), dim=-1)
             x = self.concat_linear(x_concat) + residual
         else:
-            x = self.self_attn(x_q, x, x, mask) + residual
+            x = self.self_attn(x_q, x, x, tgt_q_mask) + residual
             
         if not self.normalize_before:
             x = self.norm1(x)

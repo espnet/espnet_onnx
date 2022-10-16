@@ -1,4 +1,5 @@
 import os
+from espnet_onnx.utils.function import subsequent_mask
 
 import torch
 import torch.nn as nn
@@ -6,8 +7,9 @@ import numpy as np
 
 from espnet.nets.pytorch_backend.transformer.attention import MultiHeadedAttention
 from ..multihead_att import OnnxMultiHeadedAttention
+# from espnet.nets.pytorch_backend.transformer.mask import subsequent_mask
 
-from espnet_onnx.utils.function import subsequent_mask
+from espnet_onnx.utils.torch_function import subsequent_mask
 from ..language_models.embed import Embedding
 from espnet_onnx.utils.abs_model import AbsExportModel
 from espnet_onnx.utils.torch_function import MakePadMask
@@ -23,6 +25,7 @@ class XformerDecoder(nn.Module, AbsExportModel):
         if isinstance(self.model.decoders[0].self_attn, MultiHeadedAttention):
             self.num_heads = self.model.decoders[0].self_attn.h
             self.hidden_size = self.model.decoders[0].self_attn.linear_out.out_features
+
         # replace multihead attention module into customized module.
         for i,d in enumerate(self.model.decoders):
             # d is DecoderLayer
@@ -31,7 +34,7 @@ class XformerDecoder(nn.Module, AbsExportModel):
             if isinstance(d.src_attn, MultiHeadedAttention):
                 d.src_attn = OnnxMultiHeadedAttention(d.src_attn)
             self.model.decoders[i] = OnnxDecoderLayer(d)
-                
+        
         self.model_name = 'xformer_decoder'
     
     def prepare_mask(self, mask):
@@ -43,9 +46,7 @@ class XformerDecoder(nn.Module, AbsExportModel):
         return mask * -10000.0
 
     def forward(self, tgt, memory, cache):
-        feats_length = torch.ones(tgt.shape).sum(dim=-1).type(torch.long)
-        mask = self.make_pad_mask(feats_length) # (B, T)
-        mask[:, -1] = 1
+        mask = subsequent_mask(tgt.size(-1)).unsqueeze(0) # (B, T)
         
         x = self.embed(tgt)
         mask = self.prepare_mask(mask)
@@ -55,13 +56,19 @@ class XformerDecoder(nn.Module, AbsExportModel):
                 x, mask, memory, None, c
             )
             new_cache.append(x)
-            
-        y = self.model.after_norm(x[:, -1])
-        y = torch.log_softmax(self.model.output_layer(y), dim=-1)
+            x = x[:, 1:, :]
+
+        if self.model.normalize_before:
+            y = self.model.after_norm(x[:, -1])
+        else:
+            y = x[:, -1]
+
+        if self.model.output_layer is not None:
+            y = torch.log_softmax(self.model.output_layer(y), dim=-1)
         return y, new_cache
 
     def get_dummy_inputs(self, enc_size):
-        tgt = torch.LongTensor([1]).unsqueeze(0)
+        tgt = torch.LongTensor([0]).unsqueeze(0)
         enc_out = torch.randn(1, 100, enc_size)
         cache = [
             torch.zeros((1, 1, self.model.decoders[0].size))

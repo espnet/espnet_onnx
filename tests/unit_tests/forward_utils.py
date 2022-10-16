@@ -1,10 +1,9 @@
 
 import numpy as np
-import torch
-from espnet.nets.pytorch_backend.transformer.mask import subsequent_mask
 from espnet_onnx.utils.function import (
     mask_fill, make_pad_mask
 )
+from espnet_onnx.utils.torch_function import subsequent_mask
 
 
 def run_onnx_enc(model, dummy_input, model_type):
@@ -22,7 +21,7 @@ def run_onnx_enc(model, dummy_input, model_type):
 
 def run_xformer_dec(model, dummy_input, dummy_yseq, model_type):
     if model_type == 'torch':
-        ys_mask = subsequent_mask(len(dummy_yseq)).unsqueeze(0)
+        ys_mask = subsequent_mask(dummy_yseq.size(-1)).unsqueeze(0)
         logp, state = model.forward_one_step(
             tgt=dummy_yseq,
             tgt_mask=ys_mask,
