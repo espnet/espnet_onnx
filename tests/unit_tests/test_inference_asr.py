@@ -141,7 +141,7 @@ def test_infer_decoder(dec_type, feat_lens, load_config, get_class):
     # test output
     for fl in feat_lens:
         dummy_input = torch.randn(1, fl, 256)
-        dummy_yseq = torch.LongTensor([0, 1])
+        dummy_yseq = torch.LongTensor([0])
         if dec_type[:3] == 'rnn':
             torch_out = run_rnn_dec(decoder_espnet, dummy_input, dummy_yseq)
             onnx_out = run_rnn_dec(decoder_onnx, dummy_input.numpy(), dummy_yseq.numpy())
