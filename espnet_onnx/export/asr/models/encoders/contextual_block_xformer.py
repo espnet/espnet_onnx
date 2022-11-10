@@ -20,7 +20,11 @@ from espnet.nets.pytorch_backend.transformer.attention import MultiHeadedAttenti
 from espnet2.asr.frontend.default import DefaultFrontend
 from espnet2.layers.global_mvn import GlobalMVN
 from espnet2.layers.utterance_mvn import UtteranceMVN
-from espnet_onnx.export.asr.get_config import get_frontend_config
+from espnet_onnx.export.asr.get_config import (
+    get_frontend_config,
+    get_norm_config
+)
+
 from ..encoder_layer import OnnxEncoderLayer
 from ..multihead_att import OnnxMultiHeadedAttention
 
@@ -177,7 +181,7 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
         ret.update(
             enc_type='ContextualXformerEncoder',
             model_path=os.path.join(path, f'{self.model_name}.onnx'),
-            frontend=self.get_frontend_config(asr_model.frontend),
+            frontend=get_frontend_config(asr_model.frontend),
             do_normalize=asr_model.normalize is not None,
             do_postencoder=asr_model.postencoder is not None
         )
