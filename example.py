@@ -5,7 +5,7 @@ import librosa
 import time
 
 tag = 'pyf98/librispeech_conformer'
-wav_file = '/Users/kentoshin/Downloads/029f6450-447a-11e9-a9a5-5dbec3b8816a.wav'
+wav_file = '029f6450-447a-11e9-a9a5-5dbec3b8816a.wav'
 audio, sr = librosa.load(wav_file)
 
 # espnet load from pretrained
