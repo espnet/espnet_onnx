@@ -104,7 +104,7 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
         buffer_before_downsampling = xs_pad[:, -self.subsample:] # (B, L, overlap)
         xs_pad = self.compute_embed(xs_pad)
         xs_pad = torch.cat([buffer_after_downsampling, xs_pad], dim=1)
-        
+  
         buffer_after_downsampling = xs_pad[:, -indicies[2]:] # (B, L, overlap)
         
         if self.init_average:
@@ -115,7 +115,7 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
         if self.ctx_pos_enc:
             addin = addin * self.xscale + pos_enc_addin 
         
-        xs_pad = xs_pad * self.xscale + pos_enc_xs 
+        xs_pad = xs_pad[:, :self.block_size] * self.xscale + pos_enc_xs 
         xs_chunk = torch.cat([prev_addin, xs_pad, addin], dim=1)
 
         ys_chunk, _, _, _, past_encoder_ctx, _, _ = self.encoders(
