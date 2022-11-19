@@ -70,6 +70,9 @@ class TransformerLM(BatchScorerInterface):
             input_dic
         )
 
+        if self.nlayers == 1:
+            new_state = [new_state]
+
         logp = log_softmax(decoded, axis=-1).squeeze(0)
         return logp, new_state
 
