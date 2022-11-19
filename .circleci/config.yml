@@ -65,10 +65,10 @@ jobs:
             - ~/.cache/s3prl
 
 workflows:
-  # setup_environment:
-  #   jobs:
-  #     - run_install_s3prl
-
-  build_and_test:
+  setup_environment:
     jobs:
-      - run_tests
+      - run_install_s3prl
+
+  # build_and_test:
+  #   jobs:
+  #     - run_tests
