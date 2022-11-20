@@ -52,6 +52,13 @@ class SequentialRNNLM(BatchScorerInterface):
         else:
             state = np.zeros((self.nlayers, self.nhid), dtype=np.float32)
         return state
+    
+    def create_cache(self):
+        c = np.zeros((self.nlayers, 1, self.nhid), dtype=np.float32)
+        states = (c,)
+        if self.rnn_type == 'LSTM':
+            states = (c, c)
+        return states
 
     def score(
         self,
@@ -70,6 +77,10 @@ class SequentialRNNLM(BatchScorerInterface):
                 and next state for ys
         """
         input_dic = {'x': y[-1].reshape(1, 1)}
+
+        if state is None:
+            state = self.create_cache()
+
         input_dic.update({
             k: v for k, v in zip(self.enc_in_cache_names, state)
         })
@@ -95,10 +106,7 @@ class SequentialRNNLM(BatchScorerInterface):
                 and next state list for ys.
         """
         if states[0] is None:
-            c = np.zeros((self.nlayers, 1, self.nhid), dtype=np.float32)
-            states = (c,)
-            if self.rnn_type == 'LSTM':
-                states = (c, c)
+            states = self.create_cache()
 
         elif self.rnn_type == 'LSTM':
             # states: Batch x 2 x (Nlayers, Dim) -> 2 x (Nlayers, Batch, Dim)

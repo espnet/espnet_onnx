@@ -18,12 +18,13 @@ from espnet_onnx.utils.abs_model import AbsExportModel
 
 
 class OnnxLengthRegurator(nn.Module):
-    def __init__(self, alpha=1.0):
+    def __init__(self, alpha=1.0, max_seq_len=512):
         super().__init__()
         self.alpha = alpha
         # The maximum length of the make_pad_mask is the 
         # maximum value of the duration.
-        self.make_pad_mask = MakePadMask(512)
+        self.make_pad_mask = MakePadMask(max_seq_len)
+
     def forward(self, x, dur):
         # This class assumes that the batch size of x
         # should be 1.
@@ -88,7 +89,7 @@ class OnnxFastSpeech2(nn.Module, AbsExportModel):
         # models
         self.make_pad_mask = MakePadMask(max_seq_len)
         self.encoder = model.encoder
-        self.length_regulator = OnnxLengthRegurator(alpha)
+        self.length_regulator = OnnxLengthRegurator(alpha, max_seq_len)
         self.pitch_predictor = model.pitch_predictor
         self.energy_predictor = model.energy_predictor
         self.pitch_embed = model.pitch_embed

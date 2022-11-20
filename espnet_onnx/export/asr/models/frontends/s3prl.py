@@ -27,14 +27,24 @@ from espnet_onnx.utils.abs_model import AbsExportModel
 class Featurizer(nn.Module):
     def __init__(self, model):
         super().__init__()
-        self.feature_selection = model.feature_selection
+        if hasattr(model, 'feature_selection'):
+            self.feature_selection = model.feature_selection
+        else:
+            self.feature_selection = 'hidden_states'
+
         self.normalize = model.normalize
-        self.output_dim = model.output_dim
+        if hasattr(model, 'output_dim'):
+            self.output_dim = model.output_dim
+        else:
+            self.output_dim = model._output_size
         self.downsample_rate = model.downsample_rate
         
         if self.feature_selection == 'hidden_states':
             self.weights = model.weights
-            self.layer_num = model.layer_num
+            if hasattr(model, 'layer_num'):
+                self.layer_num = model.layer_num
+            else:
+                self.layer_num = len(model.layer_selections)
     
     def _select_feature(self, feats):
         # if self.feature_selection == 'hidden_states':
@@ -68,19 +78,22 @@ class Featurizer(nn.Module):
 class HubertModel(nn.Module):
     def __init__(self, model, max_seq_len=512, **kwargs):
         super().__init__()
-        self.model = model.model
+        if hasattr(model, 'upstream') is not None:
+            self.model = model.upstream
+        else:
+            self.model = model.model
         
-        if hasattr(model, 'task'):
-            self.task_cfg = model.task.cfg
-        elif hasattr(model, 'task_cfg'):
-            self.task_cfg = model.task_cfg
+        if hasattr(self.model, 'task'):
+            self.task_cfg = self.model.task.cfg
+        elif hasattr(self.model, 'task_cfg'):
+            self.task_cfg = self.model.task_cfg
         else:
             raise RuntimeError('S3PRL version is not supported. Please install v0.3 or v0.4')
 
-        self.encoder = model.model.encoder
+        self.encoder = self.model.model.encoder
         self.layers = nn.ModuleList([])
         self.make_pad_mask = MakePadMask(max_seq_len, flip=False)
-        self.downsample_rate = model.get_downsample_rates('')
+        self.downsample_rate = self.model.get_downsample_rates('')
         for l in self.encoder.layers:
             _l = OnnxEncoderLayer(l, model_type='hubert')
             _l.self_attn = OnnxMultiHeadedAttention(_l.self_attn, model_type='hubert')
@@ -104,11 +117,11 @@ class HubertModel(nn.Module):
             wav = self.layer_norm(wav)
 
         # compute extract feature
-        features = self.model.forward_features(wav)
+        features = self.model.model.forward_features(wav)
         features = features.transpose(1, 2)
-        features = self.model.layer_norm(features)
-        if self.model.post_extract_proj is not None:
-            features = self.model.post_extract_proj(features)
+        features = self.model.model.layer_norm(features)
+        if self.model.model.post_extract_proj is not None:
+            features = self.model.model.post_extract_proj(features)
 
         # residual pos_conv
         res = features

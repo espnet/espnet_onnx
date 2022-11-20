@@ -315,7 +315,8 @@ class ASRModelExport:
                 op_types_to_quantize=op_types_to_quantize
             )
             ret[basename] = export_file
-            os.remove(os.path.join(model_from, basename + '-opt.onnx'))
+            if os.path.exists(os.path.join(model_from, basename + '-opt.onnx')):
+                os.remove(os.path.join(model_from, basename + '-opt.onnx'))
         return ret
 
     def _optimize_model(self, model, model_dir, model_type):

@@ -1,4 +1,3 @@
-model_dir: /home/circleci/models/kamo-naoyuki-mini_an4_asr_train_raw_bpe_valid.acc.best.tgz
 tag_name: rnn
 optimization:
   CPU:

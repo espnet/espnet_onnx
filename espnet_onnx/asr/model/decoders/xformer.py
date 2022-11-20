@@ -83,6 +83,9 @@ class XformerDecoder(BatchScorerInterface):
             ['y'] + self.out_caches,
             input_dict
         )
+
+        if type(self.n_layers) == 1:
+            states = [states]
         
         # transpose state of [layer, batch] into [batch, layer]
         state_list = [[states[i][b]

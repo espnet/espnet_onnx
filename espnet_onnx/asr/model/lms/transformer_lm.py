@@ -54,8 +54,14 @@ class TransformerLM(BatchScorerInterface):
 
         """
         y = y[None, :]
-
         input_dic = {'tgt': y}
+
+        if state is None:
+            state = [
+                np.zeros((1, 1, self.odim), dtype=np.float32)
+                for _ in range(self.nlayers)
+            ]
+
         input_dic.update({
             k: v for k, v in zip(self.enc_in_cache_names, state)
         })
@@ -63,6 +69,9 @@ class TransformerLM(BatchScorerInterface):
             self.enc_output_names,
             input_dic
         )
+
+        if self.nlayers == 1:
+            new_state = [new_state]
 
         logp = log_softmax(decoded, axis=-1).squeeze(0)
         return logp, new_state
