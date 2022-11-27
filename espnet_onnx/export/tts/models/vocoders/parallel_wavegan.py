@@ -37,7 +37,9 @@ class OnnxPWGVocoder(nn.Module, AbsExportModel):
             Tensor: Output tensor (T ** upsample_factor, out_channels).
         """
         if self.pretrained:
-            return self.model.inference(c)
+            feat_length = torch.ones(c[:, 0].shape).sum(dim=-1).type(torch.long)
+            random_value = torch.randn(feat_length * self.model.upsample_factor).unsqueeze(1)
+            return self.model.inference(c, x=random_value)
         else:
             if z is not None:
                 z = z.transpose(1, 0).unsqueeze(0)
@@ -46,6 +48,7 @@ class OnnxPWGVocoder(nn.Module, AbsExportModel):
 
     def get_dummy_inputs(self):
         c = torch.randn(100, self.aux_channels)
+
         if self.use_z:
             z = torch.randn(100, self.aux_channels)
             return (c, z)
