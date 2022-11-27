@@ -15,12 +15,14 @@ class OnnxPWGVocoder(nn.Module, AbsExportModel):
     def __init__(
         self,
         model,
+        pretrained=False,
         use_z=False,
         **kwargs
     ):
         super().__init__()
         self.model = model
         self.use_z = use_z
+        self.pretrained = pretrained
         self.aux_channels = model.aux_channels
         self.model_name = 'PWGVocoder'
 
@@ -34,10 +36,13 @@ class OnnxPWGVocoder(nn.Module, AbsExportModel):
         Returns:
             Tensor: Output tensor (T ** upsample_factor, out_channels).
         """
-        if z is not None:
-            z = z.transpose(1, 0).unsqueeze(0)
-        c = c.transpose(1, 0).unsqueeze(0)
-        return self.model.forward(c, z).squeeze(0).transpose(1, 0)
+        if self.pretrained:
+            return self.model.inference(c)
+        else:
+            if z is not None:
+                z = z.transpose(1, 0).unsqueeze(0)
+            c = c.transpose(1, 0).unsqueeze(0)
+            return self.model.forward(c, z).squeeze(0).transpose(1, 0)
 
     def get_dummy_inputs(self):
         c = torch.randn(100, self.aux_channels)
