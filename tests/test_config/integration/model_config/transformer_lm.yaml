@@ -2,13 +2,13 @@ bpemodel: /home/circleci/espnet_onnx/tests/integration_tests/test_files/bpe.mode
 
 lm: transformer
 lm_conf:
-  att_unit: 512
+  att_unit: 64
   dropout_rate: 0.0
-  embed_unit: 128
+  embed_unit: 64
   head: 4
   layer: 1
   pos_enc: null
-  unit: 512
+  unit: 64
 
 model_conf:
   ignore_id: 0

@@ -10,7 +10,7 @@ decoder: transformer
 decoder_conf:
   attention_heads: 4
   dropout_rate: 0.1
-  linear_units: 512
+  linear_units: 64
   num_blocks: 1
   positional_dropout_rate: 0.1
   self_attention_dropout_rate: 0.1
@@ -24,11 +24,11 @@ encoder_conf:
   cnn_module_kernel: 31
   dropout_rate: 0.1
   input_layer: conv2d
-  linear_units: 512
+  linear_units: 64
   macaron_style: true
   normalize_before: true
   num_blocks: 1
-  output_size: 512
+  output_size: 64
   pos_enc_layer_type: rel_pos
   positional_dropout_rate: 0.1
   rel_pos_type: latest
