@@ -21,7 +21,7 @@ from ..op_test_utils import check_op_type_count
 
 encoder_cases = [
     'conformer_hubert',
-    'conformer_hubert_last',
+    # 'conformer_hubert_last', # latest s3prl supports weighted_sum.
     'transformer_hubert',
     'rnn_hubert',
 ]

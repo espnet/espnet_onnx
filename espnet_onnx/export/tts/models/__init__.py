@@ -61,7 +61,7 @@ def get_vocoder(model, export_config):
         if isinstance(model.vocoder, Spectrogram2Waveform):
             return model.vocoder, False
         elif isinstance(model.vocoder, ParallelWaveGANPretrainedVocoder):
-            raise RuntimeError('Pretrained PWGVocoder is currently not supported.')
+            return OnnxPWGVocoder(model.vocoder.vocoder, pretrained=True, **export_config), True
     
     if hasattr(model, 'model'):
         if isinstance(model.model.tts, espnetJointText2Wav):
