@@ -40,6 +40,7 @@ class Stft:
             hop_length=self.config.hop_length,
             center=self.config.center,
             window=self.config.window,
+            pad_mode='reflect'
         )
         output = []
         # iterate over istances in a batch
