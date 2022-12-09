@@ -84,7 +84,7 @@ class Encoder:
     def forward_encoder(self, feats, feat_length):
         encoder_out, encoder_out_lens = \
             self.encoder.run(["encoder_out", "encoder_out_lens"], {
-                "feats": feats
+                "feats": feats, "feats_lens": feat_length
             })
         
         if self.config.enc_type == 'RNNEncoder':

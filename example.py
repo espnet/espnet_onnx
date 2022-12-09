@@ -18,14 +18,14 @@ transcript = nbest[0][0]
 latency = time.time() - start_time
 print(f'transcript={transcript}, latency={latency}')
 
-m = ASRModelExport()
-m.export(espnet_model, tag)
-
 # onnx export
-onnx_model = Speech2Text(tag_name=tag)
+# print('exporting ONNX model')
+# m = ASRModelExport()
+# m.export(espnet_model, tag)
 
 # onnx inference
 print('running ONNX inference')
+onnx_model = Speech2Text(tag_name=tag)
 start_time = time.time()
 nbest = onnx_model(audio)
 transcript = nbest[0][0]
