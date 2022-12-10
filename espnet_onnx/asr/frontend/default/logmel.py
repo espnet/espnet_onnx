@@ -1,6 +1,4 @@
 from typing import Tuple
-from typeguard import check_argument_types
-
 import numpy as np
 import librosa
 

@@ -9,7 +9,7 @@ try:
 except ImportError:
     vietnamese_cleaners = None
 
-from .korean_cleaner import KoreanCleaner
+from espnet_onnx.tts.model.preprocess.korean_cleaner import KoreanCleaner
 
 
 class TextCleaner:

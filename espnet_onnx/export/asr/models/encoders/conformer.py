@@ -1,19 +1,13 @@
 import os
 
-import numpy as np
 import torch
 import torch.nn as nn
-
 from espnet.nets.pytorch_backend.transformer.subsampling import (
     Conv2dSubsampling,
     Conv2dSubsampling2,
     Conv2dSubsampling6,
     Conv2dSubsampling8
 )
-from espnet2.asr.frontend.default import DefaultFrontend
-from espnet2.layers.global_mvn import GlobalMVN
-from espnet2.layers.utterance_mvn import UtteranceMVN
-
 from espnet.nets.pytorch_backend.transformer.attention import (
     LegacyRelPositionMultiHeadedAttention,
     RelPositionMultiHeadedAttention,
@@ -21,14 +15,18 @@ from espnet.nets.pytorch_backend.transformer.attention import (
 )
 
 from espnet_onnx.utils.torch_function import MakePadMask
-from ..language_models.embed import Embedding
-from ..conformer_layer import OnnxConformerLayer
-from ..multihead_att import OnnxRelPosMultiHeadedAttention, OnnxMultiHeadedAttention
 from espnet_onnx.utils.abs_model import AbsExportModel
+from espnet_onnx.export.asr.models.language_models.embed import Embedding
+from espnet_onnx.export.asr.models.conformer_layer import OnnxConformerLayer
+from espnet_onnx.export.asr.models.multihead_att import (
+    OnnxRelPosMultiHeadedAttention,
+    OnnxMultiHeadedAttention,
+)
 from espnet_onnx.export.asr.get_config import (
     get_frontend_config,
     get_norm_config
 )
+
 
 class ConformerEncoder(nn.Module, AbsExportModel):
     def __init__(
@@ -186,4 +184,3 @@ class ConformerEncoder(nn.Module, AbsExportModel):
         # if ret['do_postencoder']:
         #     ret.update(postencoder=get_postenc_config(self.model.postencoder))
         return ret
-

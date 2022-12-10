@@ -1,11 +1,10 @@
-
+import os
 import torch
 import torch.nn as nn
 
 from espnet.nets.pytorch_backend.rnn.attentions import NoAtt
 
-from espnet_onnx.utils.function import make_pad_mask
-from espnet_onnx.export.layers.attention import get_attention, OnnxNoAtt, require_tanh
+from espnet_onnx.export.layers.attention import require_tanh
 from espnet_onnx.utils.abs_model import AbsExportModel
 
 
@@ -17,7 +16,7 @@ class PreDecoder(nn.Module, AbsExportModel):
         else:
             self.model = model.mlp_enc
         self.model_name = f'predecoder_{idx}'
-        self.apply_tanh = require_tanh(self.model)
+        self.apply_tanh = require_tanh(model)
     
     def require_onnx(self):
         return self.model is not None
@@ -49,4 +48,3 @@ class PreDecoder(nn.Module, AbsExportModel):
         return {
             "model_path": os.path.join(path, f'{self.model_name}.onnx'),
         }
-

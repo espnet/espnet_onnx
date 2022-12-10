@@ -1,14 +1,6 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-# Copyright 2019 Shigeki Karita
-#  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
-
 """Subsampling layer definition."""
 
 import torch
-
-from espnet.nets.pytorch_backend.transformer.embedding import PositionalEncoding
 
 
 class OnnxConv2dSubsampling(torch.nn.Module):

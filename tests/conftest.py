@@ -9,39 +9,35 @@ from espnet_onnx.export import (
     TTSModelExport
 )
 
-from espnet2.asr.decoder.abs_decoder import AbsDecoder
-from espnet2.asr.decoder.rnn_decoder import RNNDecoder
-from espnet2.asr.decoder.transformer_decoder import (
-    DynamicConvolution2DTransformerDecoder,  # noqa: H301
-)
-from espnet2.asr.decoder.transformer_decoder import DynamicConvolutionTransformerDecoder
-from espnet2.asr.decoder.transformer_decoder import (
-    LightweightConvolution2DTransformerDecoder,  # noqa: H301
-)
-from espnet2.asr.decoder.transformer_decoder import (
-    LightweightConvolutionTransformerDecoder,  # noqa: H301
-)
-from espnet2.asr.decoder.transformer_decoder import TransformerDecoder
-from espnet2.asr.encoder.abs_encoder import AbsEncoder
-from espnet2.asr.encoder.conformer_encoder import ConformerEncoder
-
-from espnet2.asr.encoder.hubert_encoder import FairseqHubertEncoder
-from espnet2.asr.encoder.hubert_encoder import FairseqHubertPretrainEncoder
-from espnet2.asr.encoder.rnn_encoder import RNNEncoder
-from espnet2.asr.encoder.transformer_encoder import TransformerEncoder
-from espnet2.asr.encoder.contextual_block_transformer_encoder import (
-    ContextualBlockTransformerEncoder,  # noqa: H301
-)
-from espnet2.asr.encoder.contextual_block_conformer_encoder import (
-    ContextualBlockConformerEncoder,  # noqa: H301
-)
-from espnet2.asr.encoder.vgg_rnn_encoder import VGGRNNEncoder
-from espnet2.asr.encoder.wav2vec2_encoder import FairSeqWav2Vec2Encoder
 from espnet2.asr.frontend.abs_frontend import AbsFrontend
 from espnet2.asr.frontend.default import DefaultFrontend
 from espnet2.asr.frontend.fused import FusedFrontends
 from espnet2.asr.frontend.s3prl import S3prlFrontend
 from espnet2.asr.frontend.windowing import SlidingWindow
+
+from espnet2.asr.encoder.abs_encoder import AbsEncoder
+from espnet2.asr.encoder.conformer_encoder import ConformerEncoder
+from espnet2.asr.encoder.hubert_encoder import (
+    FairseqHubertEncoder,
+    FairseqHubertPretrainEncoder
+)
+from espnet2.asr.encoder.rnn_encoder import RNNEncoder
+from espnet2.asr.encoder.transformer_encoder import TransformerEncoder
+from espnet2.asr.encoder.contextual_block_transformer_encoder import ContextualBlockTransformerEncoder
+from espnet2.asr.encoder.contextual_block_conformer_encoder import ContextualBlockConformerEncoder
+from espnet2.asr.encoder.vgg_rnn_encoder import VGGRNNEncoder
+from espnet2.asr.encoder.wav2vec2_encoder import FairSeqWav2Vec2Encoder
+
+from espnet2.asr.decoder.abs_decoder import AbsDecoder
+from espnet2.asr.decoder.rnn_decoder import RNNDecoder
+from espnet2.asr.decoder.transformer_decoder import (
+    DynamicConvolution2DTransformerDecoder,
+    DynamicConvolutionTransformerDecoder,
+    LightweightConvolution2DTransformerDecoder,
+    LightweightConvolutionTransformerDecoder,
+    TransformerDecoder
+)
+
 from espnet2.lm.abs_model import AbsLM
 from espnet2.lm.seq_rnn_lm import SequentialRNNLM
 from espnet2.lm.transformer_lm import TransformerLM
@@ -64,6 +60,7 @@ from espnet2.gan_tts.hifigan import HiFiGANGenerator
 from espnet2.gan_tts.melgan import MelGANGenerator
 from espnet2.gan_tts.style_melgan import StyleMelGANGenerator
 from espnet2.gan_tts.parallel_wavegan import ParallelWaveGANGenerator
+
 
 def pytest_addoption(parser):
     parser.addoption('--config_dir', action='store',

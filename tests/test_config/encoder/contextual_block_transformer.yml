@@ -4,9 +4,9 @@ encoder_conf:
   attention_heads: 4
   linear_units: 256
   num_blocks: 3
-  dropout_rate: 0.1
-  positional_dropout_rate: 0.1
-  attention_dropout_rate: 0.1
+  dropout_rate: 0.0
+  positional_dropout_rate: 0.0
+  attention_dropout_rate: 0.0
   input_layer: conv2d6
   normalize_before: true
   block_size: 40

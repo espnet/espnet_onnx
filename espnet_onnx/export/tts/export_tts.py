@@ -1,4 +1,7 @@
-from typing import Union, Dict
+from typing import (
+    Union,
+    Dict,
+)
 from pathlib import Path
 from typeguard import check_argument_types
 
@@ -8,17 +11,16 @@ from datetime import datetime
 import logging
 import shutil
 
-import numpy as np
 import torch
 from onnxruntime.quantization import quantize_dynamic
 
 from espnet2.bin.tts_inference import Text2Speech
-from espnet_onnx.utils.abs_model import AbsExportModel
+
 from espnet_onnx.export.tts.models import (
     get_tts_model,
     get_vocoder
 )
-from .get_config import (
+from espnet_onnx.export.tts.get_config import (
     get_token_config,
     get_preprocess_config,
     get_vocoder_config,
@@ -28,6 +30,7 @@ from espnet_onnx.utils.config import (
     save_config,
     update_model_path
 )
+from espnet_onnx.utils.abs_model import AbsExportModel
 
 
 class TTSModelExport:

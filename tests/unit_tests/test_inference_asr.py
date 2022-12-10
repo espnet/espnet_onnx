@@ -1,7 +1,3 @@
-
-# This test suite verifies that espnet_onnx exports
-# model correctly and match the result.
-
 import os
 import glob
 import pytest
@@ -20,6 +16,7 @@ from .forward_utils import (
     run_xformer_dec,
     run_trans_dec,
 )
+
 
 encoder_cases = [
     ('conformer_abs_pos', [50, 100]),
@@ -64,7 +61,7 @@ def check_output(out_t, out_o):
         f"The shape of output of onnx {out_o.shape} should be the same with the output of torch model {out_t.shape}"
 
     mean_dif = np.mean((out_t - out_o)**2)
-    assert mean_dif < 0.00005, \
+    assert mean_dif < 1e-10, \
         f"Result of torch model and onnx model differs."
 
 

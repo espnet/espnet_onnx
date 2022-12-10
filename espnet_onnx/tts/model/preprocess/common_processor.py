@@ -1,5 +1,6 @@
 import numpy as np
-from .text_cleaner import TextCleaner
+
+from espnet_onnx.tts.model.preprocess.text_cleaner import TextCleaner
 
 
 class CommonPreprocessor:

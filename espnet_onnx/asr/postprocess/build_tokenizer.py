@@ -1,5 +1,7 @@
-from typing import Iterable
-from typing import Union
+from typing import (
+    Iterable,
+    Union,
+)
 from pathlib import Path
 from typeguard import check_argument_types
 

@@ -6,7 +6,6 @@ from typing import (
     Tuple
 )
 from typeguard import check_argument_types
-
 import logging
 from itertools import chain
 import numpy as np
@@ -20,7 +19,7 @@ from espnet_onnx.utils.function import (
     end_detect
 )
 from espnet_onnx.utils.config import Config
-from .hyps import Hypothesis
+from espnet_onnx.asr.beam_search.hyps import Hypothesis
 
 
 class BeamSearch:

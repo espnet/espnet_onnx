@@ -6,21 +6,13 @@ from typing import (
 )
 from pathlib import Path
 from typeguard import check_argument_types
-
-import os
 import logging
 import numpy as np
-import glob
-import warnings
-import onnxruntime
 
 from espnet_onnx.asr.abs_asr_model import AbsASRModel
 from espnet_onnx.asr.beam_search.batch_beam_search import BatchBeamSearch
 from espnet_onnx.asr.beam_search.batch_beam_search_online_sim import BatchBeamSearchOnlineSim
 from espnet_onnx.asr.beam_search.hyps import Hypothesis
-
-from espnet_onnx.utils.config import get_config
-from espnet_onnx.utils.config import get_tag_config
 
 
 class StreamingSpeech2Text(AbsASRModel):

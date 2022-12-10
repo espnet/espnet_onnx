@@ -2,10 +2,12 @@ import re
 import logging
 import warnings
 
-from typing import Iterable
-from typing import List
-from typing import Optional
-from typing import Union
+from typing import (
+    Iterable,
+    List,
+    Optional,
+    Union,
+)
 from pathlib import Path
 from typeguard import check_argument_types
 

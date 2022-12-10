@@ -1,12 +1,7 @@
-from typing import (
-    Union,
-    List
-)
-from pathlib import Path
+from typing import List
 from typeguard import check_argument_types
 
 import numpy as np
-import onnxruntime
 
 from espnet_onnx.asr.frontend.default.stft import Stft
 from espnet_onnx.asr.frontend.default.logmel import LogMel
@@ -38,7 +33,6 @@ class DefaultFrontend:
         
         # 2. [Option] Speech enhancement
         # Currently this is not supported.
-        # if self.config.apply_enhance:
 
         # 3. STFT -> Power spectrum
         # h: ComplexTensor(B, T, F) -> torch.Tensor(B, T, F)

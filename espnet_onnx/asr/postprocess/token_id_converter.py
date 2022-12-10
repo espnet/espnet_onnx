@@ -1,7 +1,9 @@
-from typing import Dict
-from typing import Iterable
-from typing import List
-from typing import Union
+from typing import (
+    Iterable,
+    Dict,
+    List,
+    Union,
+)
 from pathlib import Path
 from typeguard import check_argument_types
 
@@ -22,7 +24,7 @@ class TokenIDConverter:
             self.token_list: List[str] = []
 
             with token_list.open("r", encoding="utf-8") as f:
-                for idx, line in enumerate(f):
+                for line in f:
                     line = line.rstrip()
                     self.token_list.append(line)
 

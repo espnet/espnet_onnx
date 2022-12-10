@@ -1,6 +1,6 @@
 decoder: transformer
 decoder_conf:
-  dropout_rate: 0.1
+  dropout_rate: 0.0
   input_layer: embed
   linear_units: 256
   num_blocks: 3

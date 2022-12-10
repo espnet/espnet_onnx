@@ -4,22 +4,23 @@ from typing import (
     Any,
     Dict,
     List,
-    Optional,
-    Tuple,
     Union
 )
 
 import numpy as np
-import onnxruntime
 from scipy.special import log_softmax
 
-from espnet_onnx.utils.function import is_prefix
-from espnet_onnx.utils.function import recombine_hyps
-from espnet_onnx.utils.function import select_k_expansions
-from espnet_onnx.utils.function import subtract
-from espnet_onnx.utils.function import topk
-from espnet_onnx.asr.beam_search.hyps import TransducerHypothesis
-from espnet_onnx.asr.beam_search.hyps import ExtendedHypothesis
+from espnet_onnx.utils.function import (
+    is_prefix,
+    recombine_hyps,
+    select_k_expansions,
+    subtract,
+    topk
+)
+from espnet_onnx.asr.beam_search.hyps import (
+    TransducerHypothesis,
+    ExtendedHypothesis
+)
 
 
 class BeamSearchTransducer:
@@ -471,7 +472,7 @@ class BeamSearchTransducer:
             enc_out: Encoder output sequence. (T, D_enc)
 
         Returns:
-            nbest_hyps: N-best hypothesis.
+            nbest_hyps: N-bestA hypothesis.
 
         """
         beam = min(self.beam_size, self.vocab_size)

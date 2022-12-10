@@ -1,7 +1,3 @@
-
-# This test suite verifies that espnet_onnx exports
-# model correctly and match the result.
-
 import os
 import pytest
 from pathlib import Path
@@ -13,7 +9,6 @@ from espnet_onnx.export.asr.models import (
     get_decoder,
     get_lm,
 )
-from espnet_onnx.export.layers.attention import OnnxNoAtt
 from espnet_onnx.utils.config import save_config
 
 
@@ -52,6 +47,7 @@ lm_cases = [
     'transformer_pe'
 ]
 
+
 def save_model(onnx_model, export_dir, model_export, model_type):
     if model_type == 'encoder':
         model_export._export_encoder(onnx_model, export_dir, verbose=False)
@@ -59,7 +55,6 @@ def save_model(onnx_model, export_dir, model_export, model_type):
         model_export._export_decoder(onnx_model, 256, export_dir, verbose=False)
     elif model_type == 'lm':
         model_export._export_lm(onnx_model, export_dir, verbose=False)
-
 
 
 @pytest.mark.parametrize('enc_type', encoder_cases)
@@ -131,7 +126,6 @@ def test_export_decoder(dec_type, load_config, model_export, get_class):
 def test_export_lm(lm_type, load_config, model_export, get_class):
     model_config = load_config(lm_type, model_type='lm')
     
-    # prepare language model
     lm = get_class(
         'lm',
         model_config.lm,

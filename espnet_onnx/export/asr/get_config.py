@@ -10,15 +10,18 @@ from espnet2.asr.frontend.default import DefaultFrontend
 from espnet2.layers.global_mvn import GlobalMVN
 from espnet2.layers.utterance_mvn import UtteranceMVN
 
+
 def get_ngram_config(model):
     return {
         "use_ngram": True
     }
 
+
 def get_weights_transducer(model):
     return {
         "lm": model.lm_weight
     }
+
 
 def get_beam_config(model, minlenratio, maxlenratio):
     return {
@@ -28,6 +31,7 @@ def get_beam_config(model, minlenratio, maxlenratio):
         "maxlenratio": maxlenratio,
         "minlenratio": minlenratio
     }
+
 
 def get_trans_beam_config(model):
     # check search algorithm
@@ -105,12 +109,14 @@ def get_frontend_config(asr_frontend_model, frontend=None, **kwargs):
     
     return frontend_config    
 
+
 def get_default_frontend(frontend, **kwargs):
     return {
         "frontend_type": "default",
         "stft": get_stft_config(frontend.stft, **kwargs),
         "logmel": get_logmel_config(frontend.logmel, **kwargs),
     }
+
 
 def get_enh_config(frontend):
     if frontend is None:
@@ -121,6 +127,7 @@ def get_enh_config(frontend):
             "use_dnn_mask_for_wpe": frontend.use_dnn_mask_for_wpe,
             "use_beamformer": frontend.use_beamformer,
         }
+
 
 def get_stft_config(stft, stft_center: bool = True):
     return {
@@ -133,10 +140,12 @@ def get_stft_config(stft, stft_center: bool = True):
         'normalized': stft.normalized
     }
 
+
 def get_logmel_config(logmel):
     logmel_config = logmel.mel_options
     logmel_config.update(log_base=logmel.log_base)
     return logmel_config
+
 
 def get_norm_config(normalize, path):
     if isinstance(normalize, GlobalMVN):

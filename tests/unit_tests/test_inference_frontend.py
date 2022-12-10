@@ -1,7 +1,3 @@
-
-# This test suite verifies that espnet_onnx exports
-# model correctly and match the result.
-
 import os
 import glob
 import pytest
@@ -11,12 +7,8 @@ import numpy as np
 import torch
 import onnxruntime as ort
 
-from espnet_onnx.asr.model.decoder import get_decoder
-from espnet_onnx.asr.model.lm import get_lm
-from espnet_onnx.utils.config import get_config
-from .forward_utils import (
-    run_onnx_front
-)
+from .forward_utils import run_onnx_front
+
 
 encoder_cases = [
     ('conformer_hubert', [16000, 32000]),
@@ -24,7 +16,6 @@ encoder_cases = [
     ('transformer_hubert', [16000, 32000]),
     ('rnn_hubert', [16000, 32000]),
 ]
-
 
 CACHE_DIR = Path.home() / ".cache" / "espnet_onnx" / 'test'
 PROVIDERS = ['CPUExecutionProvider']
@@ -35,7 +26,7 @@ def check_output(out_t, out_o):
         f"The shape of output of onnx {out_o.shape} should be the same with the output of torch model {out_t.shape}"
 
     mean_dif = np.mean((out_t - out_o)**2)
-    assert mean_dif < 0.0005, \
+    assert mean_dif < 1e-10, \
         f"Result of torch model and onnx model differs."
 
 
@@ -47,6 +38,7 @@ def remove_duplicates(to):
         to = to[:, :-1]
     
     return to
+
 
 @pytest.mark.parametrize('enc_type, wav_lens', encoder_cases)
 def test_infer_frontend(enc_type, wav_lens, load_config, get_class):
@@ -67,7 +59,6 @@ def test_infer_frontend(enc_type, wav_lens, load_config, get_class):
     # test output
     for wl in wav_lens:
         dummy_input = torch.randn(1, wl)  # (B, L, D)
-        # compute torch model
         torch_out, _ = frontend_espnet(dummy_input, torch.LongTensor([wl]))
         if type(torch_out) == tuple:
             torch_out = torch_out[0]
@@ -78,4 +69,3 @@ def test_infer_frontend(enc_type, wav_lens, load_config, get_class):
         # since it is copied in s3prl script, and not copied in onnx model.
         torch_out = remove_duplicates(torch_out)
         check_output(torch_out, onnx_out)
-

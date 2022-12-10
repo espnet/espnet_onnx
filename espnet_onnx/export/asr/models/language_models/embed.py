@@ -1,18 +1,15 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-# Copyright 2019 Shigeki Karita
-#  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
-# Modified by Masao-Someki
 """Positional Encoding Module."""
 
 import math
 import torch
 import torch.nn as nn
 
-from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling
-from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling2
-from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling6
-from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling8
+from espnet.nets.pytorch_backend.transformer.subsampling import (
+    Conv2dSubsampling,
+    Conv2dSubsampling2,
+    Conv2dSubsampling6,
+    Conv2dSubsampling8,
+)
 from espnet.nets.pytorch_backend.transformer.subsampling_without_posenc import Conv2dSubsamplingWOPosEnc
 from espnet.nets.pytorch_backend.transformer.embedding import (
     PositionalEncoding,
@@ -22,12 +19,13 @@ from espnet.nets.pytorch_backend.transformer.embedding import (
     StreamPositionalEncoding,
 )
 
-from .subsampling import (
+from espnet_onnx.export.asr.models.language_models.subsampling import (
     OnnxConv2dSubsampling,
     OnnxConv2dSubsampling2,
     OnnxConv2dSubsampling6,
     OnnxConv2dSubsampling8
 )
+
 
 def get_pos_emb(pos_emb, max_seq_len=512, use_cache=True):
     if isinstance(pos_emb, LegacyRelPositionalEncoding):

@@ -1,12 +1,6 @@
 import six
-
-from typing import (
-    Any,
-    List,
-    Tuple
-)
+from typing import List
 from typeguard import check_argument_types
-
 import numpy as np
 import onnxruntime
 from scipy.special import (

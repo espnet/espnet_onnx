@@ -1,12 +1,7 @@
-# This test suite verifies that espnet_onnx exports
-# model correctly and match the result.
-
-
 import pytest
 import librosa
 import copy
 
-from espnet2.bin.asr_inference import Speech2Text as espnetSpeech2Text
 from espnet_onnx import Speech2Text as onnxSpeech2Text
 
 from .test_utils import *
@@ -17,8 +12,8 @@ asr_config_names = [
     'original/transformer',
     'original/conformer',
     'original/conformer_transducer',
-    # 'custom/conformer_cpu',
-    # 'custom/conformer_gpu',
+    'custom/conformer_cpu',
+    'custom/conformer_gpu',
 ]
 
 @pytest.mark.parametrize('asr_config_names', asr_config_names)

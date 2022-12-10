@@ -18,6 +18,7 @@ def get_config(path):
         raise ValueError('Configuration format is not supported.')
     return Config(dic)
 
+
 def save_config(config, path):
     _, ext = os.path.splitext(path)
     if ext == '.json':
@@ -35,6 +36,7 @@ def save_config(config, path):
     else:
         raise ValueError(f'File type {ext} is not supported.')
 
+
 def update_model_path(tag_name, model_path):
     # get configuration of the tag name.
     tag_config_path = Path.home() / ".cache" / "espnet_onnx" / 'tag_config.yaml'
@@ -49,6 +51,7 @@ def update_model_path(tag_name, model_path):
     config[tag_name] = str(model_path)
     save_config(config, tag_config_path)
 
+
 def get_tag_config():
     tag_config_path = Path.home() / ".cache" / "espnet_onnx" / 'tag_config.yaml'
     if os.path.exists(tag_config_path):
@@ -56,6 +59,7 @@ def get_tag_config():
     else:
         config = {}
     return config
+
 
 class Config(SimpleNamespace):
     def __init__(self, dic=None):

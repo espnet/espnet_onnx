@@ -2,7 +2,6 @@ from typing import (
     Tuple,
     List
 )
-
 import onnxruntime
 import numpy as np
 

@@ -1,23 +1,16 @@
-
-from typing import (
-    Optional,
-    Tuple
-)
-
+from typing import Optional
 import logging
-import math
+
 import torch
 import torch.nn as nn
 
-from espnet_onnx.export.asr.models.language_models.embed import get_pos_emb
 from espnet_onnx.utils.torch_function import (
     MakePadMask,
     normalize
 )
-from espnet_onnx.utils.abs_model import AbsExportModel
 from espnet_onnx.export.tts.models.tts_models.fastspeech2 import OnnxStyleEncoder
 from espnet_onnx.export.tts.models.vocoders.hifigan import OnnxHiFiGANVocoder
-
+from espnet_onnx.utils.abs_model import AbsExportModel
 
 
 class OnnxGaussianUpsampling(nn.Module):

@@ -3,17 +3,16 @@ from espnet_onnx.utils.function import subsequent_mask
 
 import torch
 import torch.nn as nn
-import numpy as np
-
 from espnet.nets.pytorch_backend.transformer.attention import MultiHeadedAttention
-from ..multihead_att import OnnxMultiHeadedAttention
-# from espnet.nets.pytorch_backend.transformer.mask import subsequent_mask
 
-from espnet_onnx.utils.torch_function import subsequent_mask
-from ..language_models.embed import Embedding
+from espnet_onnx.export.asr.models.multihead_att import OnnxMultiHeadedAttention
+from espnet_onnx.export.asr.models.language_models.embed import Embedding
+from espnet_onnx.export.asr.models.decoder_layer import OnnxDecoderLayer
 from espnet_onnx.utils.abs_model import AbsExportModel
-from espnet_onnx.utils.torch_function import MakePadMask
-from ..decoder_layer import OnnxDecoderLayer
+from espnet_onnx.utils.torch_function import (
+    subsequent_mask,
+    MakePadMask,
+)
 
 
 class XformerDecoder(nn.Module, AbsExportModel):

@@ -8,27 +8,12 @@ import torch.nn.functional as F
 from espnet.nets.pytorch_backend.rnn.attentions import NoAtt
 
 from espnet_onnx.utils.function import make_pad_mask
-from espnet_onnx.export.layers.attention import get_attention, OnnxNoAtt, require_tanh
+from espnet_onnx.export.layers.attention import (
+    get_attention,
+    OnnxNoAtt,
+)
 from espnet_onnx.export.layers.predecoder import PreDecoder
 from espnet_onnx.utils.abs_model import AbsExportModel
-
-
-def _apply_attention_constraint(
-    e, last_attended_idx, backward_window=1, forward_window=3
-):
-    """Apply monotonic attention constraint.
-    **Note** This function is copied from espnet.nets.pytorch_backend.rnn.attention.py
-    """
-    if e.size(0) != 1:
-        raise NotImplementedError(
-            "Batch attention constraining is not yet supported.")
-    backward_idx = last_attended_idx - backward_window
-    forward_idx = last_attended_idx + forward_window
-    if backward_idx > 0:
-        e[:, :backward_idx] = -float("inf")
-    if forward_idx < e.size(1):
-        e[:, forward_idx:] = -float("inf")
-    return e
 
 
 class RNNDecoder(nn.Module, AbsExportModel):
@@ -61,7 +46,7 @@ class RNNDecoder(nn.Module, AbsExportModel):
         else:
             att_w = []
             for idx in range(self.num_encs):
-                _att_c_list, _att_w = self.att_list[idx](
+                _, _att_w = self.att_list[idx](
                     z_prev[0],
                     a_prev[idx],
                     pre_compute_enc_h[idx],
@@ -78,7 +63,8 @@ class RNNDecoder(nn.Module, AbsExportModel):
                 mask[self.num_encs]
             )
             att_w.append(_att_w)
-        ey = torch.cat((ey, att_c), dim=1)  # utt(1) x (zdim + hdim)
+        if att_c is not None:
+            ey = torch.cat((ey, att_c), dim=1)  # utt(1) x (zdim + hdim)
         z_list, c_list = self.rnn_forward(
             ey, z_prev, c_prev
         )
@@ -226,11 +212,12 @@ class RNNDecoder(nn.Module, AbsExportModel):
             "rnn_type": self.model.dtype,
             "predecoder": [
                 {
-                    "model_path": os.path.join(path, f'predecoder_{i}.onnx'),
+                    "model_path": 
+                        os.path.join(path, f'predecoder_{i}.onnx') if not isinstance(a, OnnxNoAtt) else "",
                     "att_type": a.att_type
                 }
                 for i,a in enumerate(self.att_list)
-                if not isinstance(a, OnnxNoAtt)
+                # if not isinstance(a, OnnxNoAtt)
             ]
         }
         if hasattr(self.model, 'att_win'):

@@ -5,14 +5,9 @@ from typing import (
 )
 from pathlib import Path
 from typeguard import check_argument_types
-
 import numpy as np
-import onnxruntime
 
-from .abs_tts_model import AbsTTSModel
-from espnet_onnx.tts.model.preprocess.common_processor import CommonPreprocessor
-from espnet_onnx.tts.model.duration_calculator import DurationCalculator
-from espnet_onnx.tts.model.tts_model import get_tts_model
+from espnet_onnx.tts.abs_tts_model import AbsTTSModel
 
 
 class Text2Speech(AbsTTSModel):

@@ -53,5 +53,6 @@ def normalize(input: torch.Tensor, p: float = 2.0, dim: int = 1, out: Optional[t
         denom = input.norm(p, dim, keepdim=True).expand_as(input)
         return torch.div(input, denom, out=out)
 
+
 def subsequent_mask(size: torch.Tensor):
     return torch.ones(size, size).tril()
