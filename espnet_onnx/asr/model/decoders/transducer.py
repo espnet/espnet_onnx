@@ -1,20 +1,19 @@
-from typing import List
-from typing import Any
-from typing import Tuple
-from typing import Optional
-from typing import Dict
-from typing import Union
-
+from typing import (
+    List,
+    Tuple,
+    Dict,
+    Any,
+    Optional,
+    Union
+)
 import numpy as np
 import onnxruntime
 
 from espnet_onnx.asr.scorer.interface import BatchScorerInterface
 from espnet_onnx.asr.beam_search.hyps import (
     Hypothesis,
-    TransducerHypothesis,
     ExtendedHypothesis
 )
-from espnet_onnx.utils.function import subsequent_mask
 from espnet_onnx.utils.config import Config
 
 

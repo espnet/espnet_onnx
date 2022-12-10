@@ -1,6 +1,5 @@
 from typing import Tuple
 from typeguard import check_argument_types
-
 import numpy as np
 
 from espnet_onnx.utils.function import (
@@ -8,6 +7,7 @@ from espnet_onnx.utils.function import (
     mask_fill
 )
 from espnet_onnx.utils.config import Config
+
 
 class UtteranceMVN:
     def __init__(

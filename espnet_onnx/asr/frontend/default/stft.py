@@ -1,7 +1,8 @@
-from typing import Optional
-from typing import Tuple
+from typing import (
+    Optional,
+    Tuple
+)
 from typeguard import check_argument_types
-
 import numpy as np
 import librosa
 

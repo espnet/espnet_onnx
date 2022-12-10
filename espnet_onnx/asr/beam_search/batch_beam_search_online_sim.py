@@ -1,10 +1,8 @@
 from typing import List
 import numpy as np
 
-from espnet_onnx.utils.config import Config
-
-from .batch_beam_search import BatchBeamSearch
-from .hyps import Hypothesis
+from espnet_onnx.asr.beam_search.batch_beam_search import BatchBeamSearch
+from espnet_onnx.asr.beam_search.hyps import Hypothesis
 
 
 class BatchBeamSearchOnlineSim(BatchBeamSearch):

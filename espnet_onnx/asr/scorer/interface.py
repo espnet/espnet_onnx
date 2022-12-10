@@ -1,9 +1,9 @@
-from typing import Any
-from typing import Tuple
-from typing import List
-
+from typing import (
+    Any,
+    Tuple,
+    List
+)
 import warnings
-
 import numpy as np
 
 

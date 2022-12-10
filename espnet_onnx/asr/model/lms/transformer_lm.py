@@ -1,14 +1,13 @@
-from typing import Union
-from typing import Tuple
-from typing import Any
-from typing import List
-
+from typing import (
+    Tuple,
+    List,
+    Any,
+)
 import numpy as np
 import onnxruntime
 from scipy.special import log_softmax
 
 from espnet_onnx.asr.scorer.interface import BatchScorerInterface
-from espnet_onnx.utils.function import subsequent_mask
 
 
 class TransformerLM(BatchScorerInterface):

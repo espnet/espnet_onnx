@@ -13,9 +13,11 @@ from espnet_onnx.utils.function import (
     pad_sequence,
     topk
 )
-from .beam_search import BeamSearch
-from .hyps import Hypothesis
-from .hyps import BatchHypothesis
+from espnet_onnx.asr.beam_search.beam_search import BeamSearch
+from espnet_onnx.asr.beam_search.hyps import (
+    Hypothesis,
+    BatchHypothesis
+)
 
 
 class BatchBeamSearch(BeamSearch):

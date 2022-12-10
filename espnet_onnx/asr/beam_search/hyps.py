@@ -1,12 +1,13 @@
-from typing import Union
-from typing import Dict
-from typing import List
-from typing import NamedTuple
-from typing import Tuple
-from typing import Any
-from typing import Optional
+from typing import (
+    Union,
+    Dict,
+    Any,
+    List,
+    Tuple,
+    Optional,
+    NamedTuple
+)
 from dataclasses import dataclass
-
 import numpy as np
 
 

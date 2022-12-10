@@ -1,19 +1,15 @@
-from typing import Union
-from typing import List
-from typing import Tuple
-from typing import Optional
+from typing import (
+    Union,
+    Tuple,
+    List,
+    Optional,
+)
 from pathlib import Path
 from typeguard import check_argument_types
-import warnings
-
-import os
-import logging
 import numpy as np
-import onnxruntime
 
 from espnet_onnx.asr.abs_asr_model import AbsASRModel
 from espnet_onnx.asr.beam_search.hyps import Hypothesis
-
 
 
 class Speech2Text(AbsASRModel):
