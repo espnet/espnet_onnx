@@ -27,23 +27,23 @@ tts_conf:
         conformer_enc_kernel_size: 7
         conformer_dec_kernel_size: 31
         init_type: xavier_uniform
-        transformer_enc_dropout_rate: 0.2
-        transformer_enc_positional_dropout_rate: 0.2
-        transformer_enc_attn_dropout_rate: 0.2
-        transformer_dec_dropout_rate: 0.2
-        transformer_dec_positional_dropout_rate: 0.2
-        transformer_dec_attn_dropout_rate: 0.2
+        transformer_enc_dropout_rate: 0.0
+        transformer_enc_positional_dropout_rate: 0.0
+        transformer_enc_attn_dropout_rate: 0.0
+        transformer_dec_dropout_rate: 0.0
+        transformer_dec_positional_dropout_rate: 0.0
+        transformer_dec_attn_dropout_rate: 0.0
         pitch_predictor_layers: 1
         pitch_predictor_chans: 256
         pitch_predictor_kernel_size: 5
-        pitch_predictor_dropout: 0.5
+        pitch_predictor_dropout: 0.0
         pitch_embed_kernel_size: 1
         pitch_embed_dropout: 0.0
         stop_gradient_from_pitch_predictor: true
         energy_predictor_layers: 1
         energy_predictor_chans: 256
         energy_predictor_kernel_size: 3
-        energy_predictor_dropout: 0.5
+        energy_predictor_dropout: 0.0
         energy_embed_kernel_size: 1
         energy_embed_dropout: 0.0
         stop_gradient_from_energy_predictor: false

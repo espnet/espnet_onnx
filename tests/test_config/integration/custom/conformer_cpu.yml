@@ -5,20 +5,20 @@ optimization:
       RelPosAttention: 1
     decoder:
       CrossAttention: 1
-    lm:
-      CrossAttention: 1
+    # lm:
+    #   CrossAttention: 1
   Quantize:
     encoder:
       QRelPosAttention: 1
     decoder:
       QCrossAttention: 1
-    lm:
-      QCrossAttention: 1
+    # lm:
+    #   QCrossAttention: 1
 use_ort_for_espnet: true
 check_optimize:
   - encoder
   - decoder
-  - lm
+  # - lm
 check_export:
   - encoder
   - decoder

@@ -2,7 +2,7 @@ encoder: transformer
 encoder_conf:
   attention_dropout_rate: 0.0
   attention_heads: 4
-  dropout_rate: 0.1
+  dropout_rate: 0.0
   input_layer: conv2d
   linear_units: 256
   num_blocks: 3
