@@ -1,5 +1,6 @@
 from espnet_onnx.export.asr.models.ctc import CTC
 from espnet_onnx.export.asr.models.joint_network import JointNetwork
+from espnet_onnx.export.asr.models.encoder_wrapper import EncoderWrapper
 
 # encoder
 from espnet2.asr.encoder.rnn_encoder import RNNEncoder as espnetRNNEncoder
@@ -42,8 +43,10 @@ def get_encoder(model, frontend, preencoder, export_config):
         return ContextualBlockXformerEncoder(model, **export_config)
     elif isinstance(model, espnetTransformerEncoder):
         return TransformerEncoder(model, frontend, preencoder, **export_config)
-    elif isinstance(model, espnetConformerEncoder):
-        return ConformerEncoder(model, frontend, preencoder, **export_config)
+    # elif isinstance(model, espnetConformerEncoder):
+        #return ConformerEncoder(model, frontend, preencoder, **export_config)
+    else:
+        return EncoderWrapper(model, frontend, preencoder, **export_config)
 
 
 def get_decoder(model, export_config):

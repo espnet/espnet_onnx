@@ -19,9 +19,9 @@ latency = time.time() - start_time
 print(f'transcript={transcript}, latency={latency}')
 
 # onnx export
-# print('exporting ONNX model')
-# m = ASRModelExport()
-# m.export(espnet_model, tag)
+print('exporting ONNX model')
+m = ASRModelExport()
+m.export(espnet_model, tag)
 
 # onnx inference
 print('running ONNX inference')
