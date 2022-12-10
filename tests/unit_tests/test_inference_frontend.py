@@ -20,7 +20,7 @@ from .forward_utils import (
 
 encoder_cases = [
     ('conformer_hubert', [16000, 32000]),
-    ('conformer_hubert_last', [16000, 32000]),
+    # ('conformer_hubert_last', [16000, 32000]),
     ('transformer_hubert', [16000, 32000]),
     ('rnn_hubert', [16000, 32000]),
 ]
