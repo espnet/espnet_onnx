@@ -1,21 +1,15 @@
 import os
 import six
-
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling
-from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling2
-from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling6
-from espnet.nets.pytorch_backend.transformer.subsampling import Conv2dSubsampling8
-from espnet.nets.pytorch_backend.rnn.encoders import (RNNP, RNN, VGG2L)
-from espnet2.asr.encoder.rnn_encoder import RNNEncoder as espnetRNNEncoder
+from espnet.nets.pytorch_backend.rnn.encoders import (
+    RNNP,
+    RNN,
+    VGG2L,
+)
 from espnet2.asr.encoder.vgg_rnn_encoder import VGGRNNEncoder as espnetVGGRNNEncoder
-from espnet2.asr.frontend.default import DefaultFrontend
-from espnet2.layers.global_mvn import GlobalMVN
-from espnet2.layers.utterance_mvn import UtteranceMVN
 
 from espnet_onnx.export.asr.get_config import (
     get_frontend_config,

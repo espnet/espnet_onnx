@@ -1,7 +1,3 @@
-# This script is created by Masao Someki to convert espnet models.
-# The Transformer and Conformer based models are supported.
-# Copyright (c) 2022 Masao Someki
-
 from typing import Union
 from pathlib import Path
 import subprocess

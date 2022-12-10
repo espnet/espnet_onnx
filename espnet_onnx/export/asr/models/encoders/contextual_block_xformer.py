@@ -1,33 +1,18 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sat Aug 21 17:27:16 2021.
-@author: Keqi Deng (UCAS)
-
-Modified by Masao Someki
-"""
 import os
 from typing import (
-    Optional,  # noqa: H301
-    Tuple,  # noqa: H301
+    Optional, 
+    Tuple,
 )
-
 import torch
 import torch.nn as nn
-from espnet.nets.pytorch_backend.transformer.subsampling_without_posenc import (
-    Conv2dSubsamplingWOPosEnc,  # noqa: H301
-)
+from espnet.nets.pytorch_backend.transformer.subsampling_without_posenc import Conv2dSubsamplingWOPosEnc
 from espnet.nets.pytorch_backend.transformer.attention import MultiHeadedAttention
-from espnet2.asr.frontend.default import DefaultFrontend
-from espnet2.layers.global_mvn import GlobalMVN
-from espnet2.layers.utterance_mvn import UtteranceMVN
+
 from espnet_onnx.export.asr.get_config import (
     get_frontend_config,
     get_norm_config
 )
-
-from ..encoder_layer import OnnxEncoderLayer
-from ..multihead_att import OnnxMultiHeadedAttention
-
+from espnet_onnx.export.asr.models.multihead_att import OnnxMultiHeadedAttention
 from espnet_onnx.utils.abs_model import AbsExportModel
 
 
@@ -198,4 +183,3 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
         # if ret['do_postencoder']:
         #     ret.update(postencoder=get_postenc_config(self.model.postencoder))
         return ret
-

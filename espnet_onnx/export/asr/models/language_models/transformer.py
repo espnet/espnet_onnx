@@ -11,12 +11,11 @@ from espnet.nets.pytorch_backend.transformer.subsampling import (
 from espnet.nets.pytorch_backend.transducer.vgg2l import VGG2L
 from espnet.nets.pytorch_backend.transformer.attention import MultiHeadedAttention
 
-from espnet_onnx.utils.function import subsequent_mask
-from espnet_onnx.utils.abs_model import AbsExportModel
-from .embed import Embedding
-from ..encoder_layer import OnnxEncoderLayer
-from ..multihead_att import OnnxMultiHeadedAttention
+from espnet_onnx.export.asr.models.language_models.embed import Embedding
+from espnet_onnx.export.asr.models.encoder_layer import OnnxEncoderLayer
+from espnet_onnx.export.asr.models.multihead_att import OnnxMultiHeadedAttention
 from espnet_onnx.utils.torch_function import MakePadMask
+from espnet_onnx.utils.abs_model import AbsExportModel
 
 
 class TransformerLM(nn.Module, AbsExportModel):

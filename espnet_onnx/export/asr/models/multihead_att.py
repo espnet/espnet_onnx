@@ -1,11 +1,7 @@
-import os
 import math
 
 import torch
 import torch.nn as nn
-import numpy as np
-
-from espnet.nets.pytorch_backend.transformer.attention import MultiHeadedAttention
 
 
 class OnnxMultiHeadedAttention(nn.Module):

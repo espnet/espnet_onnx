@@ -3,13 +3,7 @@ import os
 import torch
 import torch.nn as nn
 
-try:
-    from espnet2.asr.transducer.transducer_decoder import TransducerDecoder
-except:
-    from espnet2.asr.decoder.transducer_decoder import TransducerDecoder
-
-from espnet_onnx.utils.function import subsequent_mask
-from ..language_models.embed import Embedding
+from espnet_onnx.export.asr.models.language_models.embed import Embedding
 from espnet_onnx.utils.abs_model import AbsExportModel
 
 
