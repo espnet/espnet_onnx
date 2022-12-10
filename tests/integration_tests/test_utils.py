@@ -1,7 +1,6 @@
 import os
 import glob
 import yaml
-import argparse
 
 from espnet2.bin.asr_inference import Speech2Text
 
@@ -26,6 +25,7 @@ def eval_model(espnet_model):
     espnet_model.asr_model.encoder.eval()
     for k in espnet_model.beam_search.full_scorers.keys():
         espnet_model.beam_search.full_scorers[k].eval()
+
 
 def check_models(cache_dir, tag_name, check_export, check_quantize):
     file_paths = {'full': {}, 'quantize': {}}
@@ -86,4 +86,3 @@ def build_model(model_config):
         transducer_conf=transducer_config
     )
     return model
-

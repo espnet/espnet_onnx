@@ -1,15 +1,10 @@
-
-# This test suite verifies that espnet_onnx exports
-# model correctly and match the result.
-
 import os
 import pytest
-from pathlib import Path
 import glob
-import onnx
 
 from espnet_onnx.export.optimize.optimizer import optimize_model
 from ..op_test_utils import check_op_type_count
+
 
 test_cases = [
     ['encoder', 'transformer', 4, 256, 'Attention', 3, False, False],
@@ -24,6 +19,7 @@ test_cases = [
     ['lm', 'transformer_pe', 4, 256, 'CrossAttention', 3, True, False],
     ['lm', 'transformer', 4, 256, 'CrossAttention', 2, True, False],
 ]
+
 
 @pytest.mark.parametrize('model_type, model_name, n_head, h_size, node_name, node_num, use_custom_ort, use_gpu', test_cases)
 def test_optimize(model_type, model_name, n_head, h_size, node_name, node_num, use_custom_ort, use_gpu, model_export):

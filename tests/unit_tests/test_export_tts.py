@@ -1,7 +1,3 @@
-
-# This test suite verifies that espnet_onnx exports
-# model correctly and match the result.
-
 import os
 import pytest
 from pathlib import Path
@@ -15,6 +11,7 @@ from espnet_onnx.export.tts.models.tts_models.tacotron2 import (
     OnnxTacotron2Decoder
 )
 from espnet_onnx.export.tts.models import get_vocoder
+
 
 tts_cases = [
     ['vits', OnnxVITSModel],
@@ -78,4 +75,3 @@ def test_export_vocoder(voc_type, load_config, model_export_tts, get_class):
     voc_wrapper, _ = get_vocoder(vocoder, {})
     export_dir = save_model(vocoder, voc_wrapper, model_export_tts, 'vocoder', voc_type)
     assert len(os.path.join(export_dir, '*.onnx')) > 0
-

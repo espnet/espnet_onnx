@@ -1,5 +1,5 @@
-
 import numpy as np
+
 from espnet_onnx.utils.function import (
     mask_fill, make_pad_mask
 )
@@ -8,11 +8,10 @@ from espnet_onnx.utils.torch_function import subsequent_mask
 
 def run_onnx_enc(model, dummy_input, model_type):
     feat_length = np.array([dummy_input.shape[1]])
-    encoder_out, encoder_out_lens = \
+    encoder_out, _ = \
         model.run(["encoder_out", "encoder_out_lens"], {
             "feats": dummy_input
         })
-    
     if model_type[:3] == 'rnn':
         encoder_out = mask_fill(encoder_out, make_pad_mask(
             feat_length, encoder_out, 1), 0.0)
@@ -22,14 +21,14 @@ def run_onnx_enc(model, dummy_input, model_type):
 def run_xformer_dec(model, dummy_input, dummy_yseq, model_type):
     if model_type == 'torch':
         ys_mask = subsequent_mask(dummy_yseq.size(-1)).unsqueeze(0)
-        logp, state = model.forward_one_step(
+        logp, _ = model.forward_one_step(
             tgt=dummy_yseq,
             tgt_mask=ys_mask,
             memory=dummy_input,
             cache=None
         )
     else:
-        logp, state = model.batch_score(
+        logp, _ = model.batch_score(
             dummy_yseq, states=[None], xs=dummy_input
         )
     return logp
@@ -45,7 +44,7 @@ def run_rnn_dec(model, dummy_input, dummy_yseq):
 def run_trans_dec(model, dummy_input, h, model_type):
     if model_type == 'torch':
         emb = model.embed(dummy_input)
-        y, state = model.rnn_forward(emb, (h,h))
+        y, _ = model.rnn_forward(emb, (h,h))
     else:
         input_dict = {
             'labels': dummy_input,
@@ -54,6 +53,7 @@ def run_trans_dec(model, dummy_input, h, model_type):
         }
         y = model.decoder.run(['sequence'], input_dict)[0]
     return y
+
 
 def run_onnx_front(model, dummy_input):
     input_dic = {

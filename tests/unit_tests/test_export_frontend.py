@@ -1,27 +1,16 @@
-
-# This test suite verifies that espnet_onnx exports
-# model correctly and match the result.
-
 import os
 import glob
 import pytest
 from pathlib import Path
 import torch
-import numpy as np
 
-from espnet_onnx.export.asr.models import (
-    get_encoder,
-)
-from espnet_onnx.export.layers.attention import OnnxNoAtt
-from espnet_onnx.utils.config import save_config
-
+from espnet_onnx.export.asr.models import get_encoder
 from espnet_onnx.export.optimize.optimizer import optimize_model
 from ..op_test_utils import check_op_type_count
 
 
 encoder_cases = [
     'conformer_hubert',
-    # 'conformer_hubert_last', # latest s3prl supports weighted_sum.
     'transformer_hubert',
     'rnn_hubert',
 ]
@@ -32,7 +21,7 @@ optimize_cases = [
 ]
 
 
-def save_model(onnx_model, export_dir, model_export, model_type):
+def save_model(onnx_model, export_dir, model_export):
     model_export._export_encoder(onnx_model, export_dir, verbose=False)
 
 
@@ -61,7 +50,7 @@ def test_export_frontend(enc_type, load_config, model_export, get_class):
         input_size=input_size
     )
     enc_wrapper = get_encoder(encoder, frontend, None, {})
-    save_model(enc_wrapper, export_dir, model_export, 'encoder')
+    save_model(enc_wrapper, export_dir, model_export)
 
     assert len(os.path.join(export_dir, '*frontend.onnx')) > 0
 
@@ -75,7 +64,6 @@ def test_optimize_frontend(model_type, model_name, n_head, h_size, n_att, n_cros
     
     input_model = glob.glob(os.path.join(export_dir , f'*frontend.onnx'))[0]
     model_name = os.path.basename(input_model)
-    
     if use_custom_ort:
         opt_model_type = 'espnet'
     else:
