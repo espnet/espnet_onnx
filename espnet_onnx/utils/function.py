@@ -1,6 +1,7 @@
 import numpy as np
 import six
 
+
 def subsequent_mask(size):
     """Create mask for subsequent steps (size, size).
     Modified from the original mask function to apply for fix-length mask.
@@ -296,6 +297,7 @@ def subtract(x, subset):
 
     return final
 
+
 def narrow(arr: np.ndarray, axis: int, start: int, length: int):
     """Numpy implementation of torch.narrow
 
@@ -306,6 +308,7 @@ def narrow(arr: np.ndarray, axis: int, start: int, length: int):
         length (int): the distance to the ending dimension
     """
     return arr.take(np.arange(start, start+length), axis=axis)
+
 
 def end_detect(ended_hyps, i, M=3, D_end=np.log(1 * np.exp(-10))):
     """End detection.
