@@ -17,7 +17,7 @@ class PreDecoder(nn.Module, AbsExportModel):
         else:
             self.model = model.mlp_enc
         self.model_name = f'predecoder_{idx}'
-        self.apply_tanh = require_tanh(self.model)
+        self.apply_tanh = require_tanh(model)
     
     def require_onnx(self):
         return self.model is not None
