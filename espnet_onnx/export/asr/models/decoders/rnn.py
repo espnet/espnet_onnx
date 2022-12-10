@@ -78,7 +78,8 @@ class RNNDecoder(nn.Module, AbsExportModel):
                 mask[self.num_encs]
             )
             att_w.append(_att_w)
-        ey = torch.cat((ey, att_c), dim=1)  # utt(1) x (zdim + hdim)
+        if att_c is not None:
+            ey = torch.cat((ey, att_c), dim=1)  # utt(1) x (zdim + hdim)
         z_list, c_list = self.rnn_forward(
             ey, z_prev, c_prev
         )
@@ -226,11 +227,12 @@ class RNNDecoder(nn.Module, AbsExportModel):
             "rnn_type": self.model.dtype,
             "predecoder": [
                 {
-                    "model_path": os.path.join(path, f'predecoder_{i}.onnx'),
+                    "model_path": 
+                        os.path.join(path, f'predecoder_{i}.onnx') if not isinstance(a, OnnxNoAtt) else "",
                     "att_type": a.att_type
                 }
                 for i,a in enumerate(self.att_list)
-                if not isinstance(a, OnnxNoAtt)
+                # if not isinstance(a, OnnxNoAtt)
             ]
         }
         if hasattr(self.model, 'att_win'):

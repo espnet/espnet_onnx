@@ -25,17 +25,21 @@ class RNNDecoder(BatchScorerInterface):
         self.config = config
         # predecoder
         self.predecoders = []
+        self.is_noatt = []
         for p in config.predecoder:
             if use_quantized:
                 model_path = p.quantized_model_path
             else:
                 model_path = p.model_path
-            self.predecoders.append(
-                onnxruntime.InferenceSession(
-                    model_path,
-                    providers=providers
+            
+            self.is_noatt.append(p.att_type == 'noatt')
+            if model_path:
+                self.predecoders.append(
+                    onnxruntime.InferenceSession(
+                        model_path,
+                        providers=providers
+                    )
                 )
-            )
 
         # decoder
         if use_quantized:
@@ -157,6 +161,7 @@ class RNNDecoder(BatchScorerInterface):
                     [x[idx].shape[0]]) == 1, -float('inf'), 0).astype(np.float32))
 
         input_dict = self.create_input_dic(vy, x, state)
+
         logp, *status_lists = self.decoder.run(
             self.decoder_output_names,
             input_dict
@@ -203,7 +208,7 @@ class RNNDecoder(BatchScorerInterface):
         if self.required_input_names['mask']:
             ret.update({
                 'mask_%d' % d: self.mask[d]
-                for d in range(self.num_encs)
+                for d in range(self.num_encs + sum(self.is_noatt))
             })
         return ret
 

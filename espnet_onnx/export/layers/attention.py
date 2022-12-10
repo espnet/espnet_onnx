@@ -16,8 +16,7 @@ from espnet.nets.pytorch_backend.rnn.attentions import (
     AttMultiHeadDot,
     AttMultiHeadAdd,
     AttMultiHeadLoc,
-    AttMultiHeadMultiResLoc,
-    AttForward
+    AttMultiHeadMultiResLoc
 )
 
 
@@ -49,32 +48,10 @@ def get_attention(model):
 
 
 def require_tanh(model):
-    if isinstance(model, NoAtt):
-        return False
-    elif isinstance(model, AttDot):
+    if isinstance(model, AttDot):
         return True
-    elif isinstance(model, AttAdd):
+    else:
         return False
-    elif isinstance(model, AttLoc):
-        return False
-    elif isinstance(model, AttLoc2D):
-        raise ValueError('Currently AttLoc2D is not supported.')
-    elif isinstance(model, AttLocRec):
-        raise ValueError('not supported.')
-    elif isinstance(model, AttCov):
-        return False
-    elif isinstance(model, AttCovLoc):
-        return False
-    elif isinstance(model, AttMultiHeadDot):
-        raise ValueError('not supported.')
-    elif isinstance(model, AttMultiHeadAdd):
-        raise ValueError('not supported.')
-    elif isinstance(model, AttMultiHeadLoc):
-        raise ValueError('not supported.')
-    elif isinstance(model, AttMultiHeadMultiResLoc):
-        raise ValueError('not supported.')
-    elif isinstance(model, AttForward):
-        raise False
 
 
 class OnnxNoAtt(torch.nn.Module):
@@ -98,14 +75,11 @@ class OnnxNoAtt(torch.nn.Module):
     ):
         batch = 1
         h_length = enc_h.size(1)
-        c = torch.zeros(1, enc_h.size(2))
         # initialize attention weight with uniform dist.
-        if att_prev is None:
-            # if no bias, 0 0-pad goes 0
-            c = torch.sum(
-                enc_h * mask.view(batch, h_length, 1), dim=1
-            )
-
+        # if no bias, 0 0-pad goes 0
+        c = torch.sum(
+            enc_h * att_prev.view(batch, h_length, 1), dim=1
+        )
         return c, att_prev
 
 
