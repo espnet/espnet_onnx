@@ -161,7 +161,7 @@ class StreamingSpeech2Text(AbsASRModel):
             return self._get_result(best_hyps[0])
 
     def _get_result(self, hyp: Hypothesis):
-        token_int = hyp.yseq[2:-1].astype(np.int64).tolist()
+        token_int = hyp.yseq[1:-1].astype(np.int64).tolist()
         # remove blank symbol id, which is assumed to be 0
         token_int = list(filter(lambda x: x != 0, token_int))
         # Change integer-ids to tokens
