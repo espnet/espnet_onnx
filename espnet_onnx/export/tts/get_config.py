@@ -44,7 +44,7 @@ def get_preprocess_config(model, path):
     ret = {}
     if model.text_cleaner is not None:
         ret.update({'text_cleaner': {
-                'cleaner_types': [ct for ct in model.text_cleaner.clearner_types]
+                'cleaner_types': [ct for ct in model.text_cleaner.cleaner_types]
         }})
     else:
         ret.update({'text_cleaner': None})
