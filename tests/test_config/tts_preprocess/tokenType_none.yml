@@ -1,0 +1,6 @@
+use_preprocessor: true
+bpemodel: null
+cleaner: null
+g2p: pypinyin_g2p_phone
+non_linguistic_symbols: null
+token_type: none
