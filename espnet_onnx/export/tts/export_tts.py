@@ -200,5 +200,6 @@ class TTSModelExport:
                 op_types_to_quantize=['Attention', 'MatMul']
             )
             ret[basename] = export_file
-            os.remove(os.path.join(model_from, basename + '-opt.onnx'))
+            temp_file_path = os.path.join(model_from, basename + '-opt.onnx')
+            if (os.path.exists(temp_file_path)): os.remove(temp_file_path)
         return ret
