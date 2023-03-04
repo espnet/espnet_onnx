@@ -1,8 +1,5 @@
-from typing import (
-    Tuple,
-    List,
-    Any,
-)
+from typing import Any, List, Tuple
+
 import numpy as np
 import onnxruntime
 from scipy.special import log_softmax

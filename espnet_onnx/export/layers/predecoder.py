@@ -1,7 +1,7 @@
 import os
+
 import torch
 import torch.nn as nn
-
 from espnet.nets.pytorch_backend.rnn.attentions import NoAtt
 
 from espnet_onnx.export.layers.attention import require_tanh

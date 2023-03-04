@@ -1,11 +1,13 @@
-import six
 from typing import List
-from typeguard import check_argument_types
+
 import numpy as np
 import onnxruntime
-from scipy.special import logsumexp, log_softmax
+import six
+from scipy.special import log_softmax, logsumexp
+from typeguard import check_argument_types
 
 from espnet_onnx.utils.config import Config
+
 from .interface import BatchPartialScorerInterface
 
 

@@ -1,14 +1,14 @@
-from typing import Union, List, Tuple, Optional
-from pathlib import Path
-from typeguard import check_argument_types
 import logging
+from pathlib import Path
+from typing import List, Optional, Tuple, Union
+
 import numpy as np
+from typeguard import check_argument_types
 
 from espnet_onnx.asr.abs_asr_model import AbsASRModel
 from espnet_onnx.asr.beam_search.batch_beam_search import BatchBeamSearch
-from espnet_onnx.asr.beam_search.batch_beam_search_online_sim import (
-    BatchBeamSearchOnlineSim,
-)
+from espnet_onnx.asr.beam_search.batch_beam_search_online_sim import \
+    BatchBeamSearchOnlineSim
 from espnet_onnx.asr.beam_search.hyps import Hypothesis
 
 

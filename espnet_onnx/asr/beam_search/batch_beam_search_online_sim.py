@@ -1,4 +1,5 @@
 from typing import List
+
 import numpy as np
 
 from espnet_onnx.asr.beam_search.batch_beam_search import BatchBeamSearch

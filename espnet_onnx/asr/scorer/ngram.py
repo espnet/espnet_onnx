@@ -5,10 +5,8 @@ from abc import ABC
 import kenlm
 import numpy as np
 
-from espnet_onnx.asr.scorer.interface import (
-    BatchScorerInterface,
-    PartialScorerInterface,
-)
+from espnet_onnx.asr.scorer.interface import (BatchScorerInterface,
+                                              PartialScorerInterface)
 
 
 class Ngrambase(ABC):

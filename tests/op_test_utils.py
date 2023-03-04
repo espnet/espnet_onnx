@@ -1,5 +1,6 @@
-import onnx
 from pathlib import Path
+
+import onnx
 
 
 def check_op_type_count(model_path, kwargs):

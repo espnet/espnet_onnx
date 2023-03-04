@@ -1,5 +1,6 @@
 """Length bonus module."""
 from typing import Any, List, Tuple
+
 import numpy as np
 
 from espnet_onnx.asr.scorer.interface import BatchScorerInterface

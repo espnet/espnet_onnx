@@ -1,17 +1,17 @@
 import os
-from typing import (
-    Optional,
-    Tuple,
-)
+from typing import Optional, Tuple
+
 import torch
 import torch.nn as nn
-from espnet.nets.pytorch_backend.transformer.subsampling_without_posenc import (
-    Conv2dSubsamplingWOPosEnc,
-)
-from espnet.nets.pytorch_backend.transformer.attention import MultiHeadedAttention
+from espnet.nets.pytorch_backend.transformer.attention import \
+    MultiHeadedAttention
+from espnet.nets.pytorch_backend.transformer.subsampling_without_posenc import \
+    Conv2dSubsamplingWOPosEnc
 
-from espnet_onnx.export.asr.get_config import get_frontend_config, get_norm_config
-from espnet_onnx.export.asr.models.multihead_att import OnnxMultiHeadedAttention
+from espnet_onnx.export.asr.get_config import (get_frontend_config,
+                                               get_norm_config)
+from espnet_onnx.export.asr.models.multihead_att import \
+    OnnxMultiHeadedAttention
 from espnet_onnx.utils.abs_model import AbsExportModel
 
 

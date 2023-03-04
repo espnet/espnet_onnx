@@ -1,9 +1,8 @@
 from typing import Optional
 
+import numpy as np
 import torch
 import torch.nn as nn
-
-import numpy as np
 
 
 class MakePadMask(nn.Module):

@@ -1,11 +1,5 @@
-from typing import (
-    List,
-    Tuple,
-    Dict,
-    Any,
-    Optional,
-    Union,
-)
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 import numpy as np
 import onnxruntime
 

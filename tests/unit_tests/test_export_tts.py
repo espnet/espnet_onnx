@@ -1,21 +1,19 @@
 import argparse
 import os
-import pytest
 from pathlib import Path
-import torch
 
+import pytest
+import torch
 from espnet2.tasks.tts import TTSTask
 
-from espnet_onnx.export.tts.models.tts_models.vits import OnnxVITSModel
-from espnet_onnx.export.tts.models.tts_models.jets import OnnxJETSModel
-from espnet_onnx.export.tts.models.tts_models.fastspeech2 import OnnxFastSpeech2
-from espnet_onnx.export.tts.models.tts_models.tacotron2 import (
-    OnnxTacotron2Encoder,
-    OnnxTacotron2Decoder,
-)
-from espnet_onnx.export.tts.models import get_vocoder
 from espnet_onnx.export.tts.get_config import get_preprocess_config
-
+from espnet_onnx.export.tts.models import get_vocoder
+from espnet_onnx.export.tts.models.tts_models.fastspeech2 import \
+    OnnxFastSpeech2
+from espnet_onnx.export.tts.models.tts_models.jets import OnnxJETSModel
+from espnet_onnx.export.tts.models.tts_models.tacotron2 import (
+    OnnxTacotron2Decoder, OnnxTacotron2Encoder)
+from espnet_onnx.export.tts.models.tts_models.vits import OnnxVITSModel
 
 tts_cases = [
     ["vits", OnnxVITSModel],

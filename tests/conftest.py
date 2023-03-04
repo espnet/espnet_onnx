@@ -1,67 +1,57 @@
-import os
 import glob
-import pytest
+import os
 from pathlib import Path
 
-from espnet_onnx.utils.config import get_config
-from espnet_onnx.export import ASRModelExport, TTSModelExport
-
-from espnet2.asr.frontend.abs_frontend import AbsFrontend
-from espnet2.asr.frontend.default import DefaultFrontend
-from espnet2.asr.frontend.fused import FusedFrontends
-from espnet2.asr.frontend.s3prl import S3prlFrontend
-from espnet2.asr.frontend.windowing import SlidingWindow
-
-from espnet2.asr.encoder.abs_encoder import AbsEncoder
-from espnet2.asr.encoder.conformer_encoder import ConformerEncoder
-from espnet2.asr.encoder.hubert_encoder import (
-    FairseqHubertEncoder,
-    FairseqHubertPretrainEncoder,
-)
-from espnet2.asr.encoder.rnn_encoder import RNNEncoder
-from espnet2.asr.encoder.transformer_encoder import TransformerEncoder
-from espnet2.asr.encoder.contextual_block_transformer_encoder import (
-    ContextualBlockTransformerEncoder,
-)
-from espnet2.asr.encoder.contextual_block_conformer_encoder import (
-    ContextualBlockConformerEncoder,
-)
-from espnet2.asr.encoder.vgg_rnn_encoder import VGGRNNEncoder
-from espnet2.asr.encoder.wav2vec2_encoder import FairSeqWav2Vec2Encoder
-
+import pytest
 from espnet2.asr.decoder.abs_decoder import AbsDecoder
 from espnet2.asr.decoder.rnn_decoder import RNNDecoder
 from espnet2.asr.decoder.transformer_decoder import (
     DynamicConvolution2DTransformerDecoder,
     DynamicConvolutionTransformerDecoder,
     LightweightConvolution2DTransformerDecoder,
-    LightweightConvolutionTransformerDecoder,
-    TransformerDecoder,
-)
-
+    LightweightConvolutionTransformerDecoder, TransformerDecoder)
+from espnet2.asr.encoder.abs_encoder import AbsEncoder
+from espnet2.asr.encoder.conformer_encoder import ConformerEncoder
+from espnet2.asr.encoder.contextual_block_conformer_encoder import \
+    ContextualBlockConformerEncoder
+from espnet2.asr.encoder.contextual_block_transformer_encoder import \
+    ContextualBlockTransformerEncoder
+from espnet2.asr.encoder.hubert_encoder import (FairseqHubertEncoder,
+                                                FairseqHubertPretrainEncoder)
+from espnet2.asr.encoder.rnn_encoder import RNNEncoder
+from espnet2.asr.encoder.transformer_encoder import TransformerEncoder
+from espnet2.asr.encoder.vgg_rnn_encoder import VGGRNNEncoder
+from espnet2.asr.encoder.wav2vec2_encoder import FairSeqWav2Vec2Encoder
+from espnet2.asr.frontend.abs_frontend import AbsFrontend
+from espnet2.asr.frontend.default import DefaultFrontend
+from espnet2.asr.frontend.fused import FusedFrontends
+from espnet2.asr.frontend.s3prl import S3prlFrontend
+from espnet2.asr.frontend.windowing import SlidingWindow
 from espnet2.lm.abs_model import AbsLM
 from espnet2.lm.seq_rnn_lm import SequentialRNNLM
 from espnet2.lm.transformer_lm import TransformerLM
 from espnet2.train.class_choices import ClassChoices
+
+from espnet_onnx.export import ASRModelExport, TTSModelExport
+from espnet_onnx.utils.config import get_config
 
 try:
     from espnet2.asr.transducer.transducer_decoder import TransducerDecoder
 except:
     from espnet2.asr.decoder.transducer_decoder import TransducerDecoder
 
-from espnet2.tts.abs_tts import AbsTTS
-from espnet2.gan_tts.joint import JointText2Wav
-from espnet2.gan_tts.vits import VITS
+from espnet2.gan_tts.hifigan import HiFiGANGenerator
 from espnet2.gan_tts.jets import JETS
+from espnet2.gan_tts.joint import JointText2Wav
+from espnet2.gan_tts.melgan import MelGANGenerator
+from espnet2.gan_tts.parallel_wavegan import ParallelWaveGANGenerator
+from espnet2.gan_tts.style_melgan import StyleMelGANGenerator
+from espnet2.gan_tts.vits import VITS
+from espnet2.tts.abs_tts import AbsTTS
 from espnet2.tts.fastspeech import FastSpeech
 from espnet2.tts.fastspeech2 import FastSpeech2
 from espnet2.tts.tacotron2 import Tacotron2
 from espnet2.tts.transformer import Transformer
-
-from espnet2.gan_tts.hifigan import HiFiGANGenerator
-from espnet2.gan_tts.melgan import MelGANGenerator
-from espnet2.gan_tts.style_melgan import StyleMelGANGenerator
-from espnet2.gan_tts.parallel_wavegan import ParallelWaveGANGenerator
 
 
 def pytest_addoption(parser):

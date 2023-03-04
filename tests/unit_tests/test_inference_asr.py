@@ -1,22 +1,18 @@
-import os
 import glob
-import pytest
+import os
 from pathlib import Path
 
 import numpy as np
-import torch
 import onnxruntime as ort
+import pytest
+import torch
 
 from espnet_onnx.asr.model.decoder import get_decoder
 from espnet_onnx.asr.model.lm import get_lm
 from espnet_onnx.utils.config import get_config
-from .forward_utils import (
-    run_onnx_enc,
-    run_rnn_dec,
-    run_xformer_dec,
-    run_trans_dec,
-)
 
+from .forward_utils import (run_onnx_enc, run_rnn_dec, run_trans_dec,
+                            run_xformer_dec)
 
 encoder_cases = [
     ("conformer_abs_pos", [50, 100]),

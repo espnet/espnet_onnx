@@ -1,10 +1,11 @@
 from typing import List
+
 import numpy as np
 import onnxruntime
 
 from espnet_onnx.asr.scorer.interface import BatchScorerInterface
-from espnet_onnx.utils.function import make_pad_mask
 from espnet_onnx.utils.config import Config
+from espnet_onnx.utils.function import make_pad_mask
 
 
 class RNNDecoder(BatchScorerInterface):

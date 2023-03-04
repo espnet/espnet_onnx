@@ -1,9 +1,10 @@
 from typing import List
-import onnxruntime
-import numpy as np
 
-from espnet_onnx.utils.function import make_pad_mask
+import numpy as np
+import onnxruntime
+
 from espnet_onnx.utils.config import Config
+from espnet_onnx.utils.function import make_pad_mask
 
 
 class Tacotron2:

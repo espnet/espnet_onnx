@@ -1,22 +1,24 @@
-from espnet2.gan_tts.vits import VITS as espnetVITSModel
+from espnet2.gan_tts.hifigan.hifigan import HiFiGANGenerator
 from espnet2.gan_tts.jets import JETS as espnetJETSModel
-from espnet2.tts.fastspeech2.fastspeech2 import FastSpeech2 as espnetFastSpeech2
+from espnet2.gan_tts.joint.joint_text2wav import \
+    JointText2Wav as espnetJointText2Wav
+from espnet2.gan_tts.melgan.melgan import MelGANGenerator
+from espnet2.gan_tts.parallel_wavegan.parallel_wavegan import \
+    ParallelWaveGANGenerator
+from espnet2.gan_tts.style_melgan.style_melgan import StyleMelGANGenerator
+from espnet2.gan_tts.vits import VITS as espnetVITSModel
+from espnet2.tts.fastspeech2.fastspeech2 import \
+    FastSpeech2 as espnetFastSpeech2
 from espnet2.tts.tacotron2.tacotron2 import Tacotron2 as espnetTacotron2
-from espnet2.gan_tts.joint.joint_text2wav import JointText2Wav as espnetJointText2Wav
-from .tts_models.vits import OnnxVITSModel
-from .tts_models.jets import OnnxJETSModel
-from .tts_models.fastspeech2 import OnnxFastSpeech2
-from .tts_models.tacotron2 import OnnxTacotron2Encoder, OnnxTacotron2Decoder
-
+from espnet2.tts.utils.parallel_wavegan_pretrained_vocoder import \
+    ParallelWaveGANPretrainedVocoder
 # vocoder
 from espnet2.utils.griffin_lim import Spectrogram2Waveform
-from espnet2.tts.utils.parallel_wavegan_pretrained_vocoder import (
-    ParallelWaveGANPretrainedVocoder,
-)
-from espnet2.gan_tts.hifigan.hifigan import HiFiGANGenerator
-from espnet2.gan_tts.melgan.melgan import MelGANGenerator
-from espnet2.gan_tts.parallel_wavegan.parallel_wavegan import ParallelWaveGANGenerator
-from espnet2.gan_tts.style_melgan.style_melgan import StyleMelGANGenerator
+
+from .tts_models.fastspeech2 import OnnxFastSpeech2
+from .tts_models.jets import OnnxJETSModel
+from .tts_models.tacotron2 import OnnxTacotron2Decoder, OnnxTacotron2Encoder
+from .tts_models.vits import OnnxVITSModel
 from .vocoders.hifigan import OnnxHiFiGANVocoder
 from .vocoders.melgan import OnnxMelGANVocoder
 from .vocoders.parallel_wavegan import OnnxPWGVocoder

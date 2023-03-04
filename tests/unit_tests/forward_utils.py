@@ -1,6 +1,6 @@
 import numpy as np
 
-from espnet_onnx.utils.function import mask_fill, make_pad_mask
+from espnet_onnx.utils.function import make_pad_mask, mask_fill
 from espnet_onnx.utils.torch_function import subsequent_mask
 
 

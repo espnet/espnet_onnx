@@ -1,30 +1,23 @@
-from typing import (
-    Union,
-    Dict,
-)
-from pathlib import Path
-from typeguard import check_argument_types
-
-import os
 import glob
-from datetime import datetime
 import logging
+import os
 import shutil
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, Union
 
 import torch
-from onnxruntime.quantization import quantize_dynamic
-
 from espnet2.bin.tts_inference import Text2Speech
+from onnxruntime.quantization import quantize_dynamic
+from typeguard import check_argument_types
 
+from espnet_onnx.export.tts.get_config import (get_normalize_config,
+                                               get_preprocess_config,
+                                               get_token_config,
+                                               get_vocoder_config)
 from espnet_onnx.export.tts.models import get_tts_model, get_vocoder
-from espnet_onnx.export.tts.get_config import (
-    get_token_config,
-    get_preprocess_config,
-    get_vocoder_config,
-    get_normalize_config,
-)
-from espnet_onnx.utils.config import save_config, update_model_path
 from espnet_onnx.utils.abs_model import AbsExportModel
+from espnet_onnx.utils.config import save_config, update_model_path
 
 
 class TTSModelExport:

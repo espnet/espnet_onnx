@@ -1,11 +1,11 @@
-import pytest
-import librosa
 import copy
+
+import librosa
+import pytest
 
 from espnet_onnx import Speech2Text as onnxSpeech2Text
 
 from .test_utils import *
-
 
 asr_config_names = [
     # 'original/rnn',

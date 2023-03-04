@@ -7,6 +7,7 @@
 """Duration calculator for ESPnet2."""
 
 from typing import Tuple
+
 import numpy as np
 
 

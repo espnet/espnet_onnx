@@ -1,18 +1,17 @@
-from typing import Optional
-import six
 import os
+from typing import Optional
 
 import numpy as np
+import six
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 from espnet.nets.pytorch_backend.rnn.attentions import AttForward, AttForwardTA
 
-from espnet_onnx.export.layers.predecoder import PreDecoder
 from espnet_onnx.export.layers.attention import get_attention
-from espnet_onnx.utils.torch_function import MakePadMask, normalize
+from espnet_onnx.export.layers.predecoder import PreDecoder
 from espnet_onnx.utils.abs_model import AbsExportModel
+from espnet_onnx.utils.torch_function import MakePadMask, normalize
 
 
 class OnnxEncoderLayer(nn.Module):

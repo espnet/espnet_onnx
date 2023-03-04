@@ -1,16 +1,15 @@
-from abc import ABC
-
-from typing import List
-
-import os
 import glob
 import logging
-import onnxruntime
+import os
 import warnings
+from abc import ABC
+from typing import List
 
-from espnet_onnx.utils.config import get_config, get_tag_config
+import onnxruntime
+
 from espnet_onnx.asr.postprocess.build_tokenizer import build_tokenizer
 from espnet_onnx.asr.postprocess.token_id_converter import TokenIDConverter
+from espnet_onnx.utils.config import get_config, get_tag_config
 
 
 class AbsModel(ABC):

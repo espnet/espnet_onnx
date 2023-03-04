@@ -1,6 +1,6 @@
-from typing import Union
-from pathlib import Path
 import subprocess
+from pathlib import Path
+from typing import Union
 
 
 def optimize_model(

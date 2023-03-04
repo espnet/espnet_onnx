@@ -1,9 +1,10 @@
-import os
 import json
-import yaml
+import os
 import warnings
 from pathlib import Path
 from types import SimpleNamespace
+
+import yaml
 
 
 def get_config(path):

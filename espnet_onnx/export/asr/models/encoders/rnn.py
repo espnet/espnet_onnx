@@ -1,17 +1,15 @@
 import os
+
 import six
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from espnet2.asr.encoder.vgg_rnn_encoder import \
+    VGGRNNEncoder as espnetVGGRNNEncoder
+from espnet.nets.pytorch_backend.rnn.encoders import RNN, RNNP, VGG2L
 
-from espnet.nets.pytorch_backend.rnn.encoders import (
-    RNNP,
-    RNN,
-    VGG2L,
-)
-from espnet2.asr.encoder.vgg_rnn_encoder import VGGRNNEncoder as espnetVGGRNNEncoder
-
-from espnet_onnx.export.asr.get_config import get_frontend_config, get_norm_config
+from espnet_onnx.export.asr.get_config import (get_frontend_config,
+                                               get_norm_config)
 from espnet_onnx.utils.abs_model import AbsExportModel
 
 

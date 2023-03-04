@@ -1,12 +1,8 @@
-from typing import (
-    Iterable,
-    List,
-    Union,
-)
-from pathlib import Path
-from typeguard import check_argument_types
-
 import warnings
+from pathlib import Path
+from typing import Iterable, List, Union
+
+from typeguard import check_argument_types
 
 
 class WordTokenizer:

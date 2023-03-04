@@ -1,6 +1,5 @@
 from setuptools import find_packages, setup
 
-
 requirements = {
     "install": [
         "setuptools>=38.5.1",

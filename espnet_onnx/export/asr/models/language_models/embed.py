@@ -1,32 +1,21 @@
 """Positional Encoding Module."""
 
 import math
+
 import torch
 import torch.nn as nn
-
-from espnet.nets.pytorch_backend.transformer.subsampling import (
-    Conv2dSubsampling,
-    Conv2dSubsampling2,
-    Conv2dSubsampling6,
-    Conv2dSubsampling8,
-)
-from espnet.nets.pytorch_backend.transformer.subsampling_without_posenc import (
-    Conv2dSubsamplingWOPosEnc,
-)
 from espnet.nets.pytorch_backend.transformer.embedding import (
-    PositionalEncoding,
-    ScaledPositionalEncoding,
-    RelPositionalEncoding,
-    LegacyRelPositionalEncoding,
-    StreamPositionalEncoding,
-)
+    LegacyRelPositionalEncoding, PositionalEncoding, RelPositionalEncoding,
+    ScaledPositionalEncoding, StreamPositionalEncoding)
+from espnet.nets.pytorch_backend.transformer.subsampling import (
+    Conv2dSubsampling, Conv2dSubsampling2, Conv2dSubsampling6,
+    Conv2dSubsampling8)
+from espnet.nets.pytorch_backend.transformer.subsampling_without_posenc import \
+    Conv2dSubsamplingWOPosEnc
 
 from espnet_onnx.export.asr.models.language_models.subsampling import (
-    OnnxConv2dSubsampling,
-    OnnxConv2dSubsampling2,
-    OnnxConv2dSubsampling6,
-    OnnxConv2dSubsampling8,
-)
+    OnnxConv2dSubsampling, OnnxConv2dSubsampling2, OnnxConv2dSubsampling6,
+    OnnxConv2dSubsampling8)
 
 
 def get_pos_emb(pos_emb, max_seq_len=512, use_cache=True):

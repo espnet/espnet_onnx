@@ -5,9 +5,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from espnet_onnx.export.asr.models.encoder_layer import OnnxEncoderLayer
-from espnet_onnx.export.asr.models.multihead_att import OnnxMultiHeadedAttention
-from espnet_onnx.utils.torch_function import MakePadMask
+from espnet_onnx.export.asr.models.multihead_att import \
+    OnnxMultiHeadedAttention
 from espnet_onnx.utils.abs_model import AbsExportModel
+from espnet_onnx.utils.torch_function import MakePadMask
 
 
 class Featurizer(nn.Module):

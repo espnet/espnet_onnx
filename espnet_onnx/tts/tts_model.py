@@ -1,7 +1,8 @@
-from typing import Union, Dict, List
 from pathlib import Path
-from typeguard import check_argument_types
+from typing import Dict, List, Union
+
 import numpy as np
+from typeguard import check_argument_types
 
 from espnet_onnx.tts.abs_tts_model import AbsTTSModel
 

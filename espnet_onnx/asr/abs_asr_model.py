@@ -1,17 +1,18 @@
-import os
 import logging
+import os
 
-from espnet_onnx.utils.abs_model import AbsModel
-from espnet_onnx.asr.model.encoder import get_encoder
-from espnet_onnx.asr.model.decoder import get_decoder
-from espnet_onnx.asr.model.lm import get_lm
-from espnet_onnx.asr.model.joint_network import JointNetwork
-from espnet_onnx.asr.scorer.ctc_prefix_scorer import CTCPrefixScorer
-from espnet_onnx.asr.scorer.length_bonus import LengthBonus
-from espnet_onnx.asr.scorer.interface import BatchScorerInterface
-from espnet_onnx.asr.beam_search.beam_search import BeamSearch
 from espnet_onnx.asr.beam_search.batch_beam_search import BatchBeamSearch
-from espnet_onnx.asr.beam_search.beam_search_transducer import BeamSearchTransducer
+from espnet_onnx.asr.beam_search.beam_search import BeamSearch
+from espnet_onnx.asr.beam_search.beam_search_transducer import \
+    BeamSearchTransducer
+from espnet_onnx.asr.model.decoder import get_decoder
+from espnet_onnx.asr.model.encoder import get_encoder
+from espnet_onnx.asr.model.joint_network import JointNetwork
+from espnet_onnx.asr.model.lm import get_lm
+from espnet_onnx.asr.scorer.ctc_prefix_scorer import CTCPrefixScorer
+from espnet_onnx.asr.scorer.interface import BatchScorerInterface
+from espnet_onnx.asr.scorer.length_bonus import LengthBonus
+from espnet_onnx.utils.abs_model import AbsModel
 
 
 class AbsASRModel(AbsModel):

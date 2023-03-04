@@ -1,14 +1,13 @@
 import os
 
+from espnet2.asr.frontend.default import DefaultFrontend
+from espnet2.asr.frontend.s3prl import S3prlFrontend
+from espnet2.layers.global_mvn import GlobalMVN
+from espnet2.layers.utterance_mvn import UtteranceMVN
 from espnet2.text.char_tokenizer import CharTokenizer
 from espnet2.text.phoneme_tokenizer import PhonemeTokenizer
 from espnet2.text.sentencepiece_tokenizer import SentencepiecesTokenizer
 from espnet2.text.word_tokenizer import WordTokenizer
-from espnet2.asr.frontend.s3prl import S3prlFrontend
-from espnet2.asr.frontend.default import DefaultFrontend
-
-from espnet2.layers.global_mvn import GlobalMVN
-from espnet2.layers.utterance_mvn import UtteranceMVN
 
 
 def get_ngram_config(model):

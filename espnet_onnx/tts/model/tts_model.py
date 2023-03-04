@@ -1,7 +1,7 @@
-from .tts_models.vits import VITS
-from .tts_models.jets import JETS
 from .tts_models.fast_speech2 import FastSpeech2
+from .tts_models.jets import JETS
 from .tts_models.tacotron2 import Tacotron2
+from .tts_models.vits import VITS
 
 
 def get_tts_model(config, providers, use_quantized):

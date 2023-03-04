@@ -1,12 +1,10 @@
-from typing import Tuple
 from pathlib import Path
-from typeguard import check_argument_types
-import numpy as np
+from typing import Tuple
 
-from espnet_onnx.utils.function import (
-    make_pad_mask,
-    mask_fill,
-)
+import numpy as np
+from typeguard import check_argument_types
+
+from espnet_onnx.utils.function import make_pad_mask, mask_fill
 
 
 class GlobalMVN:

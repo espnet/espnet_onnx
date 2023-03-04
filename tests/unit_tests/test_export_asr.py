@@ -1,16 +1,12 @@
 import os
-import pytest
 from pathlib import Path
-import torch
+
 import numpy as np
+import pytest
+import torch
 
-from espnet_onnx.export.asr.models import (
-    get_encoder,
-    get_decoder,
-    get_lm,
-)
+from espnet_onnx.export.asr.models import get_decoder, get_encoder, get_lm
 from espnet_onnx.utils.config import save_config
-
 
 encoder_cases = [
     "conformer_abs_pos",

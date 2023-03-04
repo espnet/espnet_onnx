@@ -1,12 +1,13 @@
-from typing import Tuple, List
-import onnxruntime
+from typing import List, Tuple
+
 import numpy as np
+import onnxruntime
 
 from espnet_onnx.asr.frontend.frontend import Frontend
 from espnet_onnx.asr.frontend.normalize.global_mvn import GlobalMVN
 from espnet_onnx.asr.frontend.normalize.utterance_mvn import UtteranceMVN
-from espnet_onnx.utils.function import make_pad_mask, mask_fill
 from espnet_onnx.utils.config import Config
+from espnet_onnx.utils.function import make_pad_mask, mask_fill
 
 
 class Encoder:

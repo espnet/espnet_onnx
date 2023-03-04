@@ -1,41 +1,30 @@
-from typing import (
-    Union,
-    Dict,
-)
-from pathlib import Path
-from typeguard import check_argument_types
-import os
 import glob
-from datetime import datetime
-import shutil
 import logging
+import os
+import shutil
 import warnings
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, Union
 
 import numpy as np
 import torch
-from onnxruntime.quantization import quantize_dynamic
-
 from espnet2.bin.asr_inference import Speech2Text
 from espnet2.text.sentencepiece_tokenizer import SentencepiecesTokenizer
 from espnet_model_zoo.downloader import ModelDownloader
+from onnxruntime.quantization import quantize_dynamic
+from typeguard import check_argument_types
 
-from espnet_onnx.export.asr.models import (
-    get_encoder,
-    get_decoder,
-    get_lm,
-    CTC,
-    JointNetwork,
-)
-from espnet_onnx.export.asr.get_config import (
-    get_ngram_config,
-    get_beam_config,
-    get_token_config,
-    get_tokenizer_config,
-    get_weights_transducer,
-    get_trans_beam_config,
-)
-from espnet_onnx.utils.config import save_config, update_model_path
+from espnet_onnx.export.asr.get_config import (get_beam_config,
+                                               get_ngram_config,
+                                               get_token_config,
+                                               get_tokenizer_config,
+                                               get_trans_beam_config,
+                                               get_weights_transducer)
+from espnet_onnx.export.asr.models import (CTC, JointNetwork, get_decoder,
+                                           get_encoder, get_lm)
 from espnet_onnx.export.optimize.optimizer import optimize_model
+from espnet_onnx.utils.config import save_config, update_model_path
 
 
 class ASRModelExport:

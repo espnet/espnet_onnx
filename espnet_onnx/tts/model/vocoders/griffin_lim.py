@@ -13,8 +13,9 @@ from typing import Optional
 
 import librosa
 import numpy as np
-from typeguard import check_argument_types
 from packaging.version import parse as V
+from typeguard import check_argument_types
+
 from espnet_onnx.utils.config import Config
 
 EPS = 1e-10

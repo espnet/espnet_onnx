@@ -1,7 +1,7 @@
 from typing import Dict, List, Tuple
 
-import onnxruntime
 import numpy as np
+import onnxruntime
 
 from espnet_onnx.asr.frontend.frontend import Frontend
 from espnet_onnx.asr.frontend.normalize.global_mvn import GlobalMVN

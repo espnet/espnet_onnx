@@ -1,10 +1,10 @@
 from typing import List
-from typeguard import check_argument_types
 
 import numpy as np
+from typeguard import check_argument_types
 
-from espnet_onnx.asr.frontend.default.stft import Stft
 from espnet_onnx.asr.frontend.default.logmel import LogMel
+from espnet_onnx.asr.frontend.default.stft import Stft
 from espnet_onnx.utils.config import Config
 
 

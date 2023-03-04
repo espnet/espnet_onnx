@@ -1,5 +1,5 @@
-from typing import List
 import warnings
+from typing import List
 
 import numpy as np
 import torch
@@ -90,9 +90,10 @@ class TorchFrontend:
         use_quantized: bool = False,
         torch_input: bool = False,
     ):
-        from espnet_onnx.utils.config import get_config, get_tag_config
-        import os
         import glob
+        import os
+
+        from espnet_onnx.utils.config import get_config, get_tag_config
 
         tag_config = get_tag_config()
         if tag_name not in tag_config.keys():

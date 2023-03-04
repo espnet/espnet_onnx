@@ -1,6 +1,7 @@
 from typing import List
-import onnxruntime
+
 import numpy as np
+import onnxruntime
 
 from espnet_onnx.utils.config import Config
 

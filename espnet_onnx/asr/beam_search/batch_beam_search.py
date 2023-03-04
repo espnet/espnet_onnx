@@ -2,11 +2,12 @@
 
 import logging
 from typing import Any, Dict, List, Tuple
+
 import numpy as np
 
-from espnet_onnx.utils.function import pad_sequence, topk
 from espnet_onnx.asr.beam_search.beam_search import BeamSearch
-from espnet_onnx.asr.beam_search.hyps import Hypothesis, BatchHypothesis
+from espnet_onnx.asr.beam_search.hyps import BatchHypothesis, Hypothesis
+from espnet_onnx.utils.function import pad_sequence, topk
 
 
 class BatchBeamSearch(BeamSearch):

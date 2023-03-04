@@ -1,13 +1,14 @@
-import os
 import glob
-import pytest
+import os
 from pathlib import Path
+
+import pytest
 import torch
 
 from espnet_onnx.export.asr.models import get_encoder
 from espnet_onnx.export.optimize.optimizer import optimize_model
-from ..op_test_utils import check_op_type_count
 
+from ..op_test_utils import check_op_type_count
 
 encoder_cases = [
     "conformer_hubert",

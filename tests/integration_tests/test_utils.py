@@ -1,7 +1,7 @@
-import os
 import glob
-import yaml
+import os
 
+import yaml
 from espnet2.bin.asr_inference import Speech2Text
 
 from ..op_test_utils import check_op_type_count
