@@ -1,7 +1,10 @@
+import argparse
 import os
 import pytest
 from pathlib import Path
 import torch
+
+from espnet2.tasks.tts import TTSTask
 
 from espnet_onnx.export.tts.models.tts_models.vits import OnnxVITSModel
 from espnet_onnx.export.tts.models.tts_models.jets import OnnxJETSModel
@@ -11,6 +14,7 @@ from espnet_onnx.export.tts.models.tts_models.tacotron2 import (
     OnnxTacotron2Decoder
 )
 from espnet_onnx.export.tts.models import get_vocoder
+from espnet_onnx.export.tts.get_config import get_preprocess_config
 
 
 tts_cases = [
@@ -26,6 +30,13 @@ voc_cases = [
     'melgan',
     'parallel_wavegan',
     # 'style_melgan'
+]
+
+prepro_type = [
+    'no_preprocess',
+    'default',
+    'tokenType_none',
+    # 'bpe_whisper_en'
 ]
 
 
@@ -75,3 +86,12 @@ def test_export_vocoder(voc_type, load_config, model_export_tts, get_class):
     voc_wrapper, _ = get_vocoder(vocoder, {})
     export_dir = save_model(vocoder, voc_wrapper, model_export_tts, 'vocoder', voc_type)
     assert len(os.path.join(export_dir, '*.onnx')) > 0
+
+
+# Test if configuration of the preprocess is correct
+@pytest.mark.parametrize('prepro_type', prepro_type)
+def test_export_preprocess(prepro_type, load_config):
+    model_config = load_config(prepro_type, model_type='tts_preprocess')
+    preprocess_fn = TTSTask.build_preprocess_fn(argparse.Namespace(**model_config.dic), False)
+    preprocess_config = get_preprocess_config(preprocess_fn, '')
+
