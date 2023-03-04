@@ -1,10 +1,10 @@
 from typing import List
-from typeguard import check_argument_types
 
 import numpy as np
+from typeguard import check_argument_types
 
-from espnet_onnx.asr.frontend.default.stft import Stft
 from espnet_onnx.asr.frontend.default.logmel import LogMel
+from espnet_onnx.asr.frontend.default.stft import Stft
 from espnet_onnx.utils.config import Config
 
 
@@ -30,7 +30,7 @@ class DefaultFrontend:
         assert check_argument_types()
         # 1. Domain-conversion: e.g. Stft: time -> time-freq
         input_stft, feats_lens = self.stft(inputs, input_length)
-        
+
         # 2. [Option] Speech enhancement
         # Currently this is not supported.
 

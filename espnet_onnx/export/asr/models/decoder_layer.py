@@ -26,10 +26,7 @@ class OnnxDecoderLayer(nn.Module):
             as-is with given probability.
     """
 
-    def __init__(
-        self,
-        model
-    ):
+    def __init__(self, model):
         """Construct an EncoderLayer object."""
         super().__init__()
         self.self_attn = model.self_attn
@@ -78,12 +75,12 @@ class OnnxDecoderLayer(nn.Module):
             x = self.concat_linear(x_concat) + residual
         else:
             x = self.self_attn(x_q, x, x, tgt_q_mask) + residual
-            
+
         if not self.normalize_before:
             x = self.norm1(x)
 
         residual = x
-        
+
         if self.normalize_before:
             x = self.norm2(x)
         if self.concat_after:
@@ -95,15 +92,15 @@ class OnnxDecoderLayer(nn.Module):
             x = self.src_attn(x, memory, memory, memory_mask) + residual
         if not self.normalize_before:
             x = self.norm2(x)
-        
+
         residual = x
         if self.normalize_before:
             x = self.norm3(x)
-            
+
         x = self.feed_forward(x) + residual
         if not self.normalize_before:
             x = self.norm3(x)
-        
+
         if cache is not None:
             x = torch.cat([cache, x], dim=1)
 

@@ -1,40 +1,37 @@
-import pytest
-import librosa
 import copy
+
+import librosa
+import pytest
 
 from espnet_onnx import Speech2Text as onnxSpeech2Text
 
 from .test_utils import *
 
-
 asr_config_names = [
     # 'original/rnn',
-    'original/transformer',
-    'original/conformer',
-    'original/conformer_transducer',
-    'custom/conformer_cpu',
-    'custom/conformer_gpu',
+    "original/transformer",
+    "original/conformer",
+    "original/conformer_transducer",
+    "custom/conformer_cpu",
+    "custom/conformer_gpu",
 ]
 
-@pytest.mark.parametrize('asr_config_names', asr_config_names)
+
+@pytest.mark.parametrize("asr_config_names", asr_config_names)
 def test_asr(asr_config_names, load_config, wav_files, model_export):
-    config = load_config(asr_config_names, model_type='integration')
-    config.tag_name = 'test/integration/' + config.tag_name
+    config = load_config(asr_config_names, model_type="integration")
+    config.tag_name = "test/integration/" + config.tag_name
 
     # build ASR model
     espnet_model = build_model(config.model_config)
 
     # test export
-    export_model(
-        model_export,
-        copy.deepcopy(espnet_model),
-        config
-    )
+    export_model(model_export, copy.deepcopy(espnet_model), config)
     file_paths = check_models(
         model_export.cache_dir,
         config.tag_name,
         config.check_export,
-        ('Quantize' in config.device)
+        ("Quantize" in config.device),
     )
     check_optimize(config, file_paths)
     eval_model(espnet_model)
@@ -47,4 +44,3 @@ def test_asr(asr_config_names, load_config, wav_files, model_export):
         onnx_output = onnx_model(y)[0]
 
         assert espnet_output[2] == onnx_output[2]
-    

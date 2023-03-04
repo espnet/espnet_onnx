@@ -1,26 +1,17 @@
-from typing import (
-    Optional,
-    Tuple
-)
-from typeguard import check_argument_types
-import numpy as np
-import librosa
+from typing import Optional, Tuple
 
-from espnet_onnx.utils.function import (
-    make_pad_mask,
-    mask_fill
-)
+import librosa
+import numpy as np
+from typeguard import check_argument_types
+
 from espnet_onnx.utils.config import Config
+from espnet_onnx.utils.function import make_pad_mask, mask_fill
 
 
 class Stft:
-    """STFT module.
-    """
+    """STFT module."""
 
-    def __init__(
-        self,
-        config: Config
-    ):
+    def __init__(self, config: Config):
         assert check_argument_types()
         self.config = config
 
@@ -41,7 +32,7 @@ class Stft:
             hop_length=self.config.hop_length,
             center=self.config.center,
             window=self.config.window,
-            pad_mode='reflect'
+            pad_mode="reflect",
         )
         output = []
         # iterate over istances in a batch
@@ -52,7 +43,7 @@ class Stft:
 
         if not self.config.onesided:
             len_conj = self.n_fft - output.shape[1]
-            conj = output[:, 1: 1 + len_conj].flip(1)
+            conj = output[:, 1 : 1 + len_conj].flip(1)
             conj[:, :, :, -1].data *= -1
             output = np.concatenate([output, conj], 1)
         if self.config.normalized:
@@ -66,11 +57,10 @@ class Stft:
                 pad = self.config.n_fft // 2
                 ilens = ilens + 2 * pad
             olens = (ilens - self.config.n_fft) // self.config.hop_length + 1
-            output = mask_fill(output, make_pad_mask(
-                olens, output, dim=1), 0.0)
+            output = mask_fill(output, make_pad_mask(olens, output, dim=1), 0.0)
         else:
             olens = None
-        
+
         # create complex array
         output = output[..., 0] + output[..., 1] * 1j
         return output, olens

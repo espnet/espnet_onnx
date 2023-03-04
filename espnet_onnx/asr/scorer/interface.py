@@ -1,9 +1,6 @@
-from typing import (
-    Any,
-    Tuple,
-    List
-)
 import warnings
+from typing import Any, List, Tuple
+
 import numpy as np
 
 
@@ -41,9 +38,7 @@ class ScorerInterface:
         """
         return None if state is None else state[i]
 
-    def score(
-        self, y: np.ndarray, state: Any, x: np.ndarray
-    ) -> Tuple[np.ndarray, Any]:
+    def score(self, y: np.ndarray, state: Any, x: np.ndarray) -> Tuple[np.ndarray, Any]:
         """Score new token (required).
         Args:
             y (np.ndarray): 1D torch.int64 prefix tokens.

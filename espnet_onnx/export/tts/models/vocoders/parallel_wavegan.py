@@ -7,19 +7,13 @@ from espnet_onnx.utils.abs_model import AbsExportModel
 
 
 class OnnxPWGVocoder(nn.Module, AbsExportModel):
-    def __init__(
-        self,
-        model,
-        pretrained=False,
-        use_z=False,
-        **kwargs
-    ):
+    def __init__(self, model, pretrained=False, use_z=False, **kwargs):
         super().__init__()
         self.model = model
         self.use_z = use_z
         self.pretrained = pretrained
         self.aux_channels = model.aux_channels
-        self.model_name = 'PWGVocoder'
+        self.model_name = "PWGVocoder"
 
     def forward(
         self, c: torch.Tensor, z: Optional[torch.Tensor] = None
@@ -33,7 +27,9 @@ class OnnxPWGVocoder(nn.Module, AbsExportModel):
         """
         if self.pretrained:
             feat_length = torch.ones(c[:, 0].shape).sum(dim=-1).type(torch.long)
-            random_value = torch.randn(feat_length * self.model.upsample_factor).unsqueeze(1)
+            random_value = torch.randn(
+                feat_length * self.model.upsample_factor
+            ).unsqueeze(1)
             return self.model.inference(c, x=random_value)
         else:
             if z is not None:
@@ -52,25 +48,23 @@ class OnnxPWGVocoder(nn.Module, AbsExportModel):
 
     def get_input_names(self):
         if self.use_z:
-            return ['c', 'z']
+            return ["c", "z"]
         else:
-            return ['c']
+            return ["c"]
 
     def get_output_names(self):
-        return ['wav']
+        return ["wav"]
 
     def get_dynamic_axes(self):
         ret = {
-            'c': {0: 'c_length'},
+            "c": {0: "c_length"},
         }
         if self.use_z:
-            ret.update({
-                'z': {0: 'z_length'}
-            })
+            ret.update({"z": {0: "z_length"}})
         return ret
 
     def get_model_config(self, path):
         return {
-            'vocoder_type': 'OnnxVocoder',
-            'model_path': str(path / f'{self.model_name}.onnx')
+            "vocoder_type": "OnnxVocoder",
+            "model_path": str(path / f"{self.model_name}.onnx"),
         }

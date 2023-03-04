@@ -1,13 +1,6 @@
-from typing import (
-    Union,
-    Dict,
-    Any,
-    List,
-    Tuple,
-    Optional,
-    NamedTuple
-)
 from dataclasses import dataclass
+from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Union
+
 import numpy as np
 
 

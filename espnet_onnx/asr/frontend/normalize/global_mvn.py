@@ -1,12 +1,10 @@
-from typing import Tuple
 from pathlib import Path
-from typeguard import check_argument_types
-import numpy as np
+from typing import Tuple
 
-from espnet_onnx.utils.function import (
-    make_pad_mask,
-    mask_fill,
-)
+import numpy as np
+from typeguard import check_argument_types
+
+from espnet_onnx.utils.function import make_pad_mask, mask_fill
 
 
 class GlobalMVN:
@@ -19,10 +17,7 @@ class GlobalMVN:
         config.eps:
     """
 
-    def __init__(
-        self,
-        config
-    ):
+    def __init__(self, config):
         assert check_argument_types()
         self.norm_means = config.norm_means
         self.norm_vars = config.norm_vars
@@ -71,7 +66,7 @@ class GlobalMVN:
             x /= self.std
 
         return x, ilens
-    
+
     def inverse(
         self, x: np.ndarray, ilens: np.ndarray
     ) -> Tuple[np.ndarray, np.ndarray]:
@@ -81,7 +76,7 @@ class GlobalMVN:
             ilens: (B,)
         """
         mask = make_pad_mask(ilens, x, 1)
-        
+
         if self.norm_vars:
             x *= self.std
 

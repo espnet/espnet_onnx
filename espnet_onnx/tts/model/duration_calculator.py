@@ -7,6 +7,7 @@
 """Duration calculator for ESPnet2."""
 
 from typing import Tuple
+
 import numpy as np
 
 
@@ -49,8 +50,9 @@ class DurationCalculator:
             att_ws = np.concatenate(
                 [att_w for att_w in att_ws], axis=0
             )  # (#heads * #layers, T_feats, T_text)
-            diagonal_scores = att_ws.max(
-                axis=-1)[0].mean(axis=-1)  # (#heads * #layers,)
+            diagonal_scores = att_ws.max(axis=-1)[0].mean(
+                axis=-1
+            )  # (#heads * #layers,)
             diagonal_head_idx = diagonal_scores.argmax()
             att_ws = att_ws[diagonal_head_idx]  # (T_feats, T_text)
         else:
