@@ -104,10 +104,8 @@ def griffin_lim(
 
 class Spectrogram2Waveform(object):
     """Spectrogram to waveform conversion module."""
-    def __init__(
-        self,
-        config: Config
-    ):
+
+    def __init__(self, config: Config):
         """Initialize module.
         Args:
             fs: Sampling frequency.
@@ -121,11 +119,16 @@ class Spectrogram2Waveform(object):
             griffin_lim_iters: The number of iterations.
         """
         assert check_argument_types()
-        
+
         self.fs = config.fs
         self.logmel2linear = (
             partial(
-                logmel2linear, fs=config.fs, n_fft=config.n_fft, n_mels=config.n_mels, fmin=config.fmin, fmax=config.fmax
+                logmel2linear,
+                fs=config.fs,
+                n_fft=config.n_fft,
+                n_mels=config.n_mels,
+                fmin=config.fmin,
+                fmax=config.fmax,
             )
             if config.n_mels is not None
             else None
@@ -146,7 +149,9 @@ class Spectrogram2Waveform(object):
             n_iter=config.n_iter,
         )
         if config.n_mels is not None:
-            self.params.update(fs=config.fs, n_mels=config.n_mels, fmin=config.fmin, fmax=config.fmax)
+            self.params.update(
+                fs=config.fs, n_mels=config.n_mels, fmin=config.fmin, fmax=config.fmax
+            )
 
     def __repr__(self):
         retval = f"{self.__class__.__name__}("

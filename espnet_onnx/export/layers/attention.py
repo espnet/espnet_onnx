@@ -15,7 +15,7 @@ from espnet.nets.pytorch_backend.rnn.attentions import (
     AttMultiHeadDot,
     AttMultiHeadAdd,
     AttMultiHeadLoc,
-    AttMultiHeadMultiResLoc
+    AttMultiHeadMultiResLoc,
 )
 
 
@@ -29,21 +29,21 @@ def get_attention(model):
     elif isinstance(model, AttLoc):
         return OnnxAttLoc(model)
     elif isinstance(model, AttLoc2D):
-        raise ValueError('Currently AttLoc2D is not supported.')
+        raise ValueError("Currently AttLoc2D is not supported.")
     elif isinstance(model, AttLocRec):
-        raise ValueError('not supported.')
+        raise ValueError("not supported.")
     elif isinstance(model, AttCov):
         return OnnxAttCov(model)
     elif isinstance(model, AttCovLoc):
         return OnnxAttCovLoc(model)
     elif isinstance(model, AttMultiHeadDot):
-        raise ValueError('not supported.')
+        raise ValueError("not supported.")
     elif isinstance(model, AttMultiHeadAdd):
-        raise ValueError('not supported.')
+        raise ValueError("not supported.")
     elif isinstance(model, AttMultiHeadLoc):
-        raise ValueError('not supported.')
+        raise ValueError("not supported.")
     elif isinstance(model, AttMultiHeadMultiResLoc):
-        raise ValueError('not supported.')
+        raise ValueError("not supported.")
 
 
 def require_tanh(model):
@@ -60,7 +60,7 @@ class OnnxNoAtt(torch.nn.Module):
         super().__init__()
         self.model = model
         self.att_type = "noatt"
-    
+
     def get_dynamic_axes(self):
         return 1
 
@@ -76,9 +76,7 @@ class OnnxNoAtt(torch.nn.Module):
         h_length = enc_h.size(1)
         # initialize attention weight with uniform dist.
         # if no bias, 0 0-pad goes 0
-        c = torch.sum(
-            enc_h * att_prev.view(batch, h_length, 1), dim=1
-        )
+        c = torch.sum(enc_h * att_prev.view(batch, h_length, 1), dim=1)
         return c, att_prev
 
 
@@ -90,19 +88,11 @@ class OnnxAttDot(torch.nn.Module):
         self.dunits = model.dunits
         self.att_dim = model.att_dim
         self.att_type = "dot"
-    
+
     def get_dynamic_axes(self):
         return 1
 
-    def forward(
-        self,
-        dec_z,
-        att_prev,
-        pre_compute_enc_h,
-        enc_h,
-        mask,
-        scaling=2.0
-    ):
+    def forward(self, dec_z, att_prev, pre_compute_enc_h, enc_h, mask, scaling=2.0):
         batch = 1
         dec_z = dec_z.view(batch, self.dunits)
         h_length = enc_h.size(1)
@@ -125,29 +115,20 @@ class OnnxAttDot(torch.nn.Module):
 
 
 class OnnxAttAdd(torch.nn.Module):
-    """Additive attention
-    """
+    """Additive attention"""
+
     def __init__(self, model):
         super().__init__()
         self.model = model
         self.dunits = model.dunits
         self.att_dim = model.att_dim
         self.att_type = "add"
-    
+
     def get_dynamic_axes(self):
         return 1
 
-    def forward(
-        self,
-        dec_z,
-        att_prev,
-        pre_compute_enc_h,
-        enc_h,
-        mask,
-        scaling=2.0
-    ):
-        """AttAdd forward
-        """
+    def forward(self, dec_z, att_prev, pre_compute_enc_h, enc_h, mask, scaling=2.0):
+        """AttAdd forward"""
         batch = 1
         h_length = enc_h.size(1)
         dec_z = dec_z.view(batch, self.dunits)
@@ -177,7 +158,7 @@ class OnnxAttLoc(nn.Module):
         self.dunits = model.dunits
         self.att_dim = model.att_dim
         self.att_type = "location"
-    
+
     def get_dynamic_axes(self):
         return 1
 
@@ -189,14 +170,13 @@ class OnnxAttLoc(nn.Module):
         enc_h,
         mask,
         scaling=2.0,
-        last_att_mask=None
+        last_att_mask=None,
     ):
         batch = 1
         dec_z = dec_z.view(batch, self.dunits)
         # att_prev: utt x frame -> utt x 1 x 1 x frame
         # -> utt x att_conv_chans x 1 x frame
-        att_conv = self.model.loc_conv(
-            att_prev.view(batch, 1, 1, enc_h.size(1)))
+        att_conv = self.model.loc_conv(att_prev.view(batch, 1, 1, enc_h.size(1)))
         # att_conv: utt x att_conv_chans x 1 x frame -> utt x frame x att_conv_chans
         att_conv = att_conv.squeeze(2).transpose(1, 2)
         # att_conv: utt x frame x att_conv_chans -> utt x frame x att_dim
@@ -299,22 +279,13 @@ class OnnxAttCov(torch.nn.Module):
 
         self.dunits = model.dunits
         self.att_dim = model.att_dim
-        self.att_type = 'coverage'
-    
+        self.att_type = "coverage"
+
     def get_dynamic_axes(self):
         return 2
 
-    def forward(
-        self,
-        dec_z,
-        att_prev,
-        pre_compute_enc_h,
-        enc_h,
-        mask,
-        scaling=2.0
-    ):
-        """AttCov forward
-        """
+    def forward(self, dec_z, att_prev, pre_compute_enc_h, enc_h, mask, scaling=2.0):
+        """AttCov forward"""
         batch = 1
         h_length = enc_h.size(1)
         dec_z = dec_z.view(batch, self.dunits)
@@ -351,28 +322,20 @@ class OnnxAttCovLoc(torch.nn.Module):
 
     This attention is a combination of coverage and location-aware attentions.
     """
+
     def __init__(self, model):
         super().__init__()
         self.model = model
 
         self.dunits = model.dunits
         self.att_dim = model.att_dim
-        self.att_type = 'coverage_location'
-    
+        self.att_type = "coverage_location"
+
     def get_dynamic_axes(self):
         return 2
 
-    def forward(
-        self,
-        dec_z,
-        att_prev,
-        pre_compute_enc_h,
-        enc_h,
-        mask,
-        scaling=2.0
-    ):
-        """AttCovLoc forward
-        """
+    def forward(self, dec_z, att_prev, pre_compute_enc_h, enc_h, mask, scaling=2.0):
+        """AttCovLoc forward"""
 
         batch = 1
         h_length = enc_h.size(1)
@@ -417,11 +380,11 @@ class OnnxAttForward(torch.nn.Module):
 
         self.dunits = model.dunits
         self.att_dim = model.att_dim
-        self.att_type = 'att_for'
+        self.att_type = "att_for"
 
     def get_dynamic_axes(self):
         return 1
-    
+
     def forward(
         self,
         dec_z,
@@ -430,10 +393,9 @@ class OnnxAttForward(torch.nn.Module):
         enc_h,
         mask,
         scaling=2.0,
-        last_att_mask=None
+        last_att_mask=None,
     ):
-        """AttForward forward
-        """
+        """AttForward forward"""
         batch = 1
 
         # att_prev: utt x frame -> utt x 1 x 1 x frame
@@ -474,4 +436,3 @@ class OnnxAttForward(torch.nn.Module):
         c = torch.sum(enc_h * w.unsqueeze(-1), dim=1)
 
         return c, w
-

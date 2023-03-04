@@ -30,7 +30,7 @@ class DefaultFrontend:
         assert check_argument_types()
         # 1. Domain-conversion: e.g. Stft: time -> time-freq
         input_stft, feats_lens = self.stft(inputs, input_length)
-        
+
         # 2. [Option] Speech enhancement
         # Currently this is not supported.
 

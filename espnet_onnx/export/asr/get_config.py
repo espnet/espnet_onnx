@@ -12,15 +12,11 @@ from espnet2.layers.utterance_mvn import UtteranceMVN
 
 
 def get_ngram_config(model):
-    return {
-        "use_ngram": True
-    }
+    return {"use_ngram": True}
 
 
 def get_weights_transducer(model):
-    return {
-        "lm": model.lm_weight
-    }
+    return {"lm": model.lm_weight}
 
 
 def get_beam_config(model, minlenratio, maxlenratio):
@@ -29,7 +25,7 @@ def get_beam_config(model, minlenratio, maxlenratio):
         "pre_beam_ratio": model.pre_beam_size / model.beam_size,
         "pre_beam_score_key": model.pre_beam_score_key,
         "maxlenratio": maxlenratio,
-        "minlenratio": minlenratio
+        "minlenratio": minlenratio,
     }
 
 
@@ -39,22 +35,22 @@ def get_trans_beam_config(model):
     search_args = {}
     if model.beam_size <= 1:
         search_type = "greedy"
-    elif hasattr(model, 'max_sym_exp'):
+    elif hasattr(model, "max_sym_exp"):
         search_type = "tsd"
-        search_args['max_sym_exp'] = model.max_sym_exp
-    elif hasattr(model, 'u_max'):
+        search_args["max_sym_exp"] = model.max_sym_exp
+    elif hasattr(model, "u_max"):
         search_type = "alsd"
-        search_args['u_max'] = model.u_max
-    elif hasattr(model, 'nstep'):
-        search_args['prefix_alpha'] = model.prefix_alpha
-        if hasattr(model, 'expansion_gamma'):
+        search_args["u_max"] = model.u_max
+    elif hasattr(model, "nstep"):
+        search_args["prefix_alpha"] = model.prefix_alpha
+        if hasattr(model, "expansion_gamma"):
             search_type = "maes"
-            search_args['nstep'] = max(2, model.nstep)
-            search_args['expansion_gamma'] = model.expansion_gamma
-            search_args['expansion_beta'] = model.expansion_beta
+            search_args["nstep"] = max(2, model.nstep)
+            search_args["expansion_gamma"] = model.expansion_gamma
+            search_args["expansion_beta"] = model.expansion_beta
         else:
             search_type = "nsc"
-            search_args['nstep'] = model.nstep
+            search_args["nstep"] = model.nstep
     else:
         search_type = "default"
 
@@ -71,7 +67,7 @@ def get_token_config(model):
         "sos": model.sos,
         "eos": model.eos,
         "blank": model.blank_id,
-        "list": model.token_list
+        "list": model.token_list,
     }
 
 
@@ -80,22 +76,13 @@ def get_tokenizer_config(model, path):
         return {}
     elif isinstance(model, SentencepiecesTokenizer):
         model_name = os.path.basename(model.model)
-        return {
-            "token_type": "bpe",
-            "bpemodel": str(path.parent / model_name)
-        }
+        return {"token_type": "bpe", "bpemodel": str(path.parent / model_name)}
     elif isinstance(model, WordTokenizer):
-        return {
-            "token_type": "word"
-        }
+        return {"token_type": "word"}
     elif isinstance(model, CharTokenizer):
-        return {
-            "token_type": "char"
-        }
+        return {"token_type": "char"}
     elif isinstance(model, PhonemeTokenizer):
-        return {
-            "token_type": "phn"
-        }
+        return {"token_type": "phn"}
 
 
 def get_frontend_config(asr_frontend_model, frontend=None, **kwargs):
@@ -105,9 +92,9 @@ def get_frontend_config(asr_frontend_model, frontend=None, **kwargs):
     elif isinstance(asr_frontend_model, DefaultFrontend):
         frontend_config = get_default_frontend(asr_frontend_model)
     else:
-        raise ValueError('Currently only s3prl is supported.')
-    
-    return frontend_config    
+        raise ValueError("Currently only s3prl is supported.")
+
+    return frontend_config
 
 
 def get_default_frontend(frontend, **kwargs):
@@ -131,13 +118,13 @@ def get_enh_config(frontend):
 
 def get_stft_config(stft, stft_center: bool = True):
     return {
-        'n_fft': stft.n_fft,
-        'win_length': stft.win_length,
+        "n_fft": stft.n_fft,
+        "win_length": stft.win_length,
         "hop_length": stft.hop_length,
-        'window': stft.window,
-        'center': stft_center, # This could be False in streaming model.
-        'onesided': stft.onesided,
-        'normalized': stft.normalized
+        "window": stft.window,
+        "center": stft_center,  # This could be False in streaming model.
+        "onesided": stft.onesided,
+        "normalized": stft.normalized,
     }
 
 
@@ -154,7 +141,7 @@ def get_norm_config(normalize, path):
             "norm_means": normalize.norm_means,
             "norm_vars": normalize.norm_vars,
             "eps": normalize.eps,
-            "stats_file": str(path.parent / 'feats_stats.npz')
+            "stats_file": str(path.parent / "feats_stats.npz"),
         }
     elif isinstance(normalize, UtteranceMVN):
         return {

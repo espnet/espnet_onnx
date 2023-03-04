@@ -4,10 +4,7 @@ import logging
 import torch
 import torch.nn as nn
 
-from espnet_onnx.utils.torch_function import (
-    MakePadMask,
-    normalize
-)
+from espnet_onnx.utils.torch_function import MakePadMask, normalize
 from espnet_onnx.export.tts.models.tts_models.fastspeech2 import OnnxStyleEncoder
 from espnet_onnx.export.tts.models.vocoders.hifigan import OnnxHiFiGANVocoder
 from espnet_onnx.utils.abs_model import AbsExportModel
@@ -18,7 +15,7 @@ class OnnxGaussianUpsampling(nn.Module):
         super(OnnxGaussianUpsampling, self).__init__()
         self.model = model
         self.delta = model.delta
-    
+
     def __call__(self, hs, ds, d_masks=None):
         B = ds.size(0)
 
@@ -59,7 +56,7 @@ class OnnxJETSGenerator(nn.Module):
         self.langs = model.langs
         self.spk_embed_dim = model.spk_embed_dim
         self.max_seq_len = max_seq_len
-        
+
         # models
         self.make_pad_mask = MakePadMask(max_seq_len)
         self.encoder = model.encoder
@@ -130,7 +127,7 @@ class OnnxJETSGenerator(nn.Module):
         # forward generator
         wav = self.generator(zs)
         return wav.squeeze(1), d_outs
-    
+
     def _source_mask(self, ilens: torch.Tensor) -> torch.Tensor:
         x_masks = 1 - self.make_pad_mask(ilens)
         return x_masks.unsqueeze(-2)
@@ -151,20 +148,13 @@ class OnnxJETSGenerator(nn.Module):
 
         return hs
 
+
 class OnnxJETSModel(nn.Module, AbsExportModel):
-    def __init__(
-        self,
-        model,
-        max_seq_len: int = 512,
-        **kwargs
-    ):
+    def __init__(self, model, max_seq_len: int = 512, **kwargs):
         super().__init__()
         self.model = model
-        self.generator = OnnxJETSGenerator(
-            model.generator,
-            max_seq_len
-        )
-        self.model_name = 'jets'
+        self.generator = OnnxJETSGenerator(model.generator, max_seq_len)
+        self.model_name = "jets"
 
     def forward(
         self,
@@ -189,37 +179,36 @@ class OnnxJETSModel(nn.Module, AbsExportModel):
     def get_dummy_inputs(self):
         text = torch.LongTensor([0, 1])
 
-        sids = torch.LongTensor([0]) \
-            if self.model.generator.spks is not None else None
+        sids = torch.LongTensor([0]) if self.model.generator.spks is not None else None
 
-        spembs = torch.randn(self.model.generator.spk_embed_dim) \
-            if self.model.generator.spk_embed_dim is not None else None
+        spembs = (
+            torch.randn(self.model.generator.spk_embed_dim)
+            if self.model.generator.spk_embed_dim is not None
+            else None
+        )
 
-        lids = torch.LongTensor([0]) \
-            if self.model.generator.langs is not None else None
+        lids = torch.LongTensor([0]) if self.model.generator.langs is not None else None
 
         return (text, sids, spembs, lids)
 
     def get_input_names(self):
-        ret = ['text']   
+        ret = ["text"]
         if self.model.generator.spks is not None:
-            ret.append('sids')
+            ret.append("sids")
         if self.model.generator.spk_embed_dim is not None:
-            ret.append('spembs')
+            ret.append("spembs")
         if self.model.generator.langs is not None:
-            ret.append('lids')
+            ret.append("lids")
         return ret
 
     def get_output_names(self):
-        return ['wav', 'dur']
+        return ["wav", "dur"]
 
     def get_dynamic_axes(self):
-        return {
-            'text': {0: 'text_length'}
-        }
+        return {"text": {0: "text_length"}}
 
     def get_model_config(self, path):
         return {
-            'model_type': 'JETS',
-            'model_path': str(path / f'{self.model_name}.onnx')
+            "model_type": "JETS",
+            "model_path": str(path / f"{self.model_name}.onnx"),
         }

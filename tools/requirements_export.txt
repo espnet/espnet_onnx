@@ -14,3 +14,4 @@ coloredlogs
 sympy
 protobuf==3.20.1
 transformers
+black

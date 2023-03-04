@@ -1,9 +1,4 @@
-from typing import (
-    Union,
-    List,
-    Tuple,
-    Optional
-)
+from typing import Union, List, Tuple, Optional
 from pathlib import Path
 from typeguard import check_argument_types
 import logging
@@ -11,23 +6,25 @@ import numpy as np
 
 from espnet_onnx.asr.abs_asr_model import AbsASRModel
 from espnet_onnx.asr.beam_search.batch_beam_search import BatchBeamSearch
-from espnet_onnx.asr.beam_search.batch_beam_search_online_sim import BatchBeamSearchOnlineSim
+from espnet_onnx.asr.beam_search.batch_beam_search_online_sim import (
+    BatchBeamSearchOnlineSim,
+)
 from espnet_onnx.asr.beam_search.hyps import Hypothesis
 
 
 class StreamingSpeech2Text(AbsASRModel):
-    """Speech2Text class to support streaming asr
-    """
+    """Speech2Text class to support streaming asr"""
 
-    def __init__(self,
-                 tag_name: str = None,
-                 model_dir: Union[Path, str] = None,
-                 providers: List[str] = ['CPUExecutionProvider'],
-                 use_quantized: bool = False,
-                 block_size: int = 40,
-                 hop_size: int = 16,
-                 look_ahead: int = 16
-                 ):
+    def __init__(
+        self,
+        tag_name: str = None,
+        model_dir: Union[Path, str] = None,
+        providers: List[str] = ["CPUExecutionProvider"],
+        use_quantized: bool = False,
+        block_size: int = 40,
+        hop_size: int = 16,
+        look_ahead: int = 16,
+    ):
         assert check_argument_types()
         self._check_argument(tag_name, model_dir)
         self._load_config()
@@ -36,14 +33,14 @@ class StreamingSpeech2Text(AbsASRModel):
         self._check_ort_version(providers)
 
         # check if model is exported for streaming.
-        if self.config.encoder.enc_type != 'ContextualXformerEncoder':
+        if self.config.encoder.enc_type != "ContextualXformerEncoder":
             raise RuntimeError(
-                'Onnx model is not build for streaming. Use Speech2Text instead.')
+                "Onnx model is not build for streaming. Use Speech2Text instead."
+            )
 
-        if use_quantized and 'quantized_model_path' not in self.config.encoder.keys():
+        if use_quantized and "quantized_model_path" not in self.config.encoder.keys():
             # check if quantized model config is defined.
-            raise RuntimeError(
-                'Configuration for quantized model is not defined.')
+            raise RuntimeError("Configuration for quantized model is not defined.")
 
         # build models
         self.config.encoder.block_size = block_size
@@ -65,18 +62,20 @@ class StreamingSpeech2Text(AbsASRModel):
 
         # streaming related parameters
         self._init_streaming_config()
-        self.hop_size = self.config.encoder.frontend.stft.hop_length * self.config.encoder.subsample * hop_size  \
-            + (self.config.encoder.frontend.stft.n_fft // self.config.encoder.frontend.stft.hop_length) * \
+        self.hop_size = (
             self.config.encoder.frontend.stft.hop_length
+            * self.config.encoder.subsample
+            * hop_size
+            + (
+                self.config.encoder.frontend.stft.n_fft
+                // self.config.encoder.frontend.stft.hop_length
+            )
+            * self.config.encoder.frontend.stft.hop_length
+        )
 
-    def __call__(self, speech: np.ndarray) -> List[
-        Tuple[
-            Optional[str],
-            List[str],
-            List[int],
-            Union[Hypothesis],
-        ]
-    ]:
+    def __call__(
+        self, speech: np.ndarray
+    ) -> List[Tuple[Optional[str], List[str], List[int], Union[Hypothesis],]]:
         """Inference
 
         Args:
@@ -103,8 +102,7 @@ class StreamingSpeech2Text(AbsASRModel):
         )
         assert len(enc) == 1, len(enc)
         self.enc_feats += enc[0].tolist()
-        best_hyps = self.beam_search(
-            np.array(self.enc_feats, dtype=np.float32))
+        best_hyps = self.beam_search(np.array(self.enc_feats, dtype=np.float32))
         self.encoder.increment()
 
         if best_hyps == []:
@@ -116,14 +114,14 @@ class StreamingSpeech2Text(AbsASRModel):
         # This function will simulate streaming asr with the given audio.
         self.start()
         process_num = len(speech) // self.hop_size + 1
-        logging.info(f'Processing audio with {process_num} processes.')
+        logging.info(f"Processing audio with {process_num} processes.")
         padded_speech = self.pad(speech, length=process_num * self.hop_size)
         for i in range(process_num):
             start = self.hop_size * i
             end = self.hop_size * (i + 1)
             nbest = self(padded_speech[start:end])
             if print_every_hypo and nbest != []:
-                logging.info(f'Result at position {i} : {nbest[0][0]}')
+                logging.info(f"Result at position {i} : {nbest[0][0]}")
 
         nbest = self.end()
         return nbest
@@ -131,10 +129,10 @@ class StreamingSpeech2Text(AbsASRModel):
     def _init_streaming_config(self):
         self.enc_feats = []
         self.streaming_states = {
-            'buffer_before_downsampling': None,
-            'buffer_after_downsampling': None,
-            'prev_addin': None,
-            'past_encoder_ctx': None,
+            "buffer_before_downsampling": None,
+            "buffer_after_downsampling": None,
+            "prev_addin": None,
+            "past_encoder_ctx": None,
         }
 
     def start(self):
@@ -148,8 +146,7 @@ class StreamingSpeech2Text(AbsASRModel):
         # compute final encoder process
         enc, *_ = self.encoder.forward_final(self.streaming_states)
         self.enc_feats += enc[0].tolist()
-        best_hyps = self.batch_beam_search(
-            np.array(self.enc_feats, dtype=np.float32))
+        best_hyps = self.batch_beam_search(np.array(self.enc_feats, dtype=np.float32))
 
         # initialize beam_search related parameters
         self._init_streaming_config()
@@ -178,5 +175,5 @@ class StreamingSpeech2Text(AbsASRModel):
             base = np.zeros((length,))
         else:
             base = np.zeros((self.hop_size,))
-        base[:len(x)] = x
+        base[: len(x)] = x
         return base

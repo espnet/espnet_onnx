@@ -13,13 +13,9 @@ requirements = {
         "jamo==0.4.1",  # For kss
         "six",
         "numpy",
-        "espnet_tts_frontend" # required for TTS preprocess.
+        "espnet_tts_frontend",  # required for TTS preprocess.
     ],
-    "test": [
-        "torch>=1.11.0",
-        "espnet",
-        "pytest"
-    ]
+    "test": ["torch>=1.11.0", "espnet", "pytest"],
 }
 
 setup(

@@ -26,10 +26,7 @@ class OnnxConformerLayer(nn.Module):
             as-is with given probability.
     """
 
-    def __init__(
-        self,
-        model
-    ):
+    def __init__(self, model):
         """Construct an EncoderLayer object."""
         super().__init__()
         self.model = model
@@ -47,7 +44,12 @@ class OnnxConformerLayer(nn.Module):
             residual = x
             if self.model.normalize_before:
                 x = self.model.norm_ff_macaron(x)
-            x = residual + self.stoch_layer_coeff * self.model.ff_scale * self.model.feed_forward_macaron(x)
+            x = (
+                residual
+                + self.stoch_layer_coeff
+                * self.model.ff_scale
+                * self.model.feed_forward_macaron(x)
+            )
             if not self.model.normalize_before:
                 x = self.model.norm_ff_macaron(x)
 
@@ -89,7 +91,10 @@ class OnnxConformerLayer(nn.Module):
         residual = x
         if self.model.normalize_before:
             x = self.model.norm_ff(x)
-        x = residual + self.stoch_layer_coeff * self.model.ff_scale * self.model.feed_forward(x)
+        x = (
+            residual
+            + self.stoch_layer_coeff * self.model.ff_scale * self.model.feed_forward(x)
+        )
         if not self.model.normalize_before:
             x = self.model.norm_ff(x)
 

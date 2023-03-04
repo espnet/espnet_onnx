@@ -51,7 +51,9 @@ class BatchBeamSearchOnlineSim(BatchBeamSearch):
 
     def start(self):
         self.conservative = True  # always true
-        assert self.block_size and self.hop_size and self.look_ahead, "block_size, hop_size, and look_ahead must be set."
+        assert (
+            self.block_size and self.hop_size and self.look_ahead
+        ), "block_size, hop_size, and look_ahead must be set."
         self.cur_end_frame = int(self.block_size - self.look_ahead)
 
         # main loop of prefix search
@@ -75,8 +77,11 @@ class BatchBeamSearchOnlineSim(BatchBeamSearch):
             self.prev_hyps = []
             self._init_hyp = False
 
-        maxlen = h.shape[0] if self.maxlenratio == 0 else max(
-            1, int(maxlenratio * x.shape[0]))
+        maxlen = (
+            h.shape[0]
+            if self.maxlenratio == 0
+            else max(1, int(maxlenratio * x.shape[0]))
+        )
         move_to_next_block = False
         best = None
         # extend states for ctc
@@ -87,9 +92,7 @@ class BatchBeamSearchOnlineSim(BatchBeamSearch):
 
             n_batch = best.yseq.shape[0]
             local_ended_hyps = []
-            is_local_eos = (
-                best.yseq[np.arange(n_batch), best.length - 1] == self.eos
-            )
+            is_local_eos = best.yseq[np.arange(n_batch), best.length - 1] == self.eos
             for i in range(is_local_eos.shape[0]):
                 if is_local_eos[i]:
                     hyp = self._select(best, i)
@@ -115,7 +118,11 @@ class BatchBeamSearchOnlineSim(BatchBeamSearch):
                 else:
                     self.cur_end_frame = h.shape[0]
 
-                if self.process_idx > 1 and len(self.prev_hyps) > 0 and self.conservative:
+                if (
+                    self.process_idx > 1
+                    and len(self.prev_hyps) > 0
+                    and self.conservative
+                ):
                     self.running_hyps = self.prev_hyps
                     self.process_idx -= 1
                     self.prev_hyps = []
