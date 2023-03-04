@@ -42,14 +42,17 @@ def get_tokenizer_config(model, path):
 
 def get_preprocess_config(model, path):
     ret = {}
-    if model.text_cleaner is not None:
+    if hasattr(model, 'text_cleaner') and model.text_cleaner is not None:
         ret.update({'text_cleaner': {
                 'cleaner_types': [ct for ct in model.text_cleaner.cleaner_types]
         }})
     else:
         ret.update({'text_cleaner': None})
-        
-    ret.update({'tokenizer': get_tokenizer_config(model.tokenizer, path)})
+    
+    if model is not None:
+        ret.update({'tokenizer': get_tokenizer_config(model.tokenizer, path)})
+    else:
+        ret.update({'tokenizer': {}})
     return ret
 
 
