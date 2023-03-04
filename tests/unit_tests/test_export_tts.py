@@ -36,7 +36,7 @@ prepro_type = [
     'no_preprocess',
     'default',
     'tokenType_none',
-    'bpe_whisper_en'
+    # 'bpe_whisper_en'
 ]
 
 
