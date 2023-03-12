@@ -121,7 +121,6 @@ class StreamingEncoder:
                 self.config.block_size
                 - self.config.look_ahead
                 - self.config.hop_size
-                + 1
             )
             indicies = np.array(
                 [offset, offset + self.config.hop_size, self.overlap_size],

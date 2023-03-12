@@ -72,19 +72,30 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
         L_1 + L_2 = alpha * self.subsample
 
         Args:
-            xs_pad: (1, hop_size*subsample+1, D)
+            xs_pad: (1, hop_size*subsample, D)
             buffer_after_downsampling: (1, overlap_size=block_size-hop_size, D)
-            indicies: torch.Tensor. [offset, offset + hop_length, overlap_size]
+            indicies: torch.Tensor. [offset, offset + hop_length]
             mask: zeros(1, 1, self.block_size + 2, self.block_size + 2)
             pos_enc_xs: (B, L, D) L = block_size
         """
         # compute preencoder
         xs_pad = torch.cat([buffer_before_downsampling, xs_pad], dim=1)
-        buffer_before_downsampling = xs_pad[:, -self.subsample :]  # (B, L, overlap)
+        n_samples = xs_pad.size(1) // self.subsample - 1
+
+        # [ TODO ] Need to add slice operation to handle the first iteration
+        # which does not require buffer_before_downsampling
+
+        n_res_samples = xs_pad.size(1) % self.subsample + self.subsample * 2
+        buffer_before_downsampling = xs_pad[:, -n_res_samples:]  # (B, L, overlap)
+        xs_pad = xs_pad[:, : n_samples * self.subsample]  # (B, L, overlap)
+
         xs_pad = self.compute_embed(xs_pad)
         xs_pad = torch.cat([buffer_after_downsampling, xs_pad], dim=1)
 
-        buffer_after_downsampling = xs_pad[:, -indicies[2] :]  # (B, L, overlap)
+        overlap_size = self.block_size - self.hop_size
+        block_num = max(0, xs_pad.size(1) - overlap_size) // self.hop_size
+        res_frame_num = xs_pad.size(1) - self.hop_size * block_num
+        buffer_after_downsampling = xs_pad[:, -res_frame_num:]
 
         if self.init_average:
             addin = xs_pad.mean(1, keepdim=True)
@@ -131,13 +142,13 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
         xs_pad = torch.randn(1, self.hop_size * self.subsample, n_feats)
         mask = torch.ones(1, 1, self.block_size + 2, self.block_size + 2)
         o = self.compute_embed(xs_pad)
-        buffer_before_downsampling = torch.randn(1, self.subsample, n_feats)
+        buffer_before_downsampling = torch.randn(1, self.subsample * 2, n_feats)
         buffer_after_downsampling = torch.randn(1, self.overlap_size, o.shape[-1])
         prev_addin = torch.randn(1, 1, o.shape[-1])
         pos_enc_xs = torch.randn(1, self.block_size, o.shape[-1])
         pos_enc_addin = torch.randn(1, 1, o.shape[-1])
         past_encoder_ctx = torch.randn(1, len(self.encoders), self.encoders[0].size)
-        indicies = torch.LongTensor([8, 24, 24])
+        indicies = torch.LongTensor([8, 24])
         return (
             xs_pad,
             mask,
