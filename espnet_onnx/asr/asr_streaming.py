@@ -6,9 +6,8 @@ import numpy as np
 from typeguard import check_argument_types
 
 from espnet_onnx.asr.abs_asr_model import AbsASRModel
-from espnet_onnx.asr.beam_search.batch_beam_search import BatchBeamSearch
-from espnet_onnx.asr.beam_search.batch_beam_search_online_sim import \
-    BatchBeamSearchOnlineSim
+from espnet_onnx.asr.beam_search.batch_beam_search_online import \
+    BatchBeamSearchOnline
 from espnet_onnx.asr.beam_search.hyps import Hypothesis
 
 
@@ -24,6 +23,9 @@ class StreamingSpeech2Text(AbsASRModel):
         block_size: int = 40,
         hop_size: int = 16,
         look_ahead: int = 16,
+        disable_repetition_detection=False,
+        encoded_feat_length_limit=0,
+        decoder_text_length_limit=0,
     ):
         assert check_argument_types()
         self._check_argument(tag_name, model_dir)
@@ -50,15 +52,19 @@ class StreamingSpeech2Text(AbsASRModel):
         self._build_model(providers, use_quantized)
 
         # Fix beam_search components
-        self.batch_beam_search = BatchBeamSearch(
+        self.beam_search = BatchBeamSearchOnline(
             self.config.beam_search,
             self.config.token,
             scorers=self.scorers,
             weights=self.weights,
+            block_size=block_size,
+            hop_size=hop_size,
+            look_ahead=look_ahead,
+            disable_repetition_detection=disable_repetition_detection,
+            encoded_feat_length_limit=encoded_feat_length_limit,
+            decoder_text_length_limit=decoder_text_length_limit,
         )
-        self.beam_search.__class__ = BatchBeamSearchOnlineSim
-        self.beam_search.set_streaming_config(block_size, hop_size, look_ahead)
-        logging.info("BatchBeamSearchOnlineSim implementation is selected.")
+        logging.info("BatchBeamSearchOnline is selected.")
 
         # streaming related parameters
         self._init_streaming_config()
@@ -140,9 +146,9 @@ class StreamingSpeech2Text(AbsASRModel):
             end = self.hop_size * (i + 1) + self.initial_wav_length
             nbest = self(padded_speech[start:end])
             if print_every_hypo and nbest != []:
-                logging.info(f"Result at position {i+1} : {nbest[0][0]}")
+                # logging.info(f"Result at position {i+1} : {nbest[0][0]}")
+                print(f"Result at position {i+1} : {nbest[0][0]}")
 
-        nbest = self.end()
         return nbest
 
     def _init_streaming_config(self):
@@ -156,27 +162,11 @@ class StreamingSpeech2Text(AbsASRModel):
 
     def start(self):
         self._init_streaming_config()
-        self.beam_search.__class__ = BatchBeamSearchOnlineSim
         self.encoder.reset()
         self.streaming_states = self.encoder.init_state()
         self.beam_search.start()
 
-    def end(self):
-        # compute final encoder process
-        enc, *_ = self.encoder.forward_final(self.streaming_states)
-        self.enc_feats += enc[0].tolist()
-        best_hyps = self.batch_beam_search(np.array(self.enc_feats, dtype=np.float32))
-
-        # initialize beam_search related parameters
-        self._init_streaming_config()
-        self.beam_search.end()
-
-        if best_hyps == []:
-            return []
-        else:
-            return self._get_result(best_hyps[0])
-
-    def _get_result(self, hyp: Hypothesis):
+    def _get_result(self, hyp):
         token_int = hyp.yseq[1:-1].astype(np.int64).tolist()
         # remove blank symbol id, which is assumed to be 0
         token_int = list(filter(lambda x: x != 0, token_int))
