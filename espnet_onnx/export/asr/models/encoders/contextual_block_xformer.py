@@ -98,7 +98,7 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
 
         overlap_size = self.block_size - self.hop_size
         block_num = max(0, xs_pad.size(1) - overlap_size) // self.hop_size
-        res_frame_num = xs_pad.size(1) - self.hop_size * block_num
+        res_frame_num = xs_pad.size(1) - self.hop_size * block_num - 1
         buffer_after_downsampling = xs_pad[:, -res_frame_num:]
         xs_pad = xs_pad[:, : block_num * self.hop_size + overlap_size]
 
