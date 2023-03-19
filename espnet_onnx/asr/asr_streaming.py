@@ -72,6 +72,16 @@ class StreamingSpeech2Text(AbsASRModel):
             )
             * self.config.encoder.frontend.stft.hop_length
         )
+        self.initial_wav_length = (
+            self.config.encoder.frontend.stft.hop_length
+            * self.config.encoder.subsample
+            * (block_size + 2)
+            + (
+                self.config.encoder.frontend.stft.n_fft
+                // self.config.encoder.frontend.stft.hop_length
+            )
+            * self.config.encoder.frontend.stft.hop_length
+        )
 
     def __call__(
         self, speech: np.ndarray
@@ -113,15 +123,24 @@ class StreamingSpeech2Text(AbsASRModel):
     def simulate(self, speech: np.ndarray, print_every_hypo: bool = False):
         # This function will simulate streaming asr with the given audio.
         self.start()
-        process_num = len(speech) // self.hop_size + 1
-        logging.info(f"Processing audio with {process_num} processes.")
-        padded_speech = self.pad(speech, length=process_num * self.hop_size)
+        process_num = (len(speech) - self.initial_wav_length) // self.hop_size + 1
+        logging.info(f"Processing audio with {process_num + 1} processes.")
+        padded_speech = self.pad(speech, length=process_num * self.hop_size + self.initial_wav_length)
+
+        # initial iteration
+        start = 0
+        end = self.initial_wav_length
+        nbest = self(padded_speech[start:end])
+        if print_every_hypo and nbest != []:
+            logging.info(f"Result at position {0} : {nbest[0][0]}")
+        
+        # second and later iterations
         for i in range(process_num):
-            start = self.hop_size * i
-            end = self.hop_size * (i + 1)
+            start = self.hop_size * i + self.initial_wav_length
+            end = self.hop_size * (i + 1) + self.initial_wav_length
             nbest = self(padded_speech[start:end])
             if print_every_hypo and nbest != []:
-                logging.info(f"Result at position {i} : {nbest[0][0]}")
+                logging.info(f"Result at position {i+1} : {nbest[0][0]}")
 
         nbest = self.end()
         return nbest

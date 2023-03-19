@@ -112,7 +112,7 @@ class StreamingEncoder:
         if self.n_processed_blocks == 0:
             start = 0
             indicies = np.array(
-                [0, self.config.block_size - self.config.look_ahead, self.subsample * 2, self.config.block_size - self.config.hop_size],
+                [0, self.config.subsample * 2, self.config.block_size - self.config.hop_size, 1],
                 dtype=np.int64,
             )
         else:
@@ -123,7 +123,7 @@ class StreamingEncoder:
                 - self.config.hop_size
             )
             indicies = np.array(
-                [offset, offset + self.config.hop_size, 0, 0],
+                [offset, 0, 0, 0],
                 dtype=np.int64,
             )
         return {
