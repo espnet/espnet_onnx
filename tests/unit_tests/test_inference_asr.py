@@ -48,10 +48,14 @@ lm_cases = [
 ]
 
 streaming_cases = [
-    ("contextual_block_transformer", 40, 16, 4, 16, 0),
-    ("contextual_block_transformer", 40, 16, 4, 16, 1),
-    ("contextual_block_conformer", 40, 16, 4, 16, 0),
-    ("contextual_block_conformer", 40, 16, 4, 16, 1),
+    ("contextual_block_transformer", 4, 0),
+    ("contextual_block_transformer", 4, 1),
+    ("contextual_block_conformer", 4, 0),
+    ("contextual_block_conformer", 4, 1),
+    ("contextual_block_transformer6", 6, 0),
+    ("contextual_block_transformer6", 6, 1),
+    ("contextual_block_conformer6", 6, 0),
+    ("contextual_block_conformer6", 6, 1),
 ]
 
 CACHE_DIR = Path.home() / ".cache" / "espnet_onnx" / "test"
@@ -190,21 +194,21 @@ def test_infer_lm(lm_type, feat_lens, load_config, get_class):
 
 
 @pytest.mark.parametrize(
-    "streaming_type, block_size, hop_size, subsample, look_ahead, n_processed_blocks",
+    "streaming_type, subsample, n_processed_blocks",
     streaming_cases,
 )
 def test_infer_streaming_encoder(
         streaming_type,
-        block_size,
-        hop_size,
         subsample,
-        look_ahead,
         n_processed_blocks,
         load_config,
         get_class,
     ):
     model_dir = CACHE_DIR / "encoder" / f"./cache_{streaming_type}"
     model_config = load_config(streaming_type, model_type="encoder")
+    block_size = model_config.encoder_conf.block_size
+    hop_size = model_config.encoder_conf.hop_size
+    look_ahead = model_config.encoder_conf.look_ahead
 
     # prepare input_dim from frontend
     frontend = get_class(
@@ -269,18 +273,20 @@ def create_input_stream(
     )
     mask[..., 1:, :-1] = 1
     if n_processed_blocks == 0:
-        dummy_input = torch.randn(1, 168, input_size)
+        # +subsample is for test. No need to add for inference.
+        dummy_input = torch.randn(1, (block_size + 2) * subsample + subsample * 2, input_size)
         start = 0
         indicies = np.array(
-            [0, block_size - look_ahead, subsample * 2, block_size - hop_size, 1],
+            [0, subsample * 2, block_size - hop_size, 1],
             dtype=np.int64,
         )
     else:
-        dummy_input = torch.randn(1, hop_size * subsample, input_size)
+        # +subsample is for test. No need to add for inference.
+        dummy_input = torch.randn(1, hop_size * subsample + subsample * 2, input_size)
         start = hop_size * n_processed_blocks
         offset = block_size - look_ahead - hop_size
         indicies = np.array(
-            [offset, offset + hop_size, 0, 0, 0],
+            [offset, 0, 0, 0],
             dtype=np.int64,
         )
     

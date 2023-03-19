@@ -76,14 +76,14 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
         Args:
             xs_pad: (1, hop_size*subsample, D)
             buffer_after_downsampling: (1, overlap_size=block_size-hop_size, D)
-            indicies: torch.Tensor. [offset, offset + hop_length, 0 or subsample * 2, 0 or block_size-hop_size]
+            indicies: torch.Tensor. [offset, 0 or subsample * 2, 0 or block_size-hop_size, 0 or 1]
             mask: zeros(1, 1, self.block_size + 2, self.block_size + 2)
             pos_enc_xs: (B, L, D) L = block_size
         """
         # compute preencoder
         # remove before_downsampling if first iteration
         xs_pad = torch.cat([buffer_before_downsampling, xs_pad], dim=1)
-        xs_pad = xs_pad[:, indicies[2]:]  # (B, L, overlap)
+        xs_pad = xs_pad[:, indicies[1]:]  # (B, L, overlap)
 
         n_samples = xs_pad.size(1) // self.subsample - 1
         n_res_samples = xs_pad.size(1) % self.subsample + self.subsample * 2
@@ -94,12 +94,13 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
         xs_pad = torch.cat([buffer_after_downsampling, xs_pad], dim=1)
 
         # remove after_downsampling if first iteration
-        xs_pad = xs_pad[:, indicies[3]:]  # (B, L, overlap)
+        xs_pad = xs_pad[:, indicies[2]:]  # (B, L, overlap)
 
         overlap_size = self.block_size - self.hop_size
         block_num = max(0, xs_pad.size(1) - overlap_size) // self.hop_size
         res_frame_num = xs_pad.size(1) - self.hop_size * block_num
         buffer_after_downsampling = xs_pad[:, -res_frame_num:]
+        xs_pad = xs_pad[:, : block_num * self.hop_size + overlap_size]
 
         if self.init_average:
             addin = xs_pad.mean(1, keepdim=True)
@@ -109,8 +110,8 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
         if self.ctx_pos_enc:
             addin = addin * self.xscale + pos_enc_addin
 
-        prev_addin = torch.cat([prev_addin, addin], dim=1)[:, indicies[4]].unsqueeze(1)
-        xs_pad = xs_pad[:, : self.block_size] * self.xscale + pos_enc_xs
+        prev_addin = torch.cat([prev_addin, addin], dim=1)[:, indicies[3]].unsqueeze(1)
+        xs_pad = xs_pad * self.xscale + pos_enc_xs
         ys_chunk = torch.cat([prev_addin, xs_pad, addin], dim=1).unsqueeze(1)
 
         next_encoder_ctx = past_encoder_ctx * 0
@@ -121,12 +122,12 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
             )
             tmp_array = torch.cat([past_encoder_ctx[:, i, :].unsqueeze(1), ys_chunk[:, 0, -1, :].unsqueeze(1)], dim=1)
             # indicies[4] is 1 if first iteration, 0 in second or later iterations
-            ys_chunk[:, 0, 0, :] = tmp_array[:, indicies[4], :]
+            ys_chunk[:, 0, 0, :] = tmp_array[:, indicies[3], :]
             next_encoder_ctx[:, i] = next_encoder_ctx_tmp[:, i]
 
         # remove addin
         ys_chunk = ys_chunk.squeeze(1)[:, 1:-1]
-        ys_pad = ys_chunk[:, indicies[0] : indicies[1]]
+        ys_pad = ys_chunk[:, indicies[0] : self.block_size - self.look_ahead]
 
         if self.normalize_before:
             ys_pad = self.after_norm(ys_pad)
@@ -152,7 +153,6 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
     def get_dummy_inputs(self):
         n_feats = self.feats_dim
         xs_pad = torch.randn(1, self.hop_size * self.subsample, n_feats)
-        # xs_pad = torch.randn(1, 168, n_feats)
         mask = torch.ones(1, 1, self.block_size + 2, self.block_size + 2)
         o = self.compute_embed(xs_pad)
         buffer_before_downsampling = torch.randn(1, self.subsample * 2, n_feats)
@@ -161,7 +161,7 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
         pos_enc_xs = torch.randn(1, self.block_size, o.shape[-1])
         pos_enc_addin = torch.randn(1, 1, o.shape[-1])
         past_encoder_ctx = torch.randn(1, len(self.encoders), self.encoders[0].size)
-        indicies = torch.LongTensor([8, 24, 0, 0, 1])
+        indicies = torch.LongTensor([8, 0, 0, 0])
         return (
             xs_pad,
             mask,
