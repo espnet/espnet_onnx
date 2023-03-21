@@ -2,7 +2,7 @@ numpy
 onnxruntime
 librosa
 sentencepiece
-typeguard
+typeguard==2.13
 pyyaml
 g2p_en
 jamo
