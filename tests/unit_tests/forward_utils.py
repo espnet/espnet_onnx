@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 
 from espnet_onnx.utils.function import make_pad_mask, mask_fill
 from espnet_onnx.utils.torch_function import subsequent_mask
@@ -50,3 +51,18 @@ def run_onnx_front(model, dummy_input):
     }
     y = model.run(["feats", "feats_lens"], input_dic)[0]
     return y
+
+
+def run_streaming_enc(model, dummy_input, dic, model_type):
+    if model_type == "torch":
+        y, *_ = model(
+            dummy_input,
+            torch.Tensor([dummy_input.shape[1]]),
+            prev_states=dic,
+            is_final=False,
+            infer_mode=True,
+        )
+        return y
+    else:
+        encoder_out = model.run(["ys_pad"], dic)[0]
+        return encoder_out

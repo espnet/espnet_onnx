@@ -111,22 +111,13 @@ class StreamingEncoder:
         mask[..., 1:, :-1] = 1
         if self.n_processed_blocks == 0:
             start = 0
-            indicies = np.array(
-                [0, self.config.block_size - self.config.look_ahead, self.overlap_size],
-                dtype=np.int64,
-            )
+            is_first = np.array([1], dtype=np.int64)
         else:
             start = self.config.hop_size * self.n_processed_blocks
             offset = (
-                self.config.block_size
-                - self.config.look_ahead
-                - self.config.hop_size
-                + 1
+                self.config.block_size - self.config.look_ahead - self.config.hop_size
             )
-            indicies = np.array(
-                [offset, offset + self.config.hop_size, self.overlap_size],
-                dtype=np.int64,
-            )
+            is_first = np.array([0], dtype=np.int64)
         return {
             "xs_pad": x[:, :-1],
             "mask": mask,
@@ -138,7 +129,7 @@ class StreamingEncoder:
                 :, self.n_processed_blocks : self.n_processed_blocks + 1
             ],
             "past_encoder_ctx": state["past_encoder_ctx"],
-            "indicies": indicies,
+            "is_first": is_first,
         }
 
     def reset(self):
@@ -150,7 +141,7 @@ class StreamingEncoder:
     def init_state(self):
         return {
             "buffer_before_downsampling": np.zeros(
-                (1, self.config.subsample, self.config.frontend.logmel.n_mels),
+                (1, self.config.subsample * 2, self.config.frontend.logmel.n_mels),
                 dtype=np.float32,
             ),
             "buffer_after_downsampling": np.zeros(

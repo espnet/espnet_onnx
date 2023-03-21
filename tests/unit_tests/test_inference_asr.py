@@ -11,8 +11,8 @@ from espnet_onnx.asr.model.decoder import get_decoder
 from espnet_onnx.asr.model.lm import get_lm
 from espnet_onnx.utils.config import get_config
 
-from .forward_utils import (run_onnx_enc, run_rnn_dec, run_trans_dec,
-                            run_xformer_dec)
+from .forward_utils import (run_onnx_enc, run_rnn_dec, run_streaming_enc,
+                            run_trans_dec, run_xformer_dec)
 
 encoder_cases = [
     ("conformer_abs_pos", [50, 100]),
@@ -45,6 +45,17 @@ lm_cases = [
     ("transformer", [50, 100]),
     ("seqrnn", [50, 100]),
     ("transformer_pe", [50, 100]),
+]
+
+streaming_cases = [
+    ("contextual_block_transformer", 4, 0),
+    ("contextual_block_transformer", 4, 1),
+    ("contextual_block_conformer", 4, 0),
+    ("contextual_block_conformer", 4, 1),
+    ("contextual_block_transformer6", 6, 0),
+    ("contextual_block_transformer6", 6, 1),
+    ("contextual_block_conformer6", 6, 0),
+    ("contextual_block_conformer6", 6, 1),
 ]
 
 CACHE_DIR = Path.home() / ".cache" / "espnet_onnx" / "test"
@@ -180,3 +191,140 @@ def test_infer_lm(lm_type, feat_lens, load_config, get_class):
         torch_out, _ = torch_model.batch_score(tgt, [None], dummy_input)
         onnx_out, _ = onnx_model.batch_score(tgt.numpy(), [None], dummy_input.numpy())
         check_output(torch_out, onnx_out)
+
+
+@pytest.mark.parametrize(
+    "streaming_type, subsample, n_processed_blocks",
+    streaming_cases,
+)
+def test_infer_streaming_encoder(
+    streaming_type,
+    subsample,
+    n_processed_blocks,
+    load_config,
+    get_class,
+):
+    model_dir = CACHE_DIR / "encoder" / f"./cache_{streaming_type}"
+    model_config = load_config(streaming_type, model_type="encoder")
+    block_size = model_config.encoder_conf.block_size
+    hop_size = model_config.encoder_conf.hop_size
+    look_ahead = model_config.encoder_conf.look_ahead
+
+    # prepare input_dim from frontend
+    frontend = get_class(
+        "frontend", model_config.frontend, model_config.frontend_conf.dic
+    )
+    input_size = frontend.output_size()
+
+    # prepare encoder model
+    encoder_espnet = get_class(
+        "encoder",
+        model_config.encoder,
+        model_config.encoder_conf.dic,
+        input_size=input_size,
+    )
+    encoder_espnet.load_state_dict(torch.load(glob.glob(str(model_dir / "*.pth"))[0]))
+    encoder_espnet.eval()
+    model_file = glob.glob(os.path.join(model_dir, "*encoder.onnx"))[0]
+    encoder_onnx = ort.InferenceSession(model_file, providers=PROVIDERS)
+
+    # prepare pos enc
+    pe = np.load(os.path.join(model_dir, "pe.npy"))
+
+    # test output for the first iteration
+    dummy_input, torch_cache, onnx_input = create_input_stream(
+        input_size,
+        block_size,
+        hop_size,
+        subsample,
+        model_config.encoder_conf.linear_units,
+        model_config.encoder_conf.num_blocks,
+        look_ahead,
+        n_processed_blocks,
+        pe,
+        random=n_processed_blocks > 0,
+    )
+
+    # compute torch model
+    torch_out = run_streaming_enc(encoder_espnet, dummy_input, torch_cache, "torch")
+
+    # compute onnx model
+    onnx_out = run_streaming_enc(encoder_onnx, None, onnx_input, "onnx")
+    check_output(torch_out, onnx_out)
+
+
+def create_input_stream(
+    input_size,
+    block_size,
+    hop_size,
+    subsample,
+    linear_units,
+    num_blocks,
+    look_ahead,
+    n_processed_blocks,
+    pe,
+    random=True,
+):
+    mask = np.zeros(
+        (1, 1, block_size + 2, block_size + 2),
+        dtype=np.float32,
+    )
+    mask[..., 1:, :-1] = 1
+    if n_processed_blocks == 0:
+        # +subsample is for test. No need to add for inference.
+        dummy_input = torch.randn(
+            1, (block_size + 2) * subsample + subsample * 2, input_size
+        )
+        start = 0
+        is_first = np.array([1], dtype=np.int64)
+    else:
+        # +subsample is for test. No need to add for inference.
+        dummy_input = torch.randn(1, hop_size * subsample + subsample * 2, input_size)
+        start = hop_size * n_processed_blocks
+        is_first = np.array(
+            [0],
+            dtype=np.int64,
+        )
+
+    if random:
+        buffer_before = torch.randn(1, subsample * 2, dummy_input.shape[2])
+        buffer_after = torch.randn(1, block_size - hop_size, linear_units)
+        prev_addin = torch.randn(1, 1, linear_units)
+        past_encoder_ctx = torch.randn(1, num_blocks, linear_units)
+        torch_cache = {
+            "prev_addin": prev_addin,
+            "buffer_before_downsampling": buffer_before,
+            "buffer_after_downsampling": buffer_after,
+            "ilens_buffer": hop_size * n_processed_blocks,
+            "n_processed_blocks": n_processed_blocks,
+            "past_encoder_ctx": past_encoder_ctx,
+        }
+        onnx_cache = {
+            "xs_pad": dummy_input.detach().numpy(),
+            "mask": mask,
+            "buffer_before_downsampling": buffer_before.detach().numpy(),
+            "buffer_after_downsampling": buffer_after.detach().numpy(),
+            "prev_addin": prev_addin.detach().numpy(),
+            "pos_enc_xs": pe[:, start : start + block_size],
+            "pos_enc_addin": pe[:, n_processed_blocks : n_processed_blocks + 1],
+            "past_encoder_ctx": past_encoder_ctx.detach().numpy(),
+            "is_first": is_first,
+        }
+    else:
+        buffer_before = torch.zeros(1, subsample * 2, dummy_input.shape[2])
+        buffer_after = torch.zeros(1, block_size - hop_size, linear_units)
+        prev_addin = torch.zeros(1, 1, linear_units)
+        past_encoder_ctx = torch.zeros(1, num_blocks, linear_units)
+        torch_cache = None
+        onnx_cache = {
+            "xs_pad": dummy_input.detach().numpy(),
+            "mask": mask,
+            "buffer_before_downsampling": buffer_before.detach().numpy(),
+            "buffer_after_downsampling": buffer_after.detach().numpy(),
+            "prev_addin": prev_addin.detach().numpy(),
+            "pos_enc_xs": pe[:, start : start + block_size],
+            "pos_enc_addin": pe[:, n_processed_blocks : n_processed_blocks + 1],
+            "past_encoder_ctx": past_encoder_ctx.detach().numpy(),
+            "is_first": is_first,
+        }
+    return dummy_input, torch_cache, onnx_cache

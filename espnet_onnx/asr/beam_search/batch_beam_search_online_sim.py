@@ -62,6 +62,7 @@ class BatchBeamSearchOnlineSim(BatchBeamSearch):
         self.ended_hyps = []
         self.prev_repeat = False
         self._init_hyp = True
+        self.process_idx = 0
 
     def end(self):
         # main loop of prefix search

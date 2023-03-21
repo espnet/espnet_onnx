@@ -14,9 +14,9 @@ This document explains the details of each models, such as export configuration,
 
 **model input**
 
-| input name   | detail                       | shape                          | dtype   | dynamic dim |
-| ------------ | ---------------------------- | ------------------------------ | ------- | ----------- |
-| feats        | Input feature of the speech. | `(1, feats_length, feats_dim)` | float32 | 1           |
+| input name | detail                       | shape                          | dtype   | dynamic dim |
+| ---------- | ---------------------------- | ------------------------------ | ------- | ----------- |
+| feats      | Input feature of the speech. | `(1, feats_length, feats_dim)` | float32 | 1           |
 
 **model output**
 
@@ -43,9 +43,9 @@ Xformer encoder supports the following models
 
 **model input**
 
-| input name   | detail                       | shape                          | dtype   | dynamic dim |
-| ------------ | ---------------------------- | ------------------------------ | ------- | ----------- |
-| feats        | Input feature of the speech. | `(1, feats_length, feats_dim)` | float32 | 1           |
+| input name | detail                       | shape                          | dtype   | dynamic dim |
+| ---------- | ---------------------------- | ------------------------------ | ------- | ----------- |
+| feats      | Input feature of the speech. | `(1, feats_length, feats_dim)` | float32 | 1           |
 
 **model output**
 
@@ -71,17 +71,17 @@ ContextualBlockXformer supports the following models.
 
 **model input**
 
-| input name                 | detail                                                         | shape                                      | dtype   | dynamic dim | previous |
-| -------------------------- | -------------------------------------------------------------- | ------------------------------------------ | ------- | ----------- | -------- |
-| xs_pad                     | Input feature of the speech.                                   | `(1, hop_size * subsample + 1, feats_dim)` | float32 | 1           | -        |
-| mask                       | Mask for every encoders.                                       | `(1, 1, block_size + 2, block_size + 2)`   | float32 | 2, 3        | -        |
-| buffer_before_downsampling | Model cache. This will be concatenated before the subsampling. | `(1, subsample, feats_dim)`                | float32 | 1           | ◯        |
-| buffer_after_downsampling  | Model cache. This will be concatenated after the subsampling.  | `(1, overlap_size, embed_dim)`             | float32 | 1           | ◯        |
-| prev_addin                 | Addin to append before computation of the encoders.            | `(1, 1, embed_dim)`                        | float32 | -           | ◯        |
-| pos_enc_xs                 | Positional encoding for input feature. (Temporary)             | `(1, block_size, embed_dim)`               | float32 | 1           | -        |
-| pos_enc_addin              | Positional encoding for input addin. (Temporary)               | `(1, 1, embed_dim)`                        | float32 | -           | -        |
-| past_encoder_ctx           | Previous contexutal vector                                     | `(1, n_encoders, h_enc)`                   | float32 | -           | ◯        |
-| indicies                   | Indicies for some dynamic slice.                               | `(1,)`                                     | int64   | -           | -        |
+| input name                 | detail                                                         | shape                                    | dtype   | dynamic dim | previous |
+| -------------------------- | -------------------------------------------------------------- | ---------------------------------------- | ------- | ----------- | -------- |
+| xs_pad                     | Input feature of the speech.                                   | * Check Note for detail                  | float32 | 1           | -        |
+| mask                       | Mask for every encoders.                                       | `(1, 1, block_size + 2, block_size + 2)` | float32 | 2, 3        | -        |
+| buffer_before_downsampling | Model cache. This will be concatenated before the subsampling. | `(1, subsample * 2, feats_dim)`          | float32 | 1           | ◯        |
+| buffer_after_downsampling  | Model cache. This will be concatenated after the subsampling.  | `(1, overlap_size, embed_dim)`           | float32 | 1           | ◯        |
+| prev_addin                 | Addin to append before computation of the encoders.            | `(1, 1, embed_dim)`                      | float32 | -           | ◯        |
+| pos_enc_xs                 | Positional encoding for input feature.                         | `(1, block_size, embed_dim)`             | float32 | 1           | -        |
+| pos_enc_addin              | Positional encoding for input addin.                           | `(1, 1, embed_dim)`                      | float32 | -           | -        |
+| past_encoder_ctx           | Previous contexutal vector                                     | `(1, n_encoders, h_enc)`                 | float32 | -           | ◯        |
+| is_first                   | Flag to check if the first iteration                           | `(1,)`                                   | int64   | -           | -        |
 
 Note:
 
@@ -94,30 +94,22 @@ mask[..., 1:, :-1] = 1
 
 - Arguments with `previous == ◯ ` should be an output of the previous inference, and zeros for the first inference.
 
-- overlap_size is computed as `block_size - hop_size`.
+- `overlap_size` is computed as `block_size - hop_size`.
 
 - `embed_dim` is output dimension of positional encoding.
 
-- `pos_enc_xs` and `pos_enc_addin` will be removed in the future.
+- `is_first` is 1 for the first iteration, and 0 for the second and later iterations
 
-- `indicies` should be the following array.
-
-```python
-indicies = np.array([
-    offset,
-    offset + hop_size,
-    overlap_size
-])
-```
-
-`offset = 0` for the first inference, and `offset = block_size - look_ahead - hop_size + 1` for the other inference. `overlap_size` is calculated as `block_size - hop_size`
+- The size of `xs_pad` should should be the following:
+  - First iteration: `(1, (block_size + 2) * subsample, feats_dim)`
+  - Second or later iteration: `(1, hop_size * subsample, feats_dim)`
 
 **model output**
 
 | input name                      | detail                                                                              | shape                              | dtype   | dynamic dim | next |
 | ------------------------------- | ----------------------------------------------------------------------------------- | ---------------------------------- | ------- | ----------- | ---- |
 | ys_pad                          | Output of the streaming encoder.                                                    | `(1, hop_size, encoder_feats_dim)` | float32 | 1           | -    |
-| next_buffer_before_downsampling | This output will be an input for the next inference as `buffer_before_downsampling` | `(1, subsample, feats_dim)`        | float32 | 1           | ◯    |
+| next_buffer_before_downsampling | This output will be an input for the next inference as `buffer_before_downsampling` | `(1, subsample * 2, feats_dim)`    | float32 | 1           | ◯    |
 | next_buffer_after_downsampling  | This output will be an input for the next inference as `buffer_after_downsampling`  | `(1, overlap_size, embed_dim)`     | float32 | 1           | ◯    |
 | next_addin                      | This output will be an input for the next inference as `prev_addin`                 | `(1, 1, embed_dim)`                | float32 | -           | ◯    |
 | next_encoder_ctx                | This output will be an input for the next inference as `past_encoder_ctx`           | `(1, n_encoders, h_enc)`           | float32 | -           | ◯    |
@@ -132,15 +124,15 @@ There is no configuration available.
 
 **model input**
 
-| input name | detail                                                       | shape                              | dtype   | dynamic dim |
-| ---------- | ------------------------------------------------------------ | ---------------------------------- | ------- | ----------- |
-| vy         | Input sequence                                               | `(1, seq_len)`                     | int64   | 1           |
+| input name   | detail                                                       | shape                              | dtype   | dynamic dim |
+| ------------ | ------------------------------------------------------------ | ---------------------------------- | ------- | ----------- |
+| vy           | Input sequence                                               | `(1, seq_len)`                     | int64   | 1           |
 | z\_prev\_{i} | List of caches. The length equals to number of decoders.     | List[`(1, hidden_size)`]           | float32 | -           |
 | c\_prev\_{i} | List of caches. The length equals to number of decoders.     | List[`(1, hidden_size)`]           | float32 | -           |
 | a\_prev\_{i} | List of caches. The length equals to number of attentions.   | \*1                                | float32 | \*1         |
-| pceh\_{i}  | List of caches. pceh stands for `pre_computed_enc_h`         | \*2                                | float32 | 1           |
+| pceh\_{i}    | List of caches. pceh stands for `pre_computed_enc_h`         | \*2                                | float32 | 1           |
 | enc\_h\_{i}  | List of caches. The length equals to number of attentions.   | `(1, feat_length, enc_size)`       | float32 | 1           |
-| mask\_{i}  | List of mask. The length equals to number of attentions. \*3 | List[`(feat_length, feat_length)`] | float32 | 0, 1        |
+| mask\_{i}    | List of mask. The length equals to number of attentions. \*3 | List[`(feat_length, feat_length)`] | float32 | 0, 1        |
 
 - \*1: The shape and dynamic axes of `a_prev_{i}` depends on the attention type.
 
@@ -168,13 +160,13 @@ There is no configuration available.
 
 **model output**
 
-| output name | detail                                                    | shape                                  | dtype   | dynamic dim |
-| ----------- | --------------------------------------------------------- | -------------------------------------- | ------- | ----------- |
-| logp        | Output feature of decoder.                                | `(1, feats_length, decoder_feats_dim)` | float32 | 1           |
-| c\_list\_{i}  | This argument should be an input of the next `c_prev_{i}` | List[`(1, hidden_size)`]               | float32 | -           |
-| z\_list\_{i}  | This argument should be an input of the next `z_prev_{i}` | List[`(1, hidden_size)`]               | float32 | -           |
-| att_w \*1   | This argument should be an input of the next `a_prev_{i}` | \*1                                    | float32 | -           |
-| att\_w\_{i}   | This argument should be an input of the next `a_prev_{i}` | \*1                                    | float32 | -           |
+| output name  | detail                                                    | shape                                  | dtype   | dynamic dim |
+| ------------ | --------------------------------------------------------- | -------------------------------------- | ------- | ----------- |
+| logp         | Output feature of decoder.                                | `(1, feats_length, decoder_feats_dim)` | float32 | 1           |
+| c\_list\_{i} | This argument should be an input of the next `c_prev_{i}` | List[`(1, hidden_size)`]               | float32 | -           |
+| z\_list\_{i} | This argument should be an input of the next `z_prev_{i}` | List[`(1, hidden_size)`]               | float32 | -           |
+| att_w \*1    | This argument should be an input of the next `a_prev_{i}` | \*1                                    | float32 | -           |
+| att\_w\_{i}  | This argument should be an input of the next `a_prev_{i}` | \*1                                    | float32 | -           |
 
 - \*1: When `num_enc == 1`, then output name is `att_w`, otherwise `att_w_{i}`. The shape is as the same with model input.
 
@@ -194,17 +186,17 @@ Xformer decoder supports the following models
 
 **model input**
 
-| input name | detail                                                       | shape                             | dtype   | dynamic dim |
-| ---------- | ------------------------------------------------------------ | --------------------------------- | ------- | ----------- |
-| tgt        | Input token ids                                              | `(batch, maxlen_out)`             | int64   | 0, 1        |
-| memory     | encoded memory                                               | `(batch, maxlen_in, feat)`        | float32 | 0, 1        |
+| input name | detail                                                                        | shape                             | dtype   | dynamic dim |
+| ---------- | ----------------------------------------------------------------------------- | --------------------------------- | ------- | ----------- |
+| tgt        | Input token ids                                                               | `(batch, maxlen_out)`             | int64   | 0, 1        |
+| memory     | encoded memory                                                                | `(batch, maxlen_in, feat)`        | float32 | 0, 1        |
 | cache      | List of cached outputs. The length of list is the same as number of decoders. | List[`(1, max_time_out-1, size)`] | float32 | 0, 1        |
 
 **model output**
 
-| output name  | detail                                                       | shape                                      | dtype   | dynamic dim |
-| ------------ | ------------------------------------------------------------ | ------------------------------------------ | ------- | ----------- |
-| y            | Output feature of decoder.                                   | `(batch, feats_length, decoder_feats_dim)` | float32 | 0, 1        |
+| output name  | detail                                                                                                                | shape                                      | dtype   | dynamic dim |
+| ------------ | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ | ------- | ----------- |
+| y            | Output feature of decoder.                                                                                            | `(batch, feats_length, decoder_feats_dim)` | float32 | 0, 1        |
 | out_cache{i} | List of caches. The length of list is the same as number of decoders. This argument should be inputs for next `cache` | List[`(1, max_time_out-1, size)`]          | float32 | 0, 1        |
 
 ### TransducerDecoder
@@ -265,9 +257,9 @@ There is no available configuration.
 
 **model input**
 
-| input name | detail                                                       | shape                   | dtype   | dynamic dim |
-| ---------- | ------------------------------------------------------------ | ----------------------- | ------- | ----------- |
-| tgt        | Label ID sequences                                           | `(batch, seq_len)`      | int64   | 0, 1        |
+| input name | detail                                                                  | shape                   | dtype   | dynamic dim |
+| ---------- | ----------------------------------------------------------------------- | ----------------------- | ------- | ----------- |
+| tgt        | Label ID sequences                                                      | `(batch, seq_len)`      | int64   | 0, 1        |
 | cache\_{i} | Cache for encoder. The length of list is same as the number of encoders | `(batch, 1, enc_feats)` | float32 | 0, 1        |
 
 **model output**

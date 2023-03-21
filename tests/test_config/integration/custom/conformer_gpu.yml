@@ -17,7 +17,7 @@ check_export:
   - decoder
   - ctc
   - lm
-device: 
+device:
   - CPU
   - Quantize
   - GPU

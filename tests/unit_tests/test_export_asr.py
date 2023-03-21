@@ -19,6 +19,8 @@ encoder_cases = [
     "rnn_vggrnn",
     "contextual_block_conformer",
     "contextual_block_transformer",
+    "contextual_block_conformer6",
+    "contextual_block_transformer6",
 ]
 
 decoder_cases = [
@@ -75,7 +77,7 @@ def test_export_encoder(enc_type, load_config, model_export, get_class):
     enc_wrapper = get_encoder(encoder, frontend, None, {})
     save_model(enc_wrapper, export_dir, model_export, "encoder")
 
-    if enc_type in ("contextual_block_conformer", "contextual_block_transformer"):
+    if "contextual" in enc_type:
         # save position encoder parameters.
         np.save(export_dir / "pe", encoder.pos_enc.pe.numpy())
     assert len(os.path.join(export_dir, "*encoder.onnx")) > 0

@@ -6,7 +6,7 @@
 
 **ESPnet without PyTorch!**
 
-Utility library to easily export, quantize, and optimize espnet models to onnx format. 
+Utility library to easily export, quantize, and optimize espnet models to onnx format.
 There is no need to install PyTorch or ESPnet on your machine if you already have exported files!
 
 
@@ -155,7 +155,7 @@ print(nbest[0][0])
 # 'this is a pen'
 ```
 
-4. If you installed the custom version of onnxruntime, you can run optimized model for inference. You don't have to change any code from the above. If the model was optimized, then espnet_onnx would automatically load the optimized version. 
+4. If you installed the custom version of onnxruntime, you can run optimized model for inference. You don't have to change any code from the above. If the model was optimized, then espnet_onnx would automatically load the optimized version.
 
 5. You can use only hubert model for your frontend.
 
