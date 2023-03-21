@@ -91,5 +91,5 @@ The following shows the encoder module that support preencoder export and infere
 | Conformer       | ◯         |
 | ContextualBlock | x         |
 
-**post encoder**  
+**post encoder**
 not supported.

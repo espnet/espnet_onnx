@@ -3,7 +3,7 @@ optimization:
   CPU:
   Quantize:
 use_ort_for_espnet: false
-check_optimize: 
+check_optimize:
 check_export:
   - encoder
   - decoder

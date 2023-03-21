@@ -9,7 +9,7 @@ jobs:
       - image: circleci/python:3.8
     environment:
       PYTHONPATH: ~/s3prl
-      
+
     steps:
       - checkout
       - run: sudo apt-get -y update; sudo apt-get install libsndfile1
