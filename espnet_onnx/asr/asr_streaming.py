@@ -131,7 +131,9 @@ class StreamingSpeech2Text(AbsASRModel):
         self.start()
         process_num = (len(speech) - self.initial_wav_length) // self.hop_size + 1
         logging.info(f"Processing audio with {process_num + 1} processes.")
-        padded_speech = self.pad(speech, length=process_num * self.hop_size + self.initial_wav_length)
+        padded_speech = self.pad(
+            speech, length=process_num * self.hop_size + self.initial_wav_length
+        )
 
         # initial iteration
         start = 0
@@ -139,7 +141,7 @@ class StreamingSpeech2Text(AbsASRModel):
         nbest = self(padded_speech[start:end])
         if print_every_hypo and nbest != []:
             logging.info(f"Result at position {0} : {nbest[0][0]}")
-        
+
         # second and later iterations
         for i in range(process_num):
             start = self.hop_size * i + self.initial_wav_length

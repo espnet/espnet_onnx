@@ -55,7 +55,13 @@ def run_onnx_front(model, dummy_input):
 
 def run_streaming_enc(model, dummy_input, dic, model_type):
     if model_type == "torch":
-        y, *_ = model(dummy_input, torch.Tensor([dummy_input.shape[1]]), prev_states=dic, is_final=False, infer_mode=True)
+        y, *_ = model(
+            dummy_input,
+            torch.Tensor([dummy_input.shape[1]]),
+            prev_states=dic,
+            is_final=False,
+            infer_mode=True,
+        )
         return y
     else:
         encoder_out = model.run(["ys_pad"], dic)[0]

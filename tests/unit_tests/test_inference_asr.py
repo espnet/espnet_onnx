@@ -11,8 +11,8 @@ from espnet_onnx.asr.model.decoder import get_decoder
 from espnet_onnx.asr.model.lm import get_lm
 from espnet_onnx.utils.config import get_config
 
-from .forward_utils import (run_onnx_enc, run_rnn_dec, run_trans_dec,
-                            run_xformer_dec, run_streaming_enc)
+from .forward_utils import (run_onnx_enc, run_rnn_dec, run_streaming_enc,
+                            run_trans_dec, run_xformer_dec)
 
 encoder_cases = [
     ("conformer_abs_pos", [50, 100]),
@@ -198,12 +198,12 @@ def test_infer_lm(lm_type, feat_lens, load_config, get_class):
     streaming_cases,
 )
 def test_infer_streaming_encoder(
-        streaming_type,
-        subsample,
-        n_processed_blocks,
-        load_config,
-        get_class,
-    ):
+    streaming_type,
+    subsample,
+    n_processed_blocks,
+    load_config,
+    get_class,
+):
     model_dir = CACHE_DIR / "encoder" / f"./cache_{streaming_type}"
     model_config = load_config(streaming_type, model_type="encoder")
     block_size = model_config.encoder_conf.block_size
@@ -242,13 +242,11 @@ def test_infer_streaming_encoder(
         look_ahead,
         n_processed_blocks,
         pe,
-        random=n_processed_blocks>0,
+        random=n_processed_blocks > 0,
     )
 
     # compute torch model
-    torch_out = run_streaming_enc(
-        encoder_espnet, dummy_input, torch_cache, "torch"
-    )
+    torch_out = run_streaming_enc(encoder_espnet, dummy_input, torch_cache, "torch")
 
     # compute onnx model
     onnx_out = run_streaming_enc(encoder_onnx, None, onnx_input, "onnx")
@@ -265,7 +263,7 @@ def create_input_stream(
     look_ahead,
     n_processed_blocks,
     pe,
-    random=True
+    random=True,
 ):
     mask = np.zeros(
         (1, 1, block_size + 2, block_size + 2),
@@ -274,15 +272,20 @@ def create_input_stream(
     mask[..., 1:, :-1] = 1
     if n_processed_blocks == 0:
         # +subsample is for test. No need to add for inference.
-        dummy_input = torch.randn(1, (block_size + 2) * subsample + subsample * 2, input_size)
+        dummy_input = torch.randn(
+            1, (block_size + 2) * subsample + subsample * 2, input_size
+        )
         start = 0
         is_first = np.array([1], dtype=np.int64)
     else:
         # +subsample is for test. No need to add for inference.
         dummy_input = torch.randn(1, hop_size * subsample + subsample * 2, input_size)
         start = hop_size * n_processed_blocks
-        is_first = np.array([0], dtype=np.int64,)
-    
+        is_first = np.array(
+            [0],
+            dtype=np.int64,
+        )
+
     if random:
         buffer_before = torch.randn(1, subsample * 2, dummy_input.shape[2])
         buffer_after = torch.randn(1, block_size - hop_size, linear_units)
@@ -297,7 +300,7 @@ def create_input_stream(
             "past_encoder_ctx": past_encoder_ctx,
         }
         onnx_cache = {
-            "xs_pad":  dummy_input.detach().numpy(),
+            "xs_pad": dummy_input.detach().numpy(),
             "mask": mask,
             "buffer_before_downsampling": buffer_before.detach().numpy(),
             "buffer_after_downsampling": buffer_after.detach().numpy(),
@@ -314,7 +317,7 @@ def create_input_stream(
         past_encoder_ctx = torch.zeros(1, num_blocks, linear_units)
         torch_cache = None
         onnx_cache = {
-            "xs_pad":  dummy_input.detach().numpy(),
+            "xs_pad": dummy_input.detach().numpy(),
             "mask": mask,
             "buffer_before_downsampling": buffer_before.detach().numpy(),
             "buffer_after_downsampling": buffer_after.detach().numpy(),

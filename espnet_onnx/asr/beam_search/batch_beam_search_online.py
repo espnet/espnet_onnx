@@ -46,7 +46,7 @@ class BatchBeamSearchOnline(BatchBeamSearch):
         self.decoder_text_length_limit = decoder_text_length_limit
 
         self.reset()
-    
+
     def set_streaming_config(self, block_size, hop_size, look_ahead):
         """Set config file for streaming decoding.
 
@@ -69,7 +69,7 @@ class BatchBeamSearchOnline(BatchBeamSearch):
         self.processed_block = 0
         self.process_idx = 0
         self.prev_output = None
-    
+
     def start(self):
         self.reset()
 
@@ -98,7 +98,7 @@ class BatchBeamSearchOnline(BatchBeamSearch):
                 and len(hyp.yseq) > 0
                 and len(hyp.yseq[0]) > self.decoder_text_length_limit
             ):
-                temp_yseq = hyp.yseq[:, -self.decoder_text_length_limit:]
+                temp_yseq = hyp.yseq[:, -self.decoder_text_length_limit :]
                 temp_yseq[:, 0] = self.sos
                 self.running_hyps.states["decoder"] = [
                     None for _ in self.running_hyps.states["decoder"]
@@ -107,7 +107,6 @@ class BatchBeamSearchOnline(BatchBeamSearch):
             else:
                 scores[k], states[k] = d.batch_score(hyp.yseq, hyp.states[k], x)
         return scores, states
-
 
     def forward(self, h, is_final, maxlen, maxlenratio):
         """Recognize one block."""

@@ -115,9 +115,7 @@ class StreamingEncoder:
         else:
             start = self.config.hop_size * self.n_processed_blocks
             offset = (
-                self.config.block_size
-                - self.config.look_ahead
-                - self.config.hop_size
+                self.config.block_size - self.config.look_ahead - self.config.hop_size
             )
             is_first = np.array([0], dtype=np.int64)
         return {

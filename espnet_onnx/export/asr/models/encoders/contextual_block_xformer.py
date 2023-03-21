@@ -86,7 +86,9 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
         # compute preencoder
         # remove before_downsampling if first iteration
         xs_pad = torch.cat([buffer_before_downsampling, xs_pad], dim=1)
-        xs_pad = xs_pad[:, buffer_before_downsampling.size(1) * is_first[0]:]  # (B, L, overlap)
+        xs_pad = xs_pad[
+            :, buffer_before_downsampling.size(1) * is_first[0] :
+        ]  # (B, L, overlap)
 
         n_samples = xs_pad.size(1) // self.subsample - 1
         n_res_samples = xs_pad.size(1) % self.subsample + self.subsample * 2
@@ -97,7 +99,9 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
         xs_pad = torch.cat([buffer_after_downsampling, xs_pad], dim=1)
 
         # remove after_downsampling if first iteration
-        xs_pad = xs_pad[:, buffer_after_downsampling.size(1) * is_first[0]:]  # (B, L, overlap)
+        xs_pad = xs_pad[
+            :, buffer_after_downsampling.size(1) * is_first[0] :
+        ]  # (B, L, overlap)
 
         block_num = max(0, xs_pad.size(1) - self.overlap_size) // self.hop_size
         res_frame_num = xs_pad.size(1) - self.hop_size * block_num - 1
@@ -122,14 +126,22 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
             ys_chunk, _, _, past_encoder_ctx, next_encoder_ctx_tmp, _, _ = layer(
                 ys_chunk, mask, True, past_encoder_ctx
             )
-            tmp_array = torch.cat([past_encoder_ctx[:, i, :].unsqueeze(1), ys_chunk[:, 0, -1, :].unsqueeze(1)], dim=1)
+            tmp_array = torch.cat(
+                [
+                    past_encoder_ctx[:, i, :].unsqueeze(1),
+                    ys_chunk[:, 0, -1, :].unsqueeze(1),
+                ],
+                dim=1,
+            )
             # indicies[4] is 1 if first iteration, 0 in second or later iterations
             ys_chunk[:, 0, 0, :] = tmp_array[:, is_first[0], :]
             next_encoder_ctx[:, i] = next_encoder_ctx_tmp[:, i]
 
         # remove addin
         ys_chunk = ys_chunk.squeeze(1)[:, 1:-1]
-        ys_pad = ys_chunk[:, self.offset_selector[is_first[0]] : self.block_size - self.look_ahead]
+        ys_pad = ys_chunk[
+            :, self.offset_selector[is_first[0]] : self.block_size - self.look_ahead
+        ]
 
         if self.normalize_before:
             ys_pad = self.after_norm(ys_pad)
