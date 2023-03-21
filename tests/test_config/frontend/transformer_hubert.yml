@@ -14,4 +14,3 @@ frontend_conf:
     upstream: hubert_base
   fs: 16k
   multilayer_feature: true
-  

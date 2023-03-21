@@ -26,7 +26,7 @@ python -m espnet_onnx.export \
   --model_type asr \
   --input ${path_to_zip} \
   --tag transformer_lm \
-  --apply_optimize 
+  --apply_optimize
 ```
 
 
@@ -86,6 +86,3 @@ The custom version of onnxruntime is released [here](https://github.com/Masao-So
 wget install https://github.com/Masao-Someki/espnet_onnx/releases/download/custom_ort_v1.11.1-espnet_onnx/onnxruntime-1.11.1_espnet_onnx-cp38-cp38-linux_x86_64.whl
 pip install *.dist
 ```
-
-
-
