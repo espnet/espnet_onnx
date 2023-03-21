@@ -276,19 +276,12 @@ def create_input_stream(
         # +subsample is for test. No need to add for inference.
         dummy_input = torch.randn(1, (block_size + 2) * subsample + subsample * 2, input_size)
         start = 0
-        indicies = np.array(
-            [0, subsample * 2, block_size - hop_size, 1],
-            dtype=np.int64,
-        )
+        is_first = np.array([1], dtype=np.int64)
     else:
         # +subsample is for test. No need to add for inference.
         dummy_input = torch.randn(1, hop_size * subsample + subsample * 2, input_size)
         start = hop_size * n_processed_blocks
-        offset = block_size - look_ahead - hop_size
-        indicies = np.array(
-            [offset, 0, 0, 0],
-            dtype=np.int64,
-        )
+        is_first = np.array([0], dtype=np.int64,)
     
     if random:
         buffer_before = torch.randn(1, subsample * 2, dummy_input.shape[2])
@@ -312,7 +305,7 @@ def create_input_stream(
             "pos_enc_xs": pe[:, start : start + block_size],
             "pos_enc_addin": pe[:, n_processed_blocks : n_processed_blocks + 1],
             "past_encoder_ctx": past_encoder_ctx.detach().numpy(),
-            "indicies": indicies,
+            "is_first": is_first,
         }
     else:
         buffer_before = torch.zeros(1, subsample * 2, dummy_input.shape[2])
@@ -329,6 +322,6 @@ def create_input_stream(
             "pos_enc_xs": pe[:, start : start + block_size],
             "pos_enc_addin": pe[:, n_processed_blocks : n_processed_blocks + 1],
             "past_encoder_ctx": past_encoder_ctx.detach().numpy(),
-            "indicies": indicies,
+            "is_first": is_first,
         }
     return dummy_input, torch_cache, onnx_cache
