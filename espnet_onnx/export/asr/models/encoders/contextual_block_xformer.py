@@ -118,11 +118,11 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
 
         prev_addin = torch.cat([prev_addin, addin], dim=1)[:, is_first[0]].unsqueeze(1)
 
-        xs_pad = xs_pad * self.xscale + pos_enc_xs[:, :xs_pad.size(1)]
+        xs_pad = xs_pad * self.xscale + pos_enc_xs[:, : xs_pad.size(1)]
 
         xs_chunk = torch.zeros(xs_pad.size(0), self.block_size, xs_pad.size(2))
-        xs_chunk[:, :xs_pad.size(1)] = xs_pad
-        
+        xs_chunk[:, : xs_pad.size(1)] = xs_pad
+
         ys_chunk = torch.cat([prev_addin, xs_chunk, addin], dim=1).unsqueeze(1)
 
         next_encoder_ctx = past_encoder_ctx * 0
