@@ -148,8 +148,7 @@ class StreamingSpeech2Text(AbsASRModel):
             end = self.hop_size * (i + 1) + self.initial_wav_length
             nbest = self(padded_speech[start:end])
             if print_every_hypo and nbest != []:
-                # logging.info(f"Result at position {i+1} : {nbest[0][0]}")
-                print(f"Result at position {i+1} : {nbest[0][0]}")
+                logging.info(f"Result at position {i+1} : {nbest[0][0]}")
 
         return nbest
 
