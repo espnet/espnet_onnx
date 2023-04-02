@@ -10,9 +10,9 @@ from espnet.nets.pytorch_backend.transformer.subsampling import (
 
 from espnet_onnx.export.asr.get_config import (get_frontend_config,
                                                get_norm_config)
-from espnet_onnx.export.asr.models.encoder_layer import OnnxEncoderLayer
+from espnet_onnx.export.asr.models.layers.encoder_layer import OnnxEncoderLayer
 from espnet_onnx.export.asr.models.language_models.embed import Embedding
-from espnet_onnx.export.asr.models.multihead_att import \
+from espnet_onnx.export.asr.models.layers.multihead_att import \
     OnnxMultiHeadedAttention
 from espnet_onnx.utils.abs_model import AbsExportModel
 from espnet_onnx.utils.torch_function import MakePadMask
