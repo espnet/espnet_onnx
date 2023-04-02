@@ -22,7 +22,7 @@ from espnet_onnx.export.asr.get_config import (get_beam_config,
                                                get_trans_beam_config,
                                                get_weights_transducer)
 from espnet_onnx.export.asr.models import (CTC, JointNetwork, get_decoder,
-                                           get_encoder, get_lm)
+                                           get_encoder, get_lm, CombinedModel)
 from espnet_onnx.export.optimize.optimizer import optimize_model
 from espnet_onnx.utils.config import save_config, update_model_path
 
@@ -39,6 +39,7 @@ class ASRModelExport:
             only_onnxruntime=False,
             float16=False,
             use_ort_for_espnet=False,
+            combine_ctc=False
         )
 
     def export(
@@ -72,7 +73,21 @@ class ASRModelExport:
             self.export_config,
         )
         enc_out_size = enc_model.get_output_size()
-        self._export_encoder(enc_model, export_dir, verbose)
+        if model.asr_model.ctc is not None:
+            ctc_model = CTC(model.asr_model.ctc.ctc_lo, **self.export_config)
+            model_config.update(ctc=ctc_model.get_model_config(export_dir))
+        else:
+            ctc_model = None
+
+        if self.export_config["combine_ctc"]:
+            enc_ctc_model = CombinedModel(enc_model, ctc_model)
+            self._export_encoder(enc_ctc_model, export_dir, verbose)
+            model_config.update(combined_model=enc_ctc_model.get_model_config(export_dir))
+        else:
+            self._export_encoder(enc_model, export_dir, verbose)
+            if ctc_model is not None:
+                self._export_ctc(ctc_model, enc_out_size, export_dir, verbose)
+            
         model_config.update(
             encoder=enc_model.get_model_config(model.asr_model, export_dir)
         )
@@ -92,12 +107,6 @@ class ASRModelExport:
             model_config.update(
                 joint_network=joint_network.get_model_config(export_dir)
             )
-
-        # export ctc
-        if model.asr_model.ctc is not None:
-            ctc_model = CTC(model.asr_model.ctc.ctc_lo)
-            self._export_ctc(ctc_model, enc_out_size, export_dir, verbose)
-            model_config.update(ctc=ctc_model.get_model_config(export_dir))
 
         # export lm
         lm_model = None

@@ -9,6 +9,7 @@ from espnet_onnx.asr.model.decoder import get_decoder
 from espnet_onnx.asr.model.encoder import get_encoder
 from espnet_onnx.asr.model.joint_network import JointNetwork
 from espnet_onnx.asr.model.lm import get_lm
+from espnet_onnx.asr.model.combined_model import CombinedModel
 from espnet_onnx.asr.scorer.ctc_prefix_scorer import CTCPrefixScorer
 from espnet_onnx.asr.scorer.interface import BatchScorerInterface
 from espnet_onnx.asr.scorer.length_bonus import LengthBonus
@@ -49,6 +50,11 @@ class AbsASRModel(AbsModel):
                     f"As non-batch scorers {non_batch} are found, "
                     f"fall back to non-batch implementation."
                 )
+    
+    def _build_model_combined(self, providers, use_quantized):
+        self.combined_model = CombinedModel(self.config.combined_model, self.config.encoder, providers, use_quantized)
+        self._build_tokenizer()
+        self._build_token_converter()
 
     def _build_model(self, providers, use_quantized):
         self.encoder = get_encoder(self.config.encoder, providers, use_quantized)

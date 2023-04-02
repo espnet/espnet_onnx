@@ -32,6 +32,7 @@ except:
     from espnet2.asr.decoder.transducer_decoder import \
         TransducerDecoder as espnetTransducerDecoder
 
+from .enc_ctc_model import CombinedModel
 
 # lm
 # frontend

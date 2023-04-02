@@ -1,5 +1,7 @@
 from pathlib import Path
 from typing import List, Optional, Tuple, Union
+from itertools import groupby
+import logging
 
 import numpy as np
 from typeguard import check_argument_types
@@ -31,9 +33,17 @@ class Speech2Text(AbsASRModel):
                 "Onnx model is built for streaming. Use StreamingSpeech2Text instead."
             )
 
-        # check quantize and optimize model
+        # Check quantization flag
         self._check_flags(use_quantized)
-        self._build_model(providers, use_quantized)
+
+        # check if tag_name is exported with combined model.
+        if "combined_model" in self.config.keys():
+            self.greedy_ctc_decode = True
+            self._build_model_combined(providers, use_quantized)
+            logging.info("The encoder and ctc is combined during export. You can run greedy ctc decoding with greedy_ctc()")
+        else:
+            self.greedy_ctc_decode = False
+            self._build_model(providers, use_quantized)
 
         if self.config.transducer.use_transducer_decoder:
             self.start_idx = 1
@@ -62,6 +72,12 @@ class Speech2Text(AbsASRModel):
         # lengths: (1,)
         lengths = np.array([speech.shape[1]]).astype(np.int64)
 
+        if self.greedy_ctc_decode:
+            return self._greedy_ctc(speech, lengths)
+        else:
+            return self._ar_decode(speech, lengths)
+
+    def _ar_decode(self, speech: np.ndarray, lengths: np.ndarray):
         # b. Forward Encoder
         enc, _ = self.encoder(speech=speech, speech_length=lengths)
         if isinstance(enc, tuple):
@@ -91,3 +107,22 @@ class Speech2Text(AbsASRModel):
             results.append((text, token, token_int, hyp))
 
         return results
+
+    def _greedy_ctc(
+            self, speech: np.ndarray, lengths: np.ndarray
+    ) -> List[Tuple[Optional[str], List[str], List[int], Union[Hypothesis],]]:
+        # b. Forward encoder and ctc
+        ctc_probs, ctc_ids = self.combined_model(speech=speech, speech_length=lengths)
+        y_hat = np.stack([x[0] for x in groupby(ctc_ids[0])])
+        y_idx = np.nonzero(y_hat != 0)[0]
+        token_ids = y_hat[y_idx].tolist()
+        token = self.converter.ids2tokens(token_ids)
+        text = self.tokenizer.tokens2text(token)
+        return [
+            (text, token, token_ids, ctc_probs[0][y_idx])
+        ]
+    
+    def ids2text(self, ids: List[int]):
+        text = "".join(self.converter.ids2tokens(ids))
+        # return text.replace("<mask>", "_").replace("<space>", " ")
+        return text.replace("<space>", " ")
