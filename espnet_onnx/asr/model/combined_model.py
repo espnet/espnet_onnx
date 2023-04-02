@@ -18,7 +18,7 @@ class CombinedModel:
             self.session = onnxruntime.InferenceSession(
                 config.model_path, providers=providers
             )
-        
+
         # check output
         output_names = [o.name for o in self.session.get_outputs()]
         if "ctc_ids" not in output_names or "ctc_probs" not in output_names:
@@ -31,7 +31,7 @@ class CombinedModel:
                 self.normalize = GlobalMVN(encoder_config.normalize)
             elif encoder_config.normalize.type == "utterance_mvn":
                 self.normalize = UtteranceMVN(encoder_config.normalize)
-        
+
         self.encoder_config = encoder_config
 
     def __call__(
@@ -51,12 +51,11 @@ class CombinedModel:
 
         # 3. forward encoder and ctc
         ctc_probs, ctc_ids = self.forward_encoder_ctc(feats)
-        return ctc_probs, ctc_ids 
+        return ctc_probs, ctc_ids
 
     def forward_encoder_ctc(self, feats):
         ctc_probs, ctc_ids = self.session.run(
             ["ctc_probs", "ctc_ids"], {"feats": feats}
         )
 
-        return ctc_probs, ctc_ids 
-
+        return ctc_probs, ctc_ids

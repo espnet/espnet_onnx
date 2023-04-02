@@ -50,7 +50,7 @@ class AbsASRModel(AbsModel):
                     f"As non-batch scorers {non_batch} are found, "
                     f"fall back to non-batch implementation."
                 )
-    
+
     def _build_model_combined(self, providers, use_quantized):
         self.combined_model = CombinedModel(self.config.combined_model, self.config.encoder, providers, use_quantized)
         self._build_tokenizer()

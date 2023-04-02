@@ -39,4 +39,3 @@ class CombinedModel(nn.Module, AbsExportModel):
         return {
             "model_path": os.path.join(path, f"{self.model_name}.onnx"),
         }
-

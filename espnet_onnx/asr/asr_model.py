@@ -121,7 +121,7 @@ class Speech2Text(AbsASRModel):
         return [
             (text, token, token_ids, ctc_probs[0][y_idx])
         ]
-    
+
     def ids2text(self, ids: List[int]):
         text = "".join(self.converter.ids2tokens(ids))
         # return text.replace("<mask>", "_").replace("<space>", " ")

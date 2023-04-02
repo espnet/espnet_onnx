@@ -87,7 +87,7 @@ class ASRModelExport:
             self._export_encoder(enc_model, export_dir, verbose)
             if ctc_model is not None:
                 self._export_ctc(ctc_model, enc_out_size, export_dir, verbose)
-            
+
         model_config.update(
             encoder=enc_model.get_model_config(model.asr_model, export_dir)
         )
