@@ -7,6 +7,7 @@ import torch
 
 from espnet_onnx.export.asr.models import get_decoder, get_encoder, get_lm
 from espnet_onnx.utils.config import save_config
+from espnet_onnx.export.asr.models import CTC, CombinedModel
 
 encoder_cases = [
     "conformer_abs_pos",
@@ -41,6 +42,17 @@ decoder_cases = [
 
 lm_cases = ["transformer", "seqrnn", "transformer_pe"]
 
+combine_cases = [
+    "conformer_abs_pos",
+    "conformer_rel_pos",
+    "conformer_rpe_latest",
+    "conformer_scaled",
+    "transformer",
+    "rnn_rnn",
+    "rnn_rnnp",
+    "rnn_vggrnn",
+]
+
 
 def save_model(onnx_model, export_dir, model_export, model_type):
     if model_type == "encoder":
@@ -49,6 +61,8 @@ def save_model(onnx_model, export_dir, model_export, model_type):
         model_export._export_decoder(onnx_model, 256, export_dir, verbose=False)
     elif model_type == "lm":
         model_export._export_lm(onnx_model, export_dir, verbose=False)
+    elif model_type == "combined":
+        model_export._export_encoder(onnx_model, export_dir, verbose=False)
 
 
 @pytest.mark.parametrize("enc_type", encoder_cases)
@@ -132,3 +146,35 @@ def test_export_lm(lm_type, load_config, model_export, get_class):
     lm_config["lm"].update({"use_lm": True})
     save_config(lm_config, export_dir / "config.yaml")
     assert len(os.path.join(export_dir, "*lm.onnx")) > 0
+
+
+@pytest.mark.parametrize("enc_type", combine_cases)
+def test_export_combine_ctc(enc_type, load_config, model_export, get_class):
+    model_config = load_config(enc_type, model_type="encoder")
+    # prepare input_dim from frontend
+    frontend = get_class(
+        "frontend", model_config.frontend, model_config.frontend_conf.dic
+    )
+    input_size = frontend.output_size()
+
+    # prepare encoder model
+    encoder = get_class(
+        "encoder",
+        model_config.encoder,
+        model_config.encoder_conf.dic,
+        input_size=input_size,
+    )
+    export_dir = (
+        Path(model_export.cache_dir) / "test" / "encoder" / f"./cache_{enc_type}"
+    )
+    export_dir.mkdir(parents=True, exist_ok=True)
+    encoder_out_size = model_config.encoder_conf.output_size 
+    vocab_size = 32000
+
+    # create encoder onnx wrapper and export
+    enc_wrapper = get_encoder(encoder, frontend, None, {})
+    ctc_wrapper = CTC(torch.nn.Linear(encoder_out_size, vocab_size), export_ids=True)
+    enc_ctc_model = CombinedModel(enc_wrapper, ctc_wrapper)
+    save_model(enc_ctc_model, export_dir, model_export, "combined")
+
+    assert len(os.path.join(export_dir, "*encoder.onnx")) > 0

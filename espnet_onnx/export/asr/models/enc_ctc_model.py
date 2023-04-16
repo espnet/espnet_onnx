@@ -15,7 +15,7 @@ class CombinedModel(nn.Module, AbsExportModel):
         self.model_name = "encoder_ctc"
 
     def forward(self, feats):
-        enc_out, _ = self.encoder(feats)
+        enc_out = self.encoder(feats)
         if isinstance(enc_out, tuple):
             enc_out = enc_out[0]
         return self.ctc(enc_out)
