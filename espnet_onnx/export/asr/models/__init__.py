@@ -1,29 +1,18 @@
 # decoder
 from espnet2.asr.decoder.rnn_decoder import RNNDecoder as espnetRNNDecoder
-from espnet2.asr.encoder.conformer_encoder import \
-    ConformerEncoder as espnetConformerEncoder
 from espnet2.asr.encoder.contextual_block_conformer_encoder import \
     ContextualBlockConformerEncoder as espnetContextualConformer
 from espnet2.asr.encoder.contextual_block_transformer_encoder import \
     ContextualBlockTransformerEncoder as espnetContextualTransformer
-# encoder
-from espnet2.asr.encoder.rnn_encoder import RNNEncoder as espnetRNNEncoder
-from espnet2.asr.encoder.transformer_encoder import \
-    TransformerEncoder as espnetTransformerEncoder
-from espnet2.asr.encoder.vgg_rnn_encoder import \
-    VGGRNNEncoder as espnetVGGRNNEncoder
 
 from espnet_onnx.export.asr.models.ctc import CTC
 from espnet_onnx.export.asr.models.decoders.rnn import RNNDecoder
 from espnet_onnx.export.asr.models.decoders.transducer import TransducerDecoder
 from espnet_onnx.export.asr.models.decoders.xformer import XformerDecoder
-from espnet_onnx.export.asr.models.encoders.conformer import ConformerEncoder
 from espnet_onnx.export.asr.models.encoders.contextual_block_xformer import \
     ContextualBlockXformerEncoder
-from espnet_onnx.export.asr.models.encoders.rnn import RNNEncoder
-from espnet_onnx.export.asr.models.encoders.transformer import \
-    TransformerEncoder
 from espnet_onnx.export.asr.models.joint_network import JointNetwork
+from espnet_onnx.export.asr.models.enc_ctc_model import CombinedModel
 
 try:
     from espnet2.asr.transducer.transducer_decoder import \
@@ -32,7 +21,8 @@ except:
     from espnet2.asr.decoder.transducer_decoder import \
         TransducerDecoder as espnetTransducerDecoder
 
-from .enc_ctc_model import CombinedModel
+from espnet_onnx.export.asr.models.encoders.generic_encoder import GenericEncoder
+
 
 # lm
 # frontend
@@ -48,16 +38,12 @@ from espnet_onnx.export.asr.models.language_models.transformer import \
 
 
 def get_encoder(model, frontend, preencoder, export_config):
-    if isinstance(model, espnetRNNEncoder) or isinstance(model, espnetVGGRNNEncoder):
-        return RNNEncoder(model, frontend, preencoder, **export_config)
-    elif isinstance(model, espnetContextualTransformer) or isinstance(
+    if isinstance(model, espnetContextualTransformer) or isinstance(
         model, espnetContextualConformer
     ):
         return ContextualBlockXformerEncoder(model, **export_config)
-    elif isinstance(model, espnetTransformerEncoder):
-        return TransformerEncoder(model, frontend, preencoder, **export_config)
-    elif isinstance(model, espnetConformerEncoder):
-        return ConformerEncoder(model, frontend, preencoder, **export_config)
+    else:
+        return GenericEncoder(model, frontend, preencoder, **export_config)
 
 
 def get_decoder(model, export_config):
