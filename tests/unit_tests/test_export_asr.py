@@ -168,7 +168,7 @@ def test_export_combine_ctc(enc_type, load_config, model_export, get_class):
         Path(model_export.cache_dir) / "test" / "encoder" / f"./cache_{enc_type}"
     )
     export_dir.mkdir(parents=True, exist_ok=True)
-    encoder_out_size = model_config.encoder_conf.output_size 
+    encoder_out_size = model_config.encoder_conf.output_size
     vocab_size = 32000
 
     # create encoder onnx wrapper and export
