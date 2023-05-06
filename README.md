@@ -10,6 +10,10 @@ Utility library to easily export, quantize, and optimize espnet models to onnx f
 There is no need to install PyTorch or ESPnet on your machine if you already have exported files!
 
 
+## espnet_onnx demo in Colab
+Now demonstration notebook is available in google colab!
+- Simple ASR demo: [![Open In Colab](https://colab.research.google.com/github/espnet/espnet_onnx/blob/master/demo/simple_asr_demo.ipynb)]
+- Simple TTS demo: [![Open In Colab](https://colab.research.google.com/github/espnet/espnet_onnx/blob/master/demo/tts_onnx_demo.ipynb)]
 
 ## Install
 
