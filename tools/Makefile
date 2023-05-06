@@ -9,12 +9,12 @@ all: venv infer
 
 
 venv:
-	python3 -m venv venv
+	python3 -m venv venv; pip install -U pip
 
 infer:
-	. venv/bin/activate; pip install -U pip; pip install -r requirements.txt
+	. venv/bin/activate; pip install -r requirements.txt
 
-onnx_export:
+export:
 	. venv/bin/activate; pip install -r requirements_export.txt
 
 clean:

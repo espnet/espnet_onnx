@@ -10,6 +10,10 @@ Utility library to easily export, quantize, and optimize espnet models to onnx f
 There is no need to install PyTorch or ESPnet on your machine if you already have exported files!
 
 
+## espnet_onnx demo in Colab
+Now demonstration notebook is available in google colab!
+- Simple ASR demo: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/espnet/espnet_onnx/blob/master/demo/simple_asr_demo.ipynb)
+- Simple TTS demo: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/espnet/espnet_onnx/blob/master/demo/tts_onnx_demo.ipynb)
 
 ## Install
 
@@ -22,6 +26,53 @@ pip install espnet_onnx
 2. If you want to export pretrained model, you need to install `torch>=1.11.0`, `espnet`, `espnet_model_zoo`, `onnx` additionally.
 `onnx==1.12.0` might cause some errors. If you got an error while inference or exporting, please consider downgrading the onnx version.
 
+
+#### Install guide for developers
+
+1. Clone this repository.
+
+```shell
+git clone git@github.com:espnet/espnet_onnx.git
+```
+
+2. Create virtual environment.
+
+```shell
+cd tools
+make venv export
+```
+
+3. Activate virtual environment and install torch if required.
+
+```shell
+. tools/venv/bin/activate
+
+# Please reference official installation guide of PyTorch.
+pip install torch
+```
+
+4. Clone the s3prl repository and install with pip.
+
+```shell
+cd tools
+git clone https://github.com/s3prl/s3prl
+cd s3prl
+pip install .
+```
+
+5. Install warp_transducer for developing transducer model.
+
+```shell
+cd tools
+git clone --single-branch --branch espnet_v1.1 https://github.com/b-flo/warp-transducer.git
+cd warp-transducer
+mkdir build
+# Please set WITH_OMP to ON or OFF.
+cd build && cmake -DWITH_OMP="ON" .. && make
+cd pytorch_binding && python3 -m pip install -e .
+```
+
+6. If you want to develop optimization, you also need to develop onnxruntime. Please clone the onnxruntime repository.
 
 
 ## Usage
@@ -75,7 +126,7 @@ m.export_from_zip(
 )
 ```
 
-4. You can easily optimize your model by using the `optimize` option. If you want to fully optimize your model, you need to install the custom version of onnxruntime from [here](https://github.com/Masao-Someki/espnet_onnx/releases/download/custom_ort_v1.11.1-espnet_onnx/onnxruntime-1.11.1_espnet_onnx-cp38-cp38-linux_x86_64.whl). Please read [this document](./docs/Optimization.md) for more detail.
+1. You can easily optimize your model by using the `optimize` option. If you want to fully optimize your model, you need to install the custom version of onnxruntime from [here](https://github.com/espnet/espnet_onnx/releases/download/custom_ort_v1.11.1-espnet_onnx/onnxruntime-1.11.1_espnet_onnx-cp38-cp38-linux_x86_64.whl). Please read [this document](./docs/Optimization.md) for more detail.
 
 ```python
 from espnet_onnx.export import ASRModelExport
