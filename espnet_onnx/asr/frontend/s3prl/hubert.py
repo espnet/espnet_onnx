@@ -1,14 +1,8 @@
-from typing import (
-    Union,
-    List
-)
-from pathlib import Path
+from typing import List
 
 import numpy as np
 import onnxruntime
 
-from espnet_onnx.asr.frontend.default.stft import Stft
-from espnet_onnx.asr.frontend.default.logmel import LogMel
 from espnet_onnx.utils.config import Config
 
 
@@ -29,21 +23,17 @@ class HubertFrontend:
         self.config = config
         if use_quantized:
             self.frontend = onnxruntime.InferenceSession(
-                self.config.quantized_model_path,
-                providers=providers
+                self.config.quantized_model_path, providers=providers
             )
         else:
             self.frontend = onnxruntime.InferenceSession(
-                self.config.model_path,
-                providers=providers
+                self.config.model_path, providers=providers
             )
-        self.output_names = ['feats', 'feats_lens']
+        self.output_names = ["feats", "feats_lens"]
 
     def __call__(self, inputs: np.ndarray, input_length: np.ndarray):
         input_dic = {
-            'wav': inputs,
+            "wav": inputs,
         }
-        feats, feat_length = self.frontend.run(
-            self.output_names, input_dic
-        )
+        feats, feat_length = self.frontend.run(self.output_names, input_dic)
         return feats, feat_length

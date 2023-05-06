@@ -3,5 +3,5 @@ decoder_conf:
     rnn_type: lstm
     num_layers: 1
     hidden_size: 256
-    dropout: 0.1
-    dropout_embed: 0.1
+    dropout: 0.0
+    dropout_embed: 0.0

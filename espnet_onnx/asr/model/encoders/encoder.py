@@ -1,19 +1,13 @@
-from typing import (
-    Tuple,
-    List
-)
+from typing import List, Tuple
 
-import onnxruntime
 import numpy as np
+import onnxruntime
 
 from espnet_onnx.asr.frontend.frontend import Frontend
 from espnet_onnx.asr.frontend.normalize.global_mvn import GlobalMVN
 from espnet_onnx.asr.frontend.normalize.utterance_mvn import UtteranceMVN
-from espnet_onnx.utils.function import (
-    make_pad_mask,
-    mask_fill
-)
 from espnet_onnx.utils.config import Config
+from espnet_onnx.utils.function import make_pad_mask, mask_fill
 
 
 class Encoder:
@@ -28,20 +22,18 @@ class Encoder:
         # then the quantized model should be optimized.
         if use_quantized:
             self.encoder = onnxruntime.InferenceSession(
-                self.config.quantized_model_path,
-                providers=providers
+                self.config.quantized_model_path, providers=providers
             )
         else:
             self.encoder = onnxruntime.InferenceSession(
-                self.config.model_path,
-                providers=providers
+                self.config.model_path, providers=providers
             )
 
         self.frontend = Frontend(self.config.frontend, providers, use_quantized)
         if self.config.do_normalize:
-            if self.config.normalize.type == 'gmvn':
+            if self.config.normalize.type == "gmvn":
                 self.normalize = GlobalMVN(self.config.normalize)
-            elif self.config.normalize.type == 'utterance_mvn':
+            elif self.config.normalize.type == "utterance_mvn":
                 self.normalize = UtteranceMVN(self.config.normalize)
 
         # if self.config.do_preencoder:
@@ -66,8 +58,7 @@ class Encoder:
             feats, feat_length = self.normalize(feats, feat_length)
 
         # 3. forward encoder
-        encoder_out, encoder_out_lens = \
-            self.forward_encoder(feats, feat_length)
+        encoder_out, encoder_out_lens = self.forward_encoder(feats, feat_length)
         encoder_out = self.mask_output(encoder_out, encoder_out_lens)
 
         # if self.config.do_postencoder:
@@ -83,13 +74,13 @@ class Encoder:
         return feats, feat_length
 
     def forward_encoder(self, feats, feat_length):
-        encoder_out, encoder_out_lens = \
-            self.encoder.run(["encoder_out", "encoder_out_lens"], {
-                "feats": feats
-            })
-        
-        if self.config.enc_type == 'RNNEncoder':
-            encoder_out = mask_fill(encoder_out, make_pad_mask(
-                feat_length, encoder_out, 1), 0.0)
+        encoder_out, encoder_out_lens = self.encoder.run(
+            ["encoder_out", "encoder_out_lens"], {"feats": feats}
+        )
+
+        if self.config.enc_type == "RNNEncoder":
+            encoder_out = mask_fill(
+                encoder_out, make_pad_mask(feat_length, encoder_out, 1), 0.0
+            )
 
         return encoder_out, encoder_out_lens

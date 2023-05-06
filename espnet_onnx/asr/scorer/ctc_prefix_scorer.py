@@ -1,20 +1,13 @@
-import six
-
-from typing import (
-    Any,
-    List,
-    Tuple
-)
-from typeguard import check_argument_types
+from typing import List
 
 import numpy as np
 import onnxruntime
-from scipy.special import (
-    logsumexp,
-    log_softmax
-)
+import six
+from scipy.special import log_softmax, logsumexp
+from typeguard import check_argument_types
 
 from espnet_onnx.utils.config import Config
+
 from .interface import BatchPartialScorerInterface
 
 
@@ -42,8 +35,7 @@ class CTCPrefixScore:
         # initial CTC state is made of a frame x 2 tensor that corresponds to
         # r_t^n(<sos>) and r_t^b(<sos>), where 0 and 1 of axis=1 represent
         # superscripts n and b (non-blank and blank), respectively.
-        r = self.xp.full((self.input_length, 2),
-                         self.logzero, dtype=np.float32)
+        r = self.xp.full((self.input_length, 2), self.logzero, dtype=np.float32)
         r[0, 1] = self.x[0, self.blank]
         for i in six.moves.range(1, self.input_length):
             r[i, 1] = r[i - 1, 1] + self.x[i, self.blank]
@@ -74,8 +66,7 @@ class CTCPrefixScore:
         )  # log(r_t^n(g) + r_t^b(g))
         last = y[-1]
         if output_length > 0 and last in cs:
-            log_phi = self.xp.ndarray(
-                (self.input_length, len(cs)), dtype=np.float32)
+            log_phi = self.xp.ndarray((self.input_length, len(cs)), dtype=np.float32)
             for i in six.moves.range(len(cs)):
                 log_phi[:, i] = r_sum if cs[i] != last else r_prev[:, 1]
         else:
@@ -88,8 +79,7 @@ class CTCPrefixScore:
         for t in six.moves.range(start, self.input_length):
             r[t, 0] = self.xp.logaddexp(r[t - 1, 0], log_phi[t - 1]) + xs[t]
             r[t, 1] = (
-                self.xp.logaddexp(r[t - 1, 0], r[t - 1, 1]
-                                  ) + self.x[t, self.blank]
+                self.xp.logaddexp(r[t - 1, 0], r[t - 1, 1]) + self.x[t, self.blank]
             )
             log_psi = self.xp.logaddexp(log_psi, log_phi[t - 1] + xs[t])
 
@@ -111,7 +101,9 @@ class CTCPrefixScore:
 class CTCPrefixScorer(BatchPartialScorerInterface):
     """Decoder interface wrapper for CTCPrefixScore."""
 
-    def __init__(self, ctc: Config, eos: int, providers: List[str], use_quantized: bool = False):
+    def __init__(
+        self, ctc: Config, eos: int, providers: List[str], use_quantized: bool = False
+    ):
         """Initialize class.
         Args:
             ctc (np.ndarray): The CTC implementation.
@@ -121,14 +113,10 @@ class CTCPrefixScorer(BatchPartialScorerInterface):
         assert check_argument_types()
         if use_quantized:
             self.ctc = onnxruntime.InferenceSession(
-                ctc.quantized_model_path,
-                providers=providers
+                ctc.quantized_model_path, providers=providers
             )
         else:
-            self.ctc = onnxruntime.InferenceSession(
-                ctc.model_path,
-                providers=providers
-            )
+            self.ctc = onnxruntime.InferenceSession(ctc.model_path, providers=providers)
         self.eos = eos
         self.impl = None
 
@@ -180,9 +168,7 @@ class CTCPrefixScorer(BatchPartialScorerInterface):
         """
         prev_score, state = state
         presub_score, new_st = self.impl(y, ids, state)
-        tscore = np.array(
-            presub_score - prev_score, dtype=x.dtype
-        )
+        tscore = np.array(presub_score - prev_score, dtype=x.dtype)
         return tscore, (presub_score, new_st)
 
     def batch_init_state(self, x: np.ndarray):
@@ -218,7 +204,7 @@ class CTCPrefixScorer(BatchPartialScorerInterface):
         else:
             batch_state = None
         return self.impl(y, batch_state, ids)
-    
+
     def extend_prob(self, x: np.ndarray):
         """Extend probs for decoding.
 
@@ -262,7 +248,9 @@ class CTCPrefixScoreTH:
     Speech Recognition," In INTERSPEECH (pp. 3825-3829), 2019.
     """
 
-    def __init__(self, x: np.ndarray, xlens: np.ndarray, blank: int, eos: int, margin: int = 0):
+    def __init__(
+        self, x: np.ndarray, xlens: np.ndarray, blank: int, eos: int, margin: int = 0
+    ):
         """Construct CTC prefix scorer
         :param np.ndarray x: input label posterior sequences (B, T, O)
         :param np.ndarray xlens: input lengths (B,)
@@ -297,9 +285,7 @@ class CTCPrefixScoreTH:
         # Setup CTC windowing
         self.margin = margin
         if margin > 0:
-            self.frame_ids = np.arange(
-                self.input_length, dtype=self.dtype
-            )
+            self.frame_ids = np.arange(self.input_length, dtype=self.dtype)
         # Base indices for index conversion
         self.idx_bh = None
         self.idx_b = np.arange(self.batch)
@@ -325,8 +311,7 @@ class CTCPrefixScoreTH:
                 self.logzero,
                 dtype=self.dtype,
             )
-            r_prev[:, 1] = np.cumsum(self.x[0, :, :, self.blank], 0)[
-                :, :, None]
+            r_prev[:, 1] = np.cumsum(self.x[0, :, :, self.blank], 0)[:, :, None]
             r_prev = r_prev.reshape(-1, 2, n_bh)
             s_prev = 0.0
             f_min_prev = 0
@@ -336,9 +321,7 @@ class CTCPrefixScoreTH:
 
         # select input dimensions for scoring
         if self.scoring_num > 0:
-            scoring_idmap = np.full(
-                (n_bh, self.odim), -1, dtype=np.int64
-            )
+            scoring_idmap = np.full((n_bh, self.odim), -1, dtype=np.int64)
             snum = self.scoring_num
             if self.idx_bh is None or n_bh > len(self.idx_bh):
                 self.idx_bh = np.arange(n_bh).reshape(-1, 1)
@@ -353,16 +336,11 @@ class CTCPrefixScoreTH:
             scoring_ids = None
             scoring_idmap = None
             snum = self.odim
-            x_ = self.x[:, :, :, None].repeat(
-                n_hyps, axis=3).reshape(2, -1, n_bh, snum)
+            x_ = self.x[:, :, :, None].repeat(n_hyps, axis=3).reshape(2, -1, n_bh, snum)
 
         # new CTC forward probs are prepared as a (T x 2 x BW x S) tensor
         # that corresponds to r_t^n(h) and r_t^b(h) in a batch.
-        r = np.full(
-            (self.input_length, 2, n_bh, snum),
-            self.logzero,
-            dtype=self.dtype
-        )
+        r = np.full((self.input_length, 2, n_bh, snum), self.logzero, dtype=self.dtype)
         if output_length == 0:
             r[0, 0] = x_[0, 0]
 
@@ -392,21 +370,19 @@ class CTCPrefixScoreTH:
         # compute forward probabilities log(r_t^n(h)) and log(r_t^b(h))
         for t in range(start, end):
             rp = r[t - 1]
-            rr = np.concatenate([rp[0:1], log_phi[t - 1:t], rp[0:1], rp[1:2]]).reshape(
-                2, 2, n_bh, snum
-            )
+            rr = np.concatenate(
+                [rp[0:1], log_phi[t - 1 : t], rp[0:1], rp[1:2]]
+            ).reshape(2, 2, n_bh, snum)
             r[t] = logsumexp(rr, 1) + x_[:, t]
 
         # compute log prefix probabilities log(psi)
-        log_phi_x = np.concatenate(
-            (log_phi[0][None, :], log_phi[:-1]), axis=0) + x_[0]
+        log_phi_x = np.concatenate((log_phi[0][None, :], log_phi[:-1]), axis=0) + x_[0]
         if scoring_ids is not None:
-            log_psi = np.full(
-                (n_bh, self.odim), self.logzero, dtype=self.dtype
-            )
+            log_psi = np.full((n_bh, self.odim), self.logzero, dtype=self.dtype)
             log_psi_ = logsumexp(
                 np.concatenate(
-                    (log_phi_x[start:end], r[start - 1, 0][None, :]), axis=0),
+                    (log_phi_x[start:end], r[start - 1, 0][None, :]), axis=0
+                ),
                 axis=0,
             )
             for si in range(n_bh):
@@ -414,7 +390,8 @@ class CTCPrefixScoreTH:
         else:
             log_psi = logsumexp(
                 np.concatenate(
-                    (log_phi_x[start:end], r[start - 1, 0][None, :]), axis=0),
+                    (log_phi_x[start:end], r[start - 1, 0][None, :]), axis=0
+                ),
                 axis=0,
             )
 
@@ -436,18 +413,18 @@ class CTCPrefixScoreTH:
         # convert ids to BHO space
         n_bh = len(s)
         n_hyps = n_bh // self.batch
-        vidx = (best_ids + (self.idx_b * (n_hyps * self.odim)
-                            ).reshape(-1, 1)).reshape(-1)
+        vidx = (best_ids + (self.idx_b * (n_hyps * self.odim)).reshape(-1, 1)).reshape(
+            -1
+        )
         # select hypothesis scores
         s_new = np.take(s.reshape(-1), vidx, axis=0)
-        s_new = s_new.reshape(-1, 1).repeat(self.odim,
-                                            axis=1).reshape(n_bh, self.odim)
+        s_new = s_new.reshape(-1, 1).repeat(self.odim, axis=1).reshape(n_bh, self.odim)
         # convert ids to BHS space (S: scoring_num)
         if scoring_idmap is not None:
             snum = self.scoring_num
-            hyp_idx = (best_ids // self.odim + (self.idx_b * n_hyps).reshape(-1, 1)).reshape(
-                -1
-            )
+            hyp_idx = (
+                best_ids // self.odim + (self.idx_b * n_hyps).reshape(-1, 1)
+            ).reshape(-1)
             label_ids = np.fmod(best_ids, self.odim).reshape(-1)
             score_idx = scoring_idmap[hyp_idx, label_ids]
             score_idx[score_idx == -1] = 0
@@ -500,7 +477,6 @@ class CTCPrefixScoreTH:
             start = max(r_prev.shape[0], 1)
             r_prev_new[0:start] = r_prev
             for t in six.moves.range(start, self.input_length):
-                r_prev_new[t, 1] = r_prev_new[t - 1, 1] + \
-                    self.x[0, t, :, self.blank]
+                r_prev_new[t, 1] = r_prev_new[t - 1, 1] + self.x[0, t, :, self.blank]
 
             return (r_prev_new, s_prev, f_min_prev, f_max_prev)

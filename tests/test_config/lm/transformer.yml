@@ -1,7 +1,7 @@
 lm: transformer
 lm_conf:
   att_unit: 256
-  dropout_rate: 0.1
+  dropout_rate: 0.0
   embed_unit: 128
   head: 4
   layer: 3

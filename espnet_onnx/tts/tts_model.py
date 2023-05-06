@@ -1,31 +1,22 @@
-from typing import (
-    Union,
-    Dict,
-    List
-)
 from pathlib import Path
-from typeguard import check_argument_types
+from typing import Dict, List, Union
 
 import numpy as np
-import onnxruntime
+from typeguard import check_argument_types
 
-from .abs_tts_model import AbsTTSModel
-from espnet_onnx.tts.model.preprocess.common_processor import CommonPreprocessor
-from espnet_onnx.tts.model.duration_calculator import DurationCalculator
-from espnet_onnx.tts.model.tts_model import get_tts_model
+from espnet_onnx.tts.abs_tts_model import AbsTTSModel
 
 
 class Text2Speech(AbsTTSModel):
-    """Wrapper class for espnet2.asr.bin.tts_inference.Text2Speech
+    """Wrapper class for espnet2.asr.bin.tts_inference.Text2Speech"""
 
-    """
-
-    def __init__(self,
-                 tag_name: str = None,
-                 model_dir: Union[Path, str] = None,
-                 providers: List[str] = ['CPUExecutionProvider'],
-                 use_quantized: bool = False,
-                 ):
+    def __init__(
+        self,
+        tag_name: str = None,
+        model_dir: Union[Path, str] = None,
+        providers: List[str] = ["CPUExecutionProvider"],
+        use_quantized: bool = False,
+    ):
         assert check_argument_types()
         self._check_argument(tag_name, model_dir)
         self._load_config()
@@ -34,14 +25,17 @@ class Text2Speech(AbsTTSModel):
         self._check_ort_version(providers)
 
         # check if there is quantized model if use_quantized=True
-        if self.config.tts_model.model_type == 'Tacotron2':
-            if use_quantized and 'quantized_model_path' not in self.config.tts_model.encoder.keys():
-                raise RuntimeError(
-                'Configuration for quantized model is not defined.')
-        elif use_quantized and 'quantized_model_path' not in self.config.tts_model.keys():
+        if self.config.tts_model.model_type == "Tacotron2":
+            if (
+                use_quantized
+                and "quantized_model_path" not in self.config.tts_model.encoder.keys()
+            ):
+                raise RuntimeError("Configuration for quantized model is not defined.")
+        elif (
+            use_quantized and "quantized_model_path" not in self.config.tts_model.keys()
+        ):
             # check if quantized model config is defined.
-            raise RuntimeError(
-                'Configuration for quantized model is not defined.')
+            raise RuntimeError("Configuration for quantized model is not defined.")
 
         self._build_model(providers, use_quantized)
 
@@ -51,7 +45,7 @@ class Text2Speech(AbsTTSModel):
         feats: np.ndarray = None,
         sids: np.ndarray = None,
         spembs: np.ndarray = None,
-        lids:  np.ndarray = None,
+        lids: np.ndarray = None,
     ) -> Dict[str, np.ndarray]:
         """Inference
 
@@ -89,14 +83,13 @@ class Text2Speech(AbsTTSModel):
         # preprocess text
         text = self.preprocess(text)
         output_dict = self.tts_model(text, **options)
-        
+
         # postprocess
         if output_dict.get("feat_gen") is not None:
-            output_dict['feat_gen'] = self.postprocess(output_dict['feat_gen'])
+            output_dict["feat_gen"] = self.postprocess(output_dict["feat_gen"])
 
         if output_dict.get("att_w") is not None:
-            duration, focus_rate = self.duration_calculator(
-                output_dict["att_w"])
+            duration, focus_rate = self.duration_calculator(output_dict["att_w"])
             output_dict.update(duration=duration, focus_rate=focus_rate)
 
         # vocoder is currently not supported.

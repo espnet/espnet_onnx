@@ -1,16 +1,9 @@
-from typing import List
-from typing import Any
-from typing import Tuple
-from typing import Optional
-from typing import Dict
-from typing import Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import onnxruntime
 
 from espnet_onnx.asr.scorer.interface import BatchScorerInterface
-from espnet_onnx.asr.beam_search.hyps import TransducerHypothesis
-from espnet_onnx.utils.function import subsequent_mask
 from espnet_onnx.utils.config import Config
 
 
@@ -40,10 +33,12 @@ class XformerDecoder(BatchScorerInterface):
         self.config = config
         self.n_layers = config.n_layers
         self.odim = config.odim
-        self.in_caches = [d.name for d in self.decoder.get_inputs()
-                          if 'cache' in d.name]
-        self.out_caches = [d.name for d in self.decoder.get_outputs()
-                           if 'cache' in d.name]
+        self.in_caches = [
+            d.name for d in self.decoder.get_inputs() if "cache" in d.name
+        ]
+        self.out_caches = [
+            d.name for d in self.decoder.get_outputs() if "cache" in d.name
+        ]
 
     def batch_score(
         self, ys: np.ndarray, states: List[Any], xs: np.ndarray
@@ -64,13 +59,11 @@ class XformerDecoder(BatchScorerInterface):
             ys = ys[None, :]
 
         n_batch = len(ys)
-        is_first_iteration = False
         if states[0] is None:
             batch_state = [
                 np.zeros((1, 1, self.odim), dtype=np.float32)
                 for _ in range(self.n_layers)
             ]
-            is_first_iteration = True
         else:
             # transpose state of [batch, layer] into [layer, batch]
             batch_state = [
@@ -80,27 +73,25 @@ class XformerDecoder(BatchScorerInterface):
 
         # batch decoding
         input_dict = self.get_input_dict(ys, xs, batch_state)
-        
-        logp, *states = self.decoder.run(
-            ['y'] + self.out_caches,
-            input_dict
-        )
-        
-        # if first iteration, remove the first row
-        if is_first_iteration:
-            states = [states[i][:, -1:] for i in range(len(states))]
+
+        logp, *states = self.decoder.run(["y"] + self.out_caches, input_dict)
+
+        if type(self.n_layers) == 1:
+            states = [states]
 
         # transpose state of [layer, batch] into [batch, layer]
-        state_list = [[states[i][b]
-                       for i in range(self.n_layers)] for b in range(n_batch)]
+        state_list = [
+            [states[i][b] for i in range(self.n_layers)] for b in range(n_batch)
+        ]
 
         return logp, state_list
 
     def get_input_dict(self, ys, xs, state):
-        in_names = [d.name for d in self.decoder.get_inputs() if 'cache' not in d.name]
+        in_names = [d.name for d in self.decoder.get_inputs() if "cache" not in d.name]
         ret = {}
-        if 'tgt' in in_names: ret.update(tgt=ys.astype(np.int64))
-        if 'memory' in in_names: ret.update(memory=xs)
-        ret.update(
-            {k: v for (k, v) in zip(self.in_caches, state)})
+        if "tgt" in in_names:
+            ret.update(tgt=ys.astype(np.int64))
+        if "memory" in in_names:
+            ret.update(memory=xs)
+        ret.update({k: v for (k, v) in zip(self.in_caches, state)})
         return ret

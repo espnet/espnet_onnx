@@ -1,0 +1,19 @@
+tag_name: conformer
+optimization:
+  CPU:
+  Quantize:
+use_ort_for_espnet: false
+check_optimize:
+check_export:
+  - encoder
+  - decoder
+  - ctc
+  - lm
+device:
+  - CPU
+  - Quantize
+model_config:
+  asr_train_config: /home/circleci/espnet_onnx/tests/test_config/integration/model_config/cfm_ctc_att.yaml
+  use_transducer: true
+  use_lm: true
+  lm_train_config: /home/circleci/espnet_onnx/tests/test_config/integration/model_config/transformer_lm.yaml

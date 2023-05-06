@@ -44,11 +44,11 @@ tts_conf:
     segment_size: 32
     spks: -1
     stochastic_duration_predictor_dds_conv_layers: 1
-    stochastic_duration_predictor_dropout_rate: 0.5
+    stochastic_duration_predictor_dropout_rate: 0.0
     stochastic_duration_predictor_flows: 4
     stochastic_duration_predictor_kernel_size: 3
     text_encoder_activation_type: swish
-    text_encoder_attention_dropout_rate: 0.1
+    text_encoder_attention_dropout_rate: 0.0
     text_encoder_attention_heads: 2
     text_encoder_blocks: 1
     text_encoder_conformer_kernel_size: -1

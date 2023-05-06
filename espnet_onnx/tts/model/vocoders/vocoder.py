@@ -1,12 +1,8 @@
-from typing import (
-    Optional,
-    Tuple,
-    List,
-    Dict,
-)
+from typing import List
 
-import onnxruntime
 import numpy as np
+import onnxruntime
+
 from espnet_onnx.utils.config import Config
 
 
@@ -20,18 +16,13 @@ class Vocoder:
         self.config = config
         if use_quantized:
             self.model = onnxruntime.InferenceSession(
-                self.config.quantized_model_path,
-                providers=providers
+                self.config.quantized_model_path, providers=providers
             )
         else:
             self.model = onnxruntime.InferenceSession(
-                self.config.model_path,
-                providers=providers
+                self.config.model_path, providers=providers
             )
 
-    def __call__(
-        self,
-        c: np.ndarray
-    ):
-        input_dict = {'c': c}
-        return self.model.run(['wav'], input_dict)[0]
+    def __call__(self, c: np.ndarray):
+        input_dict = {"c": c}
+        return self.model.run(["wav"], input_dict)[0]

@@ -1,4 +1,3 @@
-model_dir: /home/circleci/models/librispeech_conformer_hop_length160.tgz
 tag_name: conformer
 optimization:
   CPU:
@@ -13,3 +12,8 @@ check_export:
 device:
   - CPU
   - Quantize
+model_config:
+  asr_train_config: /home/circleci/espnet_onnx/tests/test_config/integration/model_config/cfm_ctc_att.yaml
+  use_transducer: false
+  use_lm: true
+  lm_train_config: /home/circleci/espnet_onnx/tests/test_config/integration/model_config/transformer_lm.yaml

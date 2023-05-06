@@ -1,14 +1,10 @@
 from typing import Tuple
-from typeguard import check_argument_types
 
-import numpy as np
 import librosa
+import numpy as np
 
-from espnet_onnx.utils.function import (
-    make_pad_mask,
-    mask_fill
-)
 from espnet_onnx.utils.config import Config
+from espnet_onnx.utils.function import make_pad_mask, mask_fill
 
 
 class LogMel:
@@ -24,10 +20,7 @@ class LogMel:
         config.htk: use HTK formula instead of Slaney
     """
 
-    def __init__(
-        self,
-        config: Config
-    ):
+    def __init__(self, config: Config):
         fmin = 0 if config.fmin is None else config.fmin
         fmax = fs / 2 if config.fmax is None else config.fmax
         _mel_options = dict(
@@ -53,7 +46,7 @@ class LogMel:
     ) -> Tuple[np.ndarray, np.ndarray]:
         # feat: (B, T, D1) x melmat: (D1, D2) -> mel_feat: (B, T, D2)
         mel_feat = np.matmul(feat, self.melmat)
-        mel_feat = np.clip(mel_feat, 1e-10, float('inf'))
+        mel_feat = np.clip(mel_feat, 1e-10, float("inf"))
 
         if self.log_base is None:
             logmel_feat = np.log(mel_feat)
@@ -65,6 +58,5 @@ class LogMel:
             logmel_feat = np.log(mel_feat) / np.log(self.log_base)
 
         # Zero padding
-        logmel_feat = mask_fill(
-            logmel_feat, make_pad_mask(ilens, logmel_feat, 1), 0.0)
+        logmel_feat = mask_fill(logmel_feat, make_pad_mask(ilens, logmel_feat, 1), 0.0)
         return logmel_feat, ilens

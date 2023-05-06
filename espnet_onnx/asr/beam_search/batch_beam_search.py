@@ -1,21 +1,13 @@
 """Parallel beam search module."""
 
 import logging
-from typing import (
-    Any,
-    Dict,
-    List,
-    Tuple
-)
+from typing import Any, Dict, List, Tuple
+
 import numpy as np
 
-from espnet_onnx.utils.function import (
-    pad_sequence,
-    topk
-)
-from .beam_search import BeamSearch
-from .hyps import Hypothesis
-from .hyps import BatchHypothesis
+from espnet_onnx.asr.beam_search.beam_search import BeamSearch
+from espnet_onnx.asr.beam_search.hyps import BatchHypothesis, Hypothesis
+from espnet_onnx.utils.function import pad_sequence, topk
 
 
 class BatchBeamSearch(BeamSearch):
@@ -31,8 +23,7 @@ class BatchBeamSearch(BeamSearch):
             ),
             length=np.array([len(h.yseq) for h in hyps], dtype=np.int64),
             score=np.array([h.score for h in hyps]),
-            scores={k: np.array([h.scores[k] for h in hyps])
-                    for k in self.scorers},
+            scores={k: np.array([h.scores[k] for h in hyps]) for k in self.scorers},
             states={k: [h.states[k] for h in hyps] for k in self.scorers},
         )
 
@@ -188,11 +179,11 @@ class BatchBeamSearch(BeamSearch):
         n_batch = len(running_hyps)
         part_ids = None  # no pre-beam
         # batch scoring
-        weighted_scores = np.zeros(
-            (n_batch, self.n_vocab), dtype=x.dtype
+        weighted_scores = np.zeros((n_batch, self.n_vocab), dtype=x.dtype)
+        scores, states = self.score_full(
+            running_hyps,
+            np.vstack([x for _ in range(n_batch)]).reshape(n_batch, *x.shape),
         )
-        scores, states = self.score_full(running_hyps, np.vstack(
-            [x for _ in range(n_batch)]).reshape(n_batch, *x.shape))
         for k in self.full_scorers:
             weighted_scores += self.weights[k] * scores[k]
         # partial scoring
@@ -203,8 +194,7 @@ class BatchBeamSearch(BeamSearch):
                 else scores[self.pre_beam_score_key]
             )
             part_ids = topk(pre_beam_scores, self.pre_beam_size)
-        part_scores, part_states = self.score_partial(
-            running_hyps, part_ids, x)
+        part_scores, part_states = self.score_partial(running_hyps, part_ids, x)
         for k in self.part_scorers:
             weighted_scores += self.weights[k] * part_scores[k]
         # add previous hyp scores
@@ -227,14 +217,12 @@ class BatchBeamSearch(BeamSearch):
                         prev_hyp.scores,
                         {k: v[full_prev_hyp_id] for k, v in scores.items()},
                         full_new_token_id,
-                        {k: v[part_prev_hyp_id]
-                            for k, v in part_scores.items()},
+                        {k: v[part_prev_hyp_id] for k, v in part_scores.items()},
                         part_new_token_id,
                     ),
                     states=self.merge_states(
                         {
-                            k: self.full_scorers[k].select_state(
-                                v, full_prev_hyp_id)
+                            k: self.full_scorers[k].select_state(v, full_prev_hyp_id)
                             for k, v in states.items()
                         },
                         {
@@ -273,7 +261,7 @@ class BatchBeamSearch(BeamSearch):
                 + "".join(
                     [
                         self.token_list[int(x)]
-                        for x in running_hyps.yseq[0, 1: running_hyps.length[0]]
+                        for x in running_hyps.yseq[0, 1 : running_hyps.length[0]]
                     ]
                 )
             )
@@ -298,8 +286,9 @@ class BatchBeamSearch(BeamSearch):
         # add ended hypotheses to a final list, and removed them from current hypotheses
         # (this will be a probmlem, number of hyps < beam)
         is_eos = (
-            running_hyps.yseq[np.arange(
-                n_batch), (running_hyps.length - 1).astype(np.int64)]
+            running_hyps.yseq[
+                np.arange(n_batch), (running_hyps.length - 1).astype(np.int64)
+            ]
             == self.eos
         )
         for b in np.transpose(np.nonzero(is_eos)).reshape(-1):

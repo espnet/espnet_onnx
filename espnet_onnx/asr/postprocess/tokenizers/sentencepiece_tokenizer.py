@@ -1,10 +1,8 @@
-from typing import Iterable
-from typing import List
-from typing import Union
 from pathlib import Path
-from typeguard import check_argument_types
+from typing import Iterable, List, Union
 
 import sentencepiece as spm
+from typeguard import check_argument_types
 
 
 class SentencepiecesTokenizer:

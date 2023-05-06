@@ -1,16 +1,11 @@
-from typing import (
-    Union,
-    List
-)
-from pathlib import Path
+from typing import List
 
 import numpy as np
-import onnxruntime
 
 from espnet_onnx.asr.frontend.default.default_frontend import DefaultFrontend
 from espnet_onnx.asr.frontend.s3prl.hubert import HubertFrontend
-
 from espnet_onnx.utils.config import Config
+
 
 class Frontend:
     """Default frontend module.
@@ -28,9 +23,9 @@ class Frontend:
         torch_input: bool = False,
     ):
         self.torch_input = torch_input
-        if config.frontend_type == 'default':
+        if config.frontend_type == "default":
             self.frontend = DefaultFrontend(config, providers, use_quantized)
-        elif config.frontend_type == 'hubert':
+        elif config.frontend_type == "hubert":
             self.frontend = HubertFrontend(config, providers, use_quantized)
         else:
             raise ValueError("Unknown frontend type")

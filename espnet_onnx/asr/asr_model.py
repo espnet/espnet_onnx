@@ -1,47 +1,40 @@
-from typing import Union
-from typing import List
-from typing import Tuple
-from typing import Optional
 from pathlib import Path
-from typeguard import check_argument_types
-import warnings
+from typing import List, Optional, Tuple, Union
 
-import os
-import logging
 import numpy as np
-import onnxruntime
+from typeguard import check_argument_types
 
 from espnet_onnx.asr.abs_asr_model import AbsASRModel
 from espnet_onnx.asr.beam_search.hyps import Hypothesis
 
 
-
 class Speech2Text(AbsASRModel):
-    """Wrapper class for espnet2.asr.bin.asr_infer.Speech2Text
+    """Wrapper class for espnet2.asr.bin.asr_infer.Speech2Text"""
 
-    """
-
-    def __init__(self,
-                 tag_name: str = None,
-                 model_dir: Union[Path, str] = None,
-                 providers: List[str] = ['CPUExecutionProvider'],
-                 use_quantized: bool = False,
-                 ):
+    def __init__(
+        self,
+        tag_name: str = None,
+        model_dir: Union[Path, str] = None,
+        providers: List[str] = ["CPUExecutionProvider"],
+        use_quantized: bool = False,
+    ):
         assert check_argument_types()
         self._check_argument(tag_name, model_dir)
         self._load_config()
-        
+
         # check onnxruntime version and providers
         self._check_ort_version(providers)
-        
+
         # check if model is exported for streaming.
-        if self.config.encoder.enc_type == 'ContextualXformerEncoder':
-            raise RuntimeError('Onnx model is built for streaming. Use StreamingSpeech2Text instead.')
+        if self.config.encoder.enc_type == "ContextualXformerEncoder":
+            raise RuntimeError(
+                "Onnx model is built for streaming. Use StreamingSpeech2Text instead."
+            )
 
         # check quantize and optimize model
         self._check_flags(use_quantized)
         self._build_model(providers, use_quantized)
-        
+
         if self.config.transducer.use_transducer_decoder:
             self.start_idx = 1
             self.last_idx = None
@@ -49,15 +42,9 @@ class Speech2Text(AbsASRModel):
             self.start_idx = 1
             self.last_idx = -1
 
-
-    def __call__(self, speech: np.ndarray) -> List[
-        Tuple[
-            Optional[str],
-            List[str],
-            List[int],
-            Union[Hypothesis],
-        ]
-    ]:
+    def __call__(
+        self, speech: np.ndarray
+    ) -> List[Tuple[Optional[str], List[str], List[int], Union[Hypothesis],]]:
         """Inference
         Args:
             data: Input speech data
@@ -89,8 +76,8 @@ class Speech2Text(AbsASRModel):
             if self.last_idx is not None:
                 token_int = list(hyp.yseq[self.start_idx : self.last_idx])
             else:
-                token_int = list(hyp.yseq[self.start_idx:])
-                
+                token_int = list(hyp.yseq[self.start_idx :])
+
             # remove blank symbol id, which is assumed to be 0
             token_int = list([int(i) for i in filter(lambda x: x != 0, token_int)])
 

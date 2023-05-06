@@ -22,7 +22,7 @@ tts_conf:                        # keyword arguments for the selected model
     use_batch_norm: true         # whether to use batch normalization in encoder
     use_concate: true            # whether to concatenate encoder embedding with decoder outputs
     use_residual: false          # whether to use residual connection in encoder
-    dropout_rate: 0.5            # dropout rate
+    dropout_rate: 0.0            # dropout rate
     zoneout_rate: 0.1            # zoneout rate
     reduction_factor: 1          # reduction factor
     spk_embed_dim: null          # speaker embedding dimension

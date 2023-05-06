@@ -1,6 +1,5 @@
 from setuptools import find_packages, setup
 
-
 requirements = {
     "install": [
         "setuptools>=38.5.1",
@@ -11,19 +10,16 @@ requirements = {
         "PyYAML>=5.1.2",
         "g2p-en",
         "jamo==0.4.1",  # For kss
-        "numpy<=1.21.3",
-        "espnet_tts_frontend" # required for TTS preprocess.
+        "six",
+        "numpy",
+        "espnet_tts_frontend",  # required for TTS preprocess.
     ],
-    "test": [
-        "torch>=1.11.0",
-        "espnet",
-        "pytest"
-    ]
+    "test": ["torch>=1.11.0", "espnet", "pytest"],
 }
 
 setup(
     name="espnet_onnx",
-    version="0.1.9",
+    version="0.1.10",
     url="https://github.com/Masao-Someki/espnet_onnx",
     author="Masao Someki",
     author_email="masao.someki@gmail.com",

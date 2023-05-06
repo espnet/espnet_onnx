@@ -1,25 +1,14 @@
 """Search algorithms for Transducer models."""
 
-from typing import (
-    Any,
-    Dict,
-    List,
-    Optional,
-    Tuple,
-    Union
-)
+from typing import Any, Dict, List, Union
 
 import numpy as np
-import onnxruntime
 from scipy.special import log_softmax
 
-from espnet_onnx.utils.function import is_prefix
-from espnet_onnx.utils.function import recombine_hyps
-from espnet_onnx.utils.function import select_k_expansions
-from espnet_onnx.utils.function import subtract
-from espnet_onnx.utils.function import topk
-from espnet_onnx.asr.beam_search.hyps import TransducerHypothesis
-from espnet_onnx.asr.beam_search.hyps import ExtendedHypothesis
+from espnet_onnx.asr.beam_search.hyps import (ExtendedHypothesis,
+                                              TransducerHypothesis)
+from espnet_onnx.utils.function import (is_prefix, recombine_hyps,
+                                        select_k_expansions, subtract, topk)
 
 
 class BeamSearchTransducer:
@@ -50,8 +39,8 @@ class BeamSearchTransducer:
             score_norm: Normalize final scores by length. ("default")
             nbest: Number of final hypothesis.
         """
-        self.decoder = scorers['decoder']
-        self.joint_network = scorers['joint_network']
+        self.decoder = scorers["decoder"]
+        self.joint_network = scorers["joint_network"]
 
         self.beam_size = bs_config.beam_size
         self.vocab_size = len(token_config.list)
@@ -77,7 +66,9 @@ class BeamSearchTransducer:
             self.search_algorithm = self.nsc_beam_search
 
         elif bs_config.search_type == "maes":
-            self.nstep = bs_config.search_args.nstep if bs_config.search_args.nstep > 1 else 2
+            self.nstep = (
+                bs_config.search_args.nstep if bs_config.search_args.nstep > 1 else 2
+            )
             self.prefix_alpha = bs_config.search_args.prefix_alpha
             self.expansion_gamma = bs_config.search_args.expansion_gamma
             self.expansion_beta = bs_config.search_args.expansion_beta
@@ -86,10 +77,10 @@ class BeamSearchTransducer:
         else:
             raise NotImplementedError
 
-        self.use_lm = 'lm' in scorers.keys()
+        self.use_lm = "lm" in scorers.keys()
         if self.use_lm:
-            self.lm = scorers['lm']
-            self.lm_weight = weights['lm']
+            self.lm = scorers["lm"]
+            self.lm_weight = weights["lm"]
         else:
             self.lm = None
             self.lm_weight = None
@@ -137,7 +128,7 @@ class BeamSearchTransducer:
         Based on https://arxiv.org/pdf/1211.3711.pdf
         """
         for j, hyp_j in enumerate(hyps[:-1]):
-            for hyp_i in hyps[(j + 1):]:
+            for hyp_i in hyps[(j + 1) :]:
                 curr_id = len(hyp_j.yseq)
                 pref_id = len(hyp_i.yseq)
 
@@ -145,13 +136,21 @@ class BeamSearchTransducer:
                     is_prefix(hyp_j.yseq, hyp_i.yseq)
                     and (curr_id - pref_id) <= self.prefix_alpha
                 ):
-                    logp = log_softmax(self.joint_network(
-                        enc_out_t[None, :], hyp_i.dec_out[-1][None, :]), axis=-1)[0]
+                    logp = log_softmax(
+                        self.joint_network(
+                            enc_out_t[None, :], hyp_i.dec_out[-1][None, :]
+                        ),
+                        axis=-1,
+                    )[0]
                     curr_score = hyp_i.score + float(logp[hyp_j.yseq[pref_id]])
 
                     for k in range(pref_id, (curr_id - 1)):
-                        logp = log_softmax(self.joint_network(
-                            enc_out_t[None, :], hyp_i.dec_out[-1][None, :]), axis=-1)[0]
+                        logp = log_softmax(
+                            self.joint_network(
+                                enc_out_t[None, :], hyp_i.dec_out[-1][None, :]
+                            ),
+                            axis=-1,
+                        )[0]
                         curr_score += float(logp[hyp_j.yseq[k + 1]])
 
                     hyp_j.score = np.logaddexp(hyp_j.score, curr_score)
@@ -170,8 +169,7 @@ class BeamSearchTransducer:
         """
         dec_state = self.decoder.init_state()
 
-        hyp = TransducerHypothesis(
-            score=0.0, yseq=[self.blank_id], dec_state=dec_state)
+        hyp = TransducerHypothesis(score=0.0, yseq=[self.blank_id], dec_state=dec_state)
         cache = {}
 
         dec_out, state, _ = self.decoder.score(hyp, cache)
@@ -206,8 +204,9 @@ class BeamSearchTransducer:
 
         dec_state = self.decoder.init_state()
 
-        kept_hyps = [TransducerHypothesis(
-            score=0.0, yseq=[self.blank_id], dec_state=dec_state)]
+        kept_hyps = [
+            TransducerHypothesis(score=0.0, yseq=[self.blank_id], dec_state=dec_state)
+        ]
         cache = {}
 
         for enc_out_t in enc_out:
@@ -220,8 +219,7 @@ class BeamSearchTransducer:
 
                 dec_out, state, lm_tokens = self.decoder.score(max_hyp, cache)
 
-                logp = log_softmax(self.joint_network(
-                    enc_out_t, dec_out), axis=-1)
+                logp = log_softmax(self.joint_network(enc_out_t, dec_out), axis=-1)
                 top_k = topk(logp[1:], beam_k, require_value=True)
                 kept_hyps.append(
                     TransducerHypothesis(
@@ -306,8 +304,9 @@ class BeamSearchTransducer:
                     cache,
                     self.use_lm,
                 )
-                beam_logp = log_softmax(self.joint_network(
-                    enc_out_t, beam_dec_out), axis=-1)
+                beam_logp = log_softmax(
+                    self.joint_network(enc_out_t, beam_dec_out), axis=-1
+                )
                 beam_topk = topk(beam_logp[:, 1:], beam, require_value=True)
 
                 seq_A = [h.yseq for h in A]
@@ -326,8 +325,7 @@ class BeamSearchTransducer:
                         dict_pos = seq_A.index(hyp.yseq)
 
                         A[dict_pos].score = np.logaddexp(
-                            A[dict_pos].score, (hyp.score +
-                                                float(beam_logp[i, 0]))
+                            A[dict_pos].score, (hyp.score + float(beam_logp[i, 0]))
                         )
 
                 if v < (self.max_sym_exp - 1):
@@ -341,14 +339,12 @@ class BeamSearchTransducer:
                             new_hyp = TransducerHypothesis(
                                 score=(hyp.score + float(logp)),
                                 yseq=(hyp.yseq + [int(k)]),
-                                dec_state=self.decoder.select_state(
-                                    beam_state, i),
+                                dec_state=self.decoder.select_state(beam_state, i),
                                 lm_state=hyp.lm_state,
                             )
 
                             if self.use_lm:
-                                new_hyp.score += self.lm_weight * \
-                                    beam_lm_scores[i, k]
+                                new_hyp.score += self.lm_weight * beam_lm_scores[i, k]
                                 new_hyp.lm_state = beam_lm_states[i]
 
                             D.append(new_hyp)
@@ -359,7 +355,9 @@ class BeamSearchTransducer:
 
         return self.sort_nbest(B)
 
-    def align_length_sync_decoding(self, enc_out: np.ndarray) -> List[TransducerHypothesis]:
+    def align_length_sync_decoding(
+        self, enc_out: np.ndarray
+    ) -> List[TransducerHypothesis]:
         """Alignment-length synchronous beam search implementation.
         Based on https://ieeexplore.ieee.org/document/9053040
 
@@ -414,8 +412,9 @@ class BeamSearchTransducer:
 
                 beam_enc_out = np.stack([x[1] for x in B_enc_out])
 
-                beam_logp = log_softmax(self.joint_network(
-                    beam_enc_out, beam_dec_out), axis=-1)
+                beam_logp = log_softmax(
+                    self.joint_network(beam_enc_out, beam_dec_out), axis=-1
+                )
                 beam_topk = topk(beam_logp[:, 1:], beam, require_value=True)
 
                 if self.use_lm:
@@ -447,8 +446,7 @@ class BeamSearchTransducer:
                         )
 
                         if self.use_lm:
-                            new_hyp.score += self.lm_weight * \
-                                beam_lm_scores[i, k]
+                            new_hyp.score += self.lm_weight * beam_lm_scores[i, k]
                             new_hyp.lm_state = beam_lm_states[i]
 
                         A.append(new_hyp)
@@ -471,7 +469,7 @@ class BeamSearchTransducer:
             enc_out: Encoder output sequence. (T, D_enc)
 
         Returns:
-            nbest_hyps: N-best hypothesis.
+            nbest_hyps: N-bestA hypothesis.
 
         """
         beam = min(self.beam_size, self.vocab_size)
@@ -533,8 +531,9 @@ class BeamSearchTransducer:
             for n in range(self.nstep):
                 beam_dec_out = np.stack([hyp.dec_out[-1] for hyp in hyps])
 
-                beam_logp = log_softmax(self.joint_network(
-                    beam_enc_out, beam_dec_out), axis=-1)
+                beam_logp = log_softmax(
+                    self.joint_network(beam_enc_out, beam_dec_out), axis=-1
+                )
                 beam_topk = topk(beam_logp[:, 1:], beam_k, require_value=True)
 
                 for i, hyp in enumerate(hyps):
@@ -598,8 +597,9 @@ class BeamSearchTransducer:
 
                     hyps = V[:]
                 else:
-                    beam_logp = log_softmax(self.joint_network(
-                        beam_enc_out, beam_dec_out), axis=-1)
+                    beam_logp = log_softmax(
+                        self.joint_network(beam_enc_out, beam_dec_out), axis=-1
+                    )
 
                     for i, v in enumerate(V):
                         if self.nstep != 1:
@@ -612,8 +612,7 @@ class BeamSearchTransducer:
                             v.lm_state = beam_lm_states[i]
                             v.lm_scores = beam_lm_scores[i]
 
-            kept_hyps = sorted(
-                (S + V), key=lambda x: x.score, reverse=True)[:beam]
+            kept_hyps = sorted((S + V), key=lambda x: x.score, reverse=True)[:beam]
 
         return self.sort_nbest(kept_hyps)
 
@@ -686,8 +685,9 @@ class BeamSearchTransducer:
             for n in range(self.nstep):
                 beam_dec_out = np.array([h.dec_out[-1] for h in hyps])
 
-                beam_logp = log_softmax(self.joint_network(
-                    beam_enc_out, beam_dec_out), axis=-1)
+                beam_logp = log_softmax(
+                    self.joint_network(beam_enc_out, beam_dec_out), axis=-1
+                )
                 k_expansions = select_k_expansions(
                     hyps, beam_logp, beam, self.expansion_gamma, self.expansion_beta
                 )
@@ -738,15 +738,13 @@ class BeamSearchTransducer:
 
                     if self.use_lm:
                         beam_lm_scores, beam_lm_states = self.lm.batch_score(
-                            beam_lm_tokens, [
-                                k.lm_state for k in list_exp], None
+                            beam_lm_tokens, [k.lm_state for k in list_exp], None
                         )
 
                     if n < (self.nstep - 1):
                         for i, hyp in enumerate(list_exp):
                             hyp.dec_out.append(beam_dec_out[i])
-                            hyp.dec_state = self.decoder.select_state(
-                                beam_state, i)
+                            hyp.dec_state = self.decoder.select_state(beam_state, i)
 
                             if self.use_lm:
                                 hyp.lm_state = beam_lm_states[i]
@@ -754,15 +752,15 @@ class BeamSearchTransducer:
 
                         hyps = list_exp[:]
                     else:
-                        beam_logp = log_softmax(self.joint_network(
-                            beam_enc_out, beam_dec_out), axis=-1)
+                        beam_logp = log_softmax(
+                            self.joint_network(beam_enc_out, beam_dec_out), axis=-1
+                        )
 
                         for i, hyp in enumerate(list_exp):
                             hyp.score += float(beam_logp[i, 0])
 
                             hyp.dec_out.append(beam_dec_out[i])
-                            hyp.dec_state = self.decoder.select_state(
-                                beam_state, i)
+                            hyp.dec_state = self.decoder.select_state(beam_state, i)
 
                             if self.use_lm:
                                 hyp.lm_states = beam_lm_states[i]

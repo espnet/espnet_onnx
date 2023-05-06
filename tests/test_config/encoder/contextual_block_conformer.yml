@@ -4,8 +4,8 @@ encoder_conf:
   attention_heads: 4
   linear_units: 256  # the number of units of position-wise feed forward
   num_blocks: 3      # the number of encoder blocks
-  dropout_rate: 0.1
-  positional_dropout_rate: 0.1
+  dropout_rate: 0.0
+  positional_dropout_rate: 0.0
   attention_dropout_rate: 0.0
   input_layer: conv2d # encoder architecture type
   normalize_before: true

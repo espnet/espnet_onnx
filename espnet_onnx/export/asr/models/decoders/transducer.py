@@ -3,10 +3,7 @@ import os
 import torch
 import torch.nn as nn
 
-from espnet2.asr.transducer.transducer_decoder import TransducerDecoder
-
-from espnet_onnx.utils.function import subsequent_mask
-from ..language_models.embed import Embedding
+from espnet_onnx.export.asr.models.language_models.embed import Embedding
 from espnet_onnx.utils.abs_model import AbsExportModel
 
 
@@ -18,7 +15,7 @@ class TransducerDecoder(nn.Module, AbsExportModel):
         self.dlayers = model.dlayers
         self.dunits = model.dunits
         self.dtype = model.dtype
-        self.model_name = 'transducer_encoder'
+        self.model_name = "transducer_encoder"
 
     def forward(self, labels, h_cache, c_cache):
         # embed and rnn-forward
@@ -27,14 +24,13 @@ class TransducerDecoder(nn.Module, AbsExportModel):
         c_next = torch.zeros(self.dlayers, c_cache.size(1), self.dunits)
         if self.dtype == "lstm":
             for i in range(self.dlayers):
-                sequence, (h_next[i:i+1], c_next[i:i+1]) = self.decoder[i](
-                    sequence,
-                    hx=(h_cache[i:i+1], c_cache[i:i+1]) 
+                sequence, (h_next[i : i + 1], c_next[i : i + 1]) = self.decoder[i](
+                    sequence, hx=(h_cache[i : i + 1], c_cache[i : i + 1])
                 )
         else:
             for i in range(self.dlayers):
-                sequence, h_next[i:i+1] = self.decoder[i](
-                    sequence, hx=h_cache[i:i+1]
+                sequence, h_next[i : i + 1] = self.decoder[i](
+                    sequence, hx=h_cache[i : i + 1]
                 )
         return sequence, h_next, c_next
 
@@ -45,39 +41,28 @@ class TransducerDecoder(nn.Module, AbsExportModel):
         return labels, h_cache, c_cache
 
     def get_input_names(self):
-        return ['labels', 'h_cache', 'c_cache'] 
+        return ["labels", "h_cache", "c_cache"]
 
     def get_output_names(self):
-        return ['sequence', 'out_h_cache', 'out_c_cache_']
-            
+        return ["sequence", "out_h_cache", "out_c_cache_"]
+
     def get_dynamic_axes(self):
-        ret = {
-            'labels': {
-                0: 'labels_batch',
-                1: 'labels_length'
+        ret = {"labels": {0: "labels_batch", 1: "labels_length"}}
+        ret.update(
+            {
+                f"h_cache": {1: f"h_cache_length"},
+                f"c_cache": {1: f"c_cache_length"},
+                f"out_h_cache": {1: f"out_h_cache_length"},
+                f"out_c_cache": {1: f"out_c_cache_length"},
             }
-        }
-        ret.update({
-            f'h_cache': {
-                1: f'h_cache_length'
-            },
-            f'c_cache': {
-                1: f'c_cache_length'
-            },
-            f'out_h_cache': {
-                1: f'out_h_cache_length'
-            },
-            f'out_c_cache': {
-                1: f'out_c_cache_length'
-            }
-        })
+        )
         return ret
 
     def get_model_config(self, path):
         return {
             "dec_type": "TransducerDecoder",
-            "model_path": os.path.join(path, f'{self.model_name}.onnx'),
+            "model_path": os.path.join(path, f"{self.model_name}.onnx"),
             "n_layers": self.dlayers,
             "odim": self.dunits,
-            "dtype": self.dtype
+            "dtype": self.dtype,
         }

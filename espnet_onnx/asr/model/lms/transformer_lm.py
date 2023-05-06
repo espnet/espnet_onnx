@@ -1,14 +1,10 @@
-from typing import Union
-from typing import Tuple
-from typing import Any
-from typing import List
+from typing import Any, List, Tuple
 
 import numpy as np
 import onnxruntime
 from scipy.special import log_softmax
 
 from espnet_onnx.asr.scorer.interface import BatchScorerInterface
-from espnet_onnx.utils.function import subsequent_mask
 
 
 class TransformerLM(BatchScorerInterface):
@@ -16,30 +12,28 @@ class TransformerLM(BatchScorerInterface):
         self,
         config,
         providers: List[str],
-        use_quantized: bool =False,
+        use_quantized: bool = False,
     ):
         if use_quantized:
             self.lm_session = onnxruntime.InferenceSession(
-                config.quantized_model_path,
-                providers=providers
+                config.quantized_model_path, providers=providers
             )
         else:
             self.lm_session = onnxruntime.InferenceSession(
-                config.model_path,
-                providers=providers
+                config.model_path, providers=providers
             )
-            
-        self.enc_output_names = ['y'] \
-            + [d.name for d in self.lm_session.get_outputs() if 'cache' in d.name]
+
+        self.enc_output_names = ["y"] + [
+            d.name for d in self.lm_session.get_outputs() if "cache" in d.name
+        ]
         self.enc_in_cache_names = [
-            d.name for d in self.lm_session.get_inputs() if 'cache' in d.name]
+            d.name for d in self.lm_session.get_inputs() if "cache" in d.name
+        ]
 
         self.nlayers = config.nlayers
         self.odim = config.odim
 
-    def score(
-        self, y: np.ndarray, state: Any, x: np.ndarray
-    ) -> Tuple[np.ndarray, Any]:
+    def score(self, y: np.ndarray, state: Any, x: np.ndarray) -> Tuple[np.ndarray, Any]:
         """Score new token.
 
         Args:
@@ -54,15 +48,19 @@ class TransformerLM(BatchScorerInterface):
 
         """
         y = y[None, :]
+        input_dic = {"tgt": y}
 
-        input_dic = {'tgt': y}
-        input_dic.update({
-            k: v for k, v in zip(self.enc_in_cache_names, state)
-        })
-        decoded, *new_state = self.lm_session.run(
-            self.enc_output_names,
-            input_dic
-        )
+        if state is None:
+            state = [
+                np.zeros((1, 1, self.odim), dtype=np.float32)
+                for _ in range(self.nlayers)
+            ]
+
+        input_dic.update({k: v for k, v in zip(self.enc_in_cache_names, state)})
+        decoded, *new_state = self.lm_session.run(self.enc_output_names, input_dic)
+
+        if self.nlayers == 1:
+            new_state = [new_state]
 
         logp = log_softmax(decoded, axis=-1).squeeze(0)
         return logp, new_state
@@ -101,14 +99,9 @@ class TransformerLM(BatchScorerInterface):
                 for i in range(self.nlayers)
             ]
 
-        input_dic = {'tgt': ys}
-        input_dic.update({
-            k: v for k, v in zip(self.enc_in_cache_names, batch_state)
-        })
-        decoded, *new_state = self.lm_session.run(
-            self.enc_output_names,
-            input_dic
-        )
+        input_dic = {"tgt": ys}
+        input_dic.update({k: v for k, v in zip(self.enc_in_cache_names, batch_state)})
+        decoded, *new_state = self.lm_session.run(self.enc_output_names, input_dic)
         logp = log_softmax(decoded, axis=-1)
 
         # if first iteration, remove the first row
@@ -116,6 +109,7 @@ class TransformerLM(BatchScorerInterface):
             new_state = [new_state[i][:, -1:] for i in range(len(new_state))]
 
         # transpose state of [layer, batch] into [batch, layer]
-        state_list = [[new_state[i][b]
-                       for i in range(self.nlayers)] for b in range(n_batch)]
+        state_list = [
+            [new_state[i][b] for i in range(self.nlayers)] for b in range(n_batch)
+        ]
         return logp, state_list

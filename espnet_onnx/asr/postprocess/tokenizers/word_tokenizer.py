@@ -1,10 +1,8 @@
-from typing import Iterable
-from typing import List
-from typing import Union
-from pathlib import Path
-from typeguard import check_argument_types
-
 import warnings
+from pathlib import Path
+from typing import Iterable, List, Union
+
+from typeguard import check_argument_types
 
 
 class WordTokenizer:
@@ -29,8 +27,7 @@ class WordTokenizer:
             non_linguistic_symbols = Path(non_linguistic_symbols)
             try:
                 with non_linguistic_symbols.open("r", encoding="utf-8") as f:
-                    self.non_linguistic_symbols = set(
-                        line.rstrip() for line in f)
+                    self.non_linguistic_symbols = set(line.rstrip() for line in f)
             except FileNotFoundError:
                 warnings.warn(f"{non_linguistic_symbols} doesn't exist.")
                 self.non_linguistic_symbols = set()

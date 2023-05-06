@@ -1,10 +1,5 @@
-
-from typing import (
-    Optional,
-    Tuple
-)
-
 import math
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -13,17 +8,12 @@ from espnet_onnx.utils.abs_model import AbsExportModel
 
 
 class OnnxStyleMelGANVocoder(nn.Module, AbsExportModel):
-    def __init__(
-        self,
-        model,
-        use_z=False,
-        **kwargs
-    ):
+    def __init__(self, model, use_z=False, **kwargs):
         super().__init__()
         self.model = model
         self.in_channels = model.in_channels
         self.aux_channels = model.blocks[0].tade1.aux_conv[0].in_channels
-        self.model_name = 'StyleMelGANVocoder'
+        self.model_name = "StyleMelGANVocoder"
 
     def forward(self, c: torch.Tensor) -> torch.Tensor:
         c = c.transpose(1, 0).unsqueeze(0)
@@ -57,18 +47,18 @@ class OnnxStyleMelGANVocoder(nn.Module, AbsExportModel):
         return (c,)
 
     def get_input_names(self):
-        return ['c']
+        return ["c"]
 
     def get_output_names(self):
-        return ['wav']
+        return ["wav"]
 
     def get_dynamic_axes(self):
         return {
-            'c': {0: 'c_length'},
+            "c": {0: "c_length"},
         }
 
     def get_model_config(self, path):
         return {
-            'vocoder_type': 'OnnxVocoder',
-            'model_path': str(path / f'{self.model_name}.onnx')
+            "vocoder_type": "OnnxVocoder",
+            "model_path": str(path / f"{self.model_name}.onnx"),
         }

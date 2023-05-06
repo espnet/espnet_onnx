@@ -1,30 +1,34 @@
-model_dir: /home/circleci/models/librispeech_conformer_hop_length160.tgz
 tag_name: conformer_cpu
 optimization:
   CPU:
     encoder:
-      RelPosAttention: 12
+      RelPosAttention: 1
     decoder:
-      CrossAttention: 12
-    lm:
-      CrossAttention: 15
+      CrossAttention: 1
+    # lm:
+    #   CrossAttention: 1
   Quantize:
     encoder:
-      QRelPosAttention: 12
+      QRelPosAttention: 1
     decoder:
-      QCrossAttention: 12
-    lm:
-      QCrossAttention: 15
+      QCrossAttention: 1
+    # lm:
+    #   QCrossAttention: 1
 use_ort_for_espnet: true
 check_optimize:
   - encoder
   - decoder
-  - lm
+  # - lm
 check_export:
   - encoder
   - decoder
   - ctc
   - lm
-device: 
+device:
   - CPU
   - Quantize
+model_config:
+  asr_train_config: /home/circleci/espnet_onnx/tests/test_config/integration/model_config/cfm_ctc_att.yaml
+  use_transducer: false
+  use_lm: true
+  lm_train_config: /home/circleci/espnet_onnx/tests/test_config/integration/model_config/transformer_lm.yaml

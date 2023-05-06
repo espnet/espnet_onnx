@@ -1,29 +1,22 @@
+from typing import Optional
 
-from typing import (
-    Optional,
-    Tuple
-)
-
-import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 from espnet_onnx.export.asr.models.language_models.embed import Embedding
-from espnet_onnx.utils.torch_function import (
-    MakePadMask,
-    normalize
-)
 from espnet_onnx.utils.abs_model import AbsExportModel
+from espnet_onnx.utils.torch_function import MakePadMask, normalize
 
 
 class OnnxLengthRegurator(nn.Module):
-    def __init__(self, alpha=1.0):
+    def __init__(self, alpha=1.0, max_seq_len=512):
         super().__init__()
         self.alpha = alpha
-        # The maximum length of the make_pad_mask is the 
+        # The maximum length of the make_pad_mask is the
         # maximum value of the duration.
-        self.make_pad_mask = MakePadMask(512)
+        self.make_pad_mask = MakePadMask(max_seq_len)
+
     def forward(self, x, dur):
         # This class assumes that the batch size of x
         # should be 1.
@@ -40,7 +33,7 @@ class OnnxReferenceEncoder(nn.Module):
         super().__init__()
         self.convs = model.convs
         self.gru = model.gru
-    
+
     def forward(self, speech):
         xs = speech.unsqueeze(1)
         hs = self.convs(xs).transpose(1, 2)
@@ -69,7 +62,7 @@ class OnnxFastSpeech2(nn.Module, AbsExportModel):
         max_seq_len: int = 512,
         alpha: float = 1.0,
         use_cache: bool = True,
-        **kwargs
+        **kwargs,
     ):
         super().__init__()
         # HPs
@@ -79,16 +72,16 @@ class OnnxFastSpeech2(nn.Module, AbsExportModel):
         self.langs = model.langs
         self.spk_embed_dim = model.spk_embed_dim
         self.eos = model.eos
-        self.model_name = 'fast_speech2'
+        self.model_name = "fast_speech2"
         if self.spk_embed_dim is not None:
             self.spk_embed_integration_type = model.spk_embed_integration_type
             if self.spk_embed_integration_type == "add":
                 self.projection = model.projection
-        
+
         # models
         self.make_pad_mask = MakePadMask(max_seq_len)
         self.encoder = model.encoder
-        self.length_regulator = OnnxLengthRegurator(alpha)
+        self.length_regulator = OnnxLengthRegurator(alpha, max_seq_len)
         self.pitch_predictor = model.pitch_predictor
         self.energy_predictor = model.energy_predictor
         self.pitch_embed = model.pitch_embed
@@ -104,7 +97,9 @@ class OnnxFastSpeech2(nn.Module, AbsExportModel):
         if self.langs:
             self.lid_emb = model.lid_emb
         self.encoder.embed = Embedding(self.encoder.embed, max_seq_len=max_seq_len)
-        self.decoder.embed = Embedding(self.decoder.embed, max_seq_len=max_seq_len, use_cache=use_cache)
+        self.decoder.embed = Embedding(
+            self.decoder.embed, max_seq_len=max_seq_len, use_cache=use_cache
+        )
 
     def _source_mask(self, ilens):
         x_masks = 1 - self.make_pad_mask(ilens)
@@ -185,7 +180,7 @@ class OnnxFastSpeech2(nn.Module, AbsExportModel):
         if self.spks is not None:
             sid_embs = self.sid_emb(sids.view(-1))
             hs = hs + sid_embs.unsqueeze(1)
-            
+
         if self.langs is not None:
             lid_embs = self.lid_emb(lids.view(-1))
             hs = hs + lid_embs.unsqueeze(1)
@@ -226,46 +221,44 @@ class OnnxFastSpeech2(nn.Module, AbsExportModel):
 
     def get_dummy_inputs(self):
         text = torch.LongTensor([0, 1])
-        feats = torch.randn(10, self.odim) \
-            if self.use_gst else None
+        feats = torch.randn(10, self.odim) if self.use_gst else None
 
-        sids = torch.LongTensor([0]) \
-            if self.spks is not None else None
+        sids = torch.LongTensor([0]) if self.spks is not None else None
 
-        spembs = torch.randn(self.spk_embed_dim) \
-            if self.spk_embed_dim is not None else None
+        spembs = (
+            torch.randn(self.spk_embed_dim) if self.spk_embed_dim is not None else None
+        )
 
-        lids = torch.LongTensor([0]) \
-            if self.langs is not None else None
+        lids = torch.LongTensor([0]) if self.langs is not None else None
 
         return (text, feats, sids, spembs, lids)
 
     def get_input_names(self):
-        ret = ['text']
+        ret = ["text"]
         if self.use_gst:
-            ret.append('feats')        
+            ret.append("feats")
         if self.spks is not None:
-            ret.append('sids')
+            ret.append("sids")
         if self.spk_embed_dim is not None:
-            ret.append('spembs')
+            ret.append("spembs")
         if self.langs is not None:
-            ret.append('lids')
+            ret.append("lids")
         return ret
 
     def get_output_names(self):
-        return ['feat_gen', 'out_duration', 'out_pitch', 'out_energy']
+        return ["feat_gen", "out_duration", "out_pitch", "out_energy"]
 
     def get_dynamic_axes(self):
         ret = {
-            'text': {0: 'text_length'},
+            "text": {0: "text_length"},
         }
         if self.use_gst:
-            ret.update({'feats': {0: 'feats_length'}})
+            ret.update({"feats": {0: "feats_length"}})
         return ret
 
     def get_model_config(self, path):
         return {
-            'model_type': 'FastSpeech2',
-            'model_path': str(path / f'{self.model_name}.onnx'),
-            'eos': self.eos,
+            "model_type": "FastSpeech2",
+            "model_path": str(path / f"{self.model_name}.onnx"),
+            "eos": self.eos,
         }

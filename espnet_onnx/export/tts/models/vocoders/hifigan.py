@@ -1,10 +1,5 @@
+from typing import Optional
 
-from typing import (
-    Optional,
-    Tuple
-)
-
-import math
 import torch
 import torch.nn as nn
 
@@ -12,14 +7,10 @@ from espnet_onnx.utils.abs_model import AbsExportModel
 
 
 class OnnxHiFiGANVocoder(nn.Module, AbsExportModel):
-    def __init__(
-        self,
-        model,
-        **kwargs
-    ):
+    def __init__(self, model, **kwargs):
         super().__init__()
         self.model = model
-        self.model_name = 'HiFiGANVocoder'
+        self.model_name = "HiFiGANVocoder"
 
     def forward(
         self, c: torch.Tensor, g: Optional[torch.Tensor] = None
@@ -33,12 +24,12 @@ class OnnxHiFiGANVocoder(nn.Module, AbsExportModel):
         """
         if g is not None:
             g = g.unsqueeze(0)
-            
+
         if len(c.shape) == 3:
             c = self.model.forward(c.transpose(1, 2), g=g)
         else:
             c = self.model.forward(c.transpose(1, 0).unsqueeze(0), g=g)
-            
+
         return c.squeeze(0).transpose(1, 0)
 
     def get_dummy_inputs(self):
@@ -46,18 +37,18 @@ class OnnxHiFiGANVocoder(nn.Module, AbsExportModel):
         return (c,)
 
     def get_input_names(self):
-        return ['c']
+        return ["c"]
 
     def get_output_names(self):
-        return ['wav']
+        return ["wav"]
 
     def get_dynamic_axes(self):
         return {
-            'c': {0: 'c_length'},
+            "c": {0: "c_length"},
         }
 
     def get_model_config(self, path):
         return {
-            'vocoder_type': 'OnnxVocoder',
-            'model_path': str(path / f'{self.model_name}.onnx')
+            "vocoder_type": "OnnxVocoder",
+            "model_path": str(path / f"{self.model_name}.onnx"),
         }

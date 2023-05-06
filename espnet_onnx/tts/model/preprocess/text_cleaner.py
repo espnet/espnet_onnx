@@ -1,7 +1,7 @@
 from typing import Collection
 
-from jaconv import jaconv
 import tacotron_cleaner.cleaners
+from jaconv import jaconv
 from typeguard import check_argument_types
 
 try:
@@ -9,7 +9,7 @@ try:
 except ImportError:
     vietnamese_cleaners = None
 
-from .korean_cleaner import KoreanCleaner
+from espnet_onnx.tts.model.preprocess.korean_cleaner import KoreanCleaner
 
 
 class TextCleaner:

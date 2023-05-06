@@ -1,17 +1,12 @@
-import re
 import logging
+import re
 import warnings
-
-from typing import Iterable
-from typing import List
-from typing import Optional
-from typing import Union
 from pathlib import Path
-from typeguard import check_argument_types
+from typing import Iterable, List, Optional, Union
 
-import jamo
 import g2p_en
-
+import jamo
+from typeguard import check_argument_types
 
 g2p_choices = [
     None,
@@ -64,8 +59,7 @@ def pyopenjtalk_g2p_accent(text) -> List[str]:
 
     phones = []
     for labels in pyopenjtalk.run_frontend(text)[1]:
-        p = re.findall(
-            r"\-(.*?)\+.*?\/A:([0-9\-]+).*?\/F:.*?_([0-9]+)", labels)
+        p = re.findall(r"\-(.*?)\+.*?\/A:([0-9\-]+).*?\/F:.*?_([0-9]+)", labels)
         if len(p) == 1:
             phones += [p[0][0], p[0][2], p[0][1]]
     return phones
@@ -79,8 +73,7 @@ def pyopenjtalk_g2p_accent_with_pause(text) -> List[str]:
         if labels.split("-")[1].split("+")[0] == "pau":
             phones += ["pau"]
             continue
-        p = re.findall(
-            r"\-(.*?)\+.*?\/A:([0-9\-]+).*?\/F:.*?_([0-9]+)", labels)
+        p = re.findall(r"\-(.*?)\+.*?\/A:([0-9\-]+).*?\/F:.*?_([0-9]+)", labels)
         if len(p) == 1:
             phones += [p[0][0], p[0][2], p[0][1]]
     return phones
@@ -180,18 +173,15 @@ def _numeric_feature_by_regex(regex, s):
 
 
 def pypinyin_g2p(text) -> List[str]:
-    from pypinyin import pinyin
-    from pypinyin import Style
+    from pypinyin import Style, pinyin
 
     phones = [phone[0] for phone in pinyin(text, style=Style.TONE3)]
     return phones
 
 
 def pypinyin_g2p_phone(text) -> List[str]:
-    from pypinyin import pinyin
-    from pypinyin import Style
-    from pypinyin.style._utils import get_finals
-    from pypinyin.style._utils import get_initials
+    from pypinyin import Style, pinyin
+    from pypinyin.style._utils import get_finals, get_initials
 
     phones = [
         p
@@ -296,8 +286,7 @@ class Jaso:
         if self.no_space:
             graphemes = list(filter(lambda s: s != " ", graphemes))
         else:
-            graphemes = [
-                x if x != " " else self.space_symbol for x in graphemes]
+            graphemes = [x if x != " " else self.space_symbol for x in graphemes]
         return graphemes
 
 
@@ -488,8 +477,7 @@ class PhonemeTokenizer:
             non_linguistic_symbols = Path(non_linguistic_symbols)
             try:
                 with non_linguistic_symbols.open("r", encoding="utf-8") as f:
-                    self.non_linguistic_symbols = set(
-                        line.rstrip() for line in f)
+                    self.non_linguistic_symbols = set(line.rstrip() for line in f)
             except FileNotFoundError:
                 warnings.warn(f"{non_linguistic_symbols} doesn't exist.")
                 self.non_linguistic_symbols = set()
@@ -513,7 +501,7 @@ class PhonemeTokenizer:
                 if line.startswith(w):
                     if not self.remove_non_linguistic_symbols:
                         tokens.append(line[: len(w)])
-                    line = line[len(w):]
+                    line = line[len(w) :]
                     break
             else:
                 t = line[0]

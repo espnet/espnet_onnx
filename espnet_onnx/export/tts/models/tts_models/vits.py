@@ -1,19 +1,12 @@
-
-from typing import (
-    Optional,
-    Tuple
-)
-
 import math
+from typing import Optional, Tuple
+
 import torch
 import torch.nn as nn
 
 from espnet_onnx.export.asr.models.language_models.embed import get_pos_emb
-from espnet_onnx.utils.torch_function import (
-    MakePadMask,
-    normalize
-)
 from espnet_onnx.utils.abs_model import AbsExportModel
+from espnet_onnx.utils.torch_function import MakePadMask, normalize
 
 
 class OnnxTextEncoder(nn.Module):
@@ -21,7 +14,9 @@ class OnnxTextEncoder(nn.Module):
         super().__init__()
         self.model = model
         # fix RelPositionalEncoding
-        self.model.encoder.embed[0] = get_pos_emb(self.model.encoder.embed[0], max_seq_len)
+        self.model.encoder.embed[0] = get_pos_emb(
+            self.model.encoder.embed[0], max_seq_len
+        )
         self.make_pad_mask = make_pad_mask
 
     def forward(self, x, x_lengths):
@@ -46,11 +41,13 @@ class OnnxVITSGenerator(nn.Module):
         noise_scale: float = 0.667,
         noise_scale_dur: float = 0.8,
         alpha: float = 1.0,
-        use_teacher_forcing: bool = False
+        use_teacher_forcing: bool = False,
     ):
         super().__init__()
         self.make_pad_mask = MakePadMask(max_seq_len)
-        self.text_encoder = OnnxTextEncoder(model.text_encoder, self.make_pad_mask, max_seq_len)
+        self.text_encoder = OnnxTextEncoder(
+            model.text_encoder, self.make_pad_mask, max_seq_len
+        )
         self.decoder = model.decoder
         self.posterior_encoder = model.posterior_encoder
         self.flow = model.flow
@@ -105,8 +102,7 @@ class OnnxVITSGenerator(nn.Module):
             g = self.model.global_emb(sids.view(-1)).unsqueeze(-1)
         if self.model.spk_embed_dim is not None:
             # (B, global_channels, 1)
-            g_ = self.model.spemb_proj(normalize(
-                spembs.unsqueeze(0))).unsqueeze(-1)
+            g_ = self.model.spemb_proj(normalize(spembs.unsqueeze(0))).unsqueeze(-1)
             if g is None:
                 g = g_
             else:
@@ -121,8 +117,7 @@ class OnnxVITSGenerator(nn.Module):
 
         if self.use_teacher_forcing:
             # forward posterior encoder
-            z, m_q, logs_q, y_mask = self.posterior_encoder(
-                feats, feats_lengths, g=g)
+            z, m_q, logs_q, y_mask = self.posterior_encoder(feats, feats_lengths, g=g)
 
             # forward flow
             z_p = self.flow(z, y_mask, g=g)  # (B, H, T_feats)
@@ -154,8 +149,7 @@ class OnnxVITSGenerator(nn.Module):
             # (B, T_feats, T_text)
             neg_x_ent = neg_x_ent_1 + neg_x_ent_2 + neg_x_ent_3 + neg_x_ent_4
             # (B, 1, T_feats, T_text)
-            attn_mask = torch.unsqueeze(
-                x_mask, 2) * torch.unsqueeze(y_mask, -1)
+            attn_mask = torch.unsqueeze(x_mask, 2) * torch.unsqueeze(y_mask, -1)
             # monotonic attention weight: (B, 1, T_feats, T_text)
             attn = self.model.maximum_path(
                 neg_x_ent,
@@ -178,11 +172,10 @@ class OnnxVITSGenerator(nn.Module):
                 w = torch.exp(logw) * x_mask * self.alpha
                 dur = torch.ceil(w)
             y_lengths = torch.clamp_min(torch.sum(dur, [1, 2]), 1).long()
-            
+
             # bugfix. issue #24
             y_mask = torch.ones(y_lengths).unsqueeze(0).unsqueeze(0)
-            attn_mask = torch.unsqueeze(
-                x_mask, 2) * torch.unsqueeze(y_mask, -1)
+            attn_mask = torch.unsqueeze(x_mask, 2) * torch.unsqueeze(y_mask, -1)
             attn = self.model._generate_path(dur, attn_mask)
 
             # expand the length to match with the feature sequence
@@ -215,7 +208,7 @@ class OnnxVITSModel(nn.Module, AbsExportModel):
         max_seq_len: int = 512,
         use_teacher_forcing: bool = False,
         predict_duration: bool = True,
-        **kwargs
+        **kwargs,
     ):
         super().__init__()
         self.model = model
@@ -225,11 +218,11 @@ class OnnxVITSModel(nn.Module, AbsExportModel):
             noise_scale,
             noise_scale_dur,
             alpha,
-            use_teacher_forcing
+            use_teacher_forcing,
         )
         self.use_teacher_forcing = use_teacher_forcing
         self.predict_duration = predict_duration
-        self.model_name = 'vits'
+        self.model_name = "vits"
 
     def forward(
         self,
@@ -270,53 +263,57 @@ class OnnxVITSModel(nn.Module, AbsExportModel):
 
     def get_dummy_inputs(self):
         text = torch.LongTensor([0, 1])
-        feats = torch.randn(5, self.model.generator.posterior_encoder.input_conv.in_channels) \
-            if self.use_teacher_forcing else None
+        feats = (
+            torch.randn(
+                5, self.model.generator.posterior_encoder.input_conv.in_channels
+            )
+            if self.use_teacher_forcing
+            else None
+        )
 
-        sids = torch.LongTensor([0]) \
-            if self.model.generator.spks is not None else None
+        sids = torch.LongTensor([0]) if self.model.generator.spks is not None else None
 
-        spembs = torch.randn(self.model.generator.spk_embed_dim) \
-            if self.model.generator.spk_embed_dim is not None else None
+        spembs = (
+            torch.randn(self.model.generator.spk_embed_dim)
+            if self.model.generator.spk_embed_dim is not None
+            else None
+        )
 
-        lids = torch.LongTensor([0]) \
-            if self.model.generator.langs is not None else None
+        lids = torch.LongTensor([0]) if self.model.generator.langs is not None else None
 
-        duration = torch.randn(text.size(0)) \
-            if not self.predict_duration else None
+        duration = torch.randn(text.size(0)) if not self.predict_duration else None
 
         return (text, feats, sids, spembs, lids, duration)
 
     def get_input_names(self):
-        ret = ['text']
+        ret = ["text"]
         if self.use_teacher_forcing:
-            ret.append('feats')        
+            ret.append("feats")
         if self.model.generator.spks is not None:
-            ret.append('sids')
+            ret.append("sids")
         if self.model.generator.spk_embed_dim is not None:
-            ret.append('spembs')
+            ret.append("spembs")
         if self.model.generator.langs is not None:
-            ret.append('lids')
+            ret.append("lids")
         if not self.predict_duration:
-            ret.append('duration')
+            ret.append("duration")
         return ret
 
     def get_output_names(self):
-        return ['wav', 'att_w', 'dur']
+        return ["wav", "att_w", "dur"]
 
     def get_dynamic_axes(self):
         return {
-            'text': {0: 'text_length'},
-            'feats': {0: 'feats_length'},
-            'duration': {0: 'duration_length'},
-            'wav': {0: 'wav_length'},
-            'att_w': {0: 'att_w_feat_length',
-                      1: 'att_w_text_length'},
-            'dur': {0: 'dur_length'}
+            "text": {0: "text_length"},
+            "feats": {0: "feats_length"},
+            "duration": {0: "duration_length"},
+            "wav": {0: "wav_length"},
+            "att_w": {0: "att_w_feat_length", 1: "att_w_text_length"},
+            "dur": {0: "dur_length"},
         }
 
     def get_model_config(self, path):
         return {
-            'model_type': 'VITS',
-            'model_path': str(path / f'{self.model_name}.onnx')
+            "model_type": "VITS",
+            "model_path": str(path / f"{self.model_name}.onnx"),
         }

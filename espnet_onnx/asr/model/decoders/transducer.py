@@ -1,29 +1,16 @@
-from typing import List
-from typing import Any
-from typing import Tuple
-from typing import Optional
-from typing import Dict
-from typing import Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import onnxruntime
 
+from espnet_onnx.asr.beam_search.hyps import ExtendedHypothesis, Hypothesis
 from espnet_onnx.asr.scorer.interface import BatchScorerInterface
-from espnet_onnx.asr.beam_search.hyps import (
-    Hypothesis,
-    TransducerHypothesis,
-    ExtendedHypothesis
-)
-from espnet_onnx.utils.function import subsequent_mask
 from espnet_onnx.utils.config import Config
 
 
 class TransducerDecoder(BatchScorerInterface):
     def __init__(
-        self,
-        config: Config,
-        providers: List[str],
-        use_quantized: bool = False
+        self, config: Config, providers: List[str], use_quantized: bool = False
     ):
         """Onnx support for espnet2.asr.decoder.transformer_decoder
 
@@ -33,21 +20,24 @@ class TransducerDecoder(BatchScorerInterface):
         """
         if use_quantized:
             self.decoder = onnxruntime.InferenceSession(
-                config.quantized_model_path,
-                providers=providers
+                config.quantized_model_path, providers=providers
             )
         else:
             self.decoder = onnxruntime.InferenceSession(
-                config.model_path,
-                providers=providers
+                config.model_path, providers=providers
             )
         self.n_layers = config.n_layers
         self.odim = config.odim
         self.dtype = config.dtype
-        self.output_names = ['sequence'] \
-            + sorted([d.name for d in self.decoder.get_outputs() if 'h_cache' in d.name]) \
-            + sorted([d.name for d in self.decoder.get_outputs()
-                      if 'c_cache' in d.name])
+        self.output_names = (
+            ["sequence"]
+            + sorted(
+                [d.name for d in self.decoder.get_outputs() if "h_cache" in d.name]
+            )
+            + sorted(
+                [d.name for d in self.decoder.get_outputs() if "c_cache" in d.name]
+            )
+        )
 
     def score(
         self, hyp: Hypothesis, cache: Dict[str, Any]
@@ -71,8 +61,7 @@ class TransducerDecoder(BatchScorerInterface):
             dec_out, dec_state = cache[str_labels]
         else:
             input_dict = self.get_input_dict(label, hyp.dec_state)
-            dec_out, * \
-                next_states = self.decoder.run(self.output_names, input_dict)
+            dec_out, *next_states = self.decoder.run(self.output_names, input_dict)
             dec_state = self.split(next_states)
             cache[str_labels] = (dec_out, dec_state)
 
@@ -118,8 +107,7 @@ class TransducerDecoder(BatchScorerInterface):
                 self.init_state(labels.shape[0]), [p[2] for p in process]
             )
             input_dict = self.get_input_dict(labels, p_dec_states)
-            dec_out, * \
-                next_states = self.decoder.run(self.output_names, input_dict)
+            dec_out, *next_states = self.decoder.run(self.output_names, input_dict)
             new_states = self.split(next_states)
 
         j = 0
@@ -133,23 +121,21 @@ class TransducerDecoder(BatchScorerInterface):
         dec_out = np.concatenate([d[0] for d in done], axis=0)
         dec_states = self.create_batch_states(dec_states, [d[1] for d in done])
         if use_lm:
-            lm_labels = np.array(
-                [h.yseq[-1] for h in hyps], dtype=np.int64
-            ).view(final_batch, 1)
+            lm_labels = np.array([h.yseq[-1] for h in hyps], dtype=np.int64).view(
+                final_batch, 1
+            )
 
             return dec_out, dec_states, lm_labels
 
         return dec_out, dec_states, None
 
     def get_input_dict(self, labels, states):
-        ret = {
-            'labels': labels,
-            'h_cache': states[0],
-            'c_cache': states[1]
-        }
+        ret = {"labels": labels, "h_cache": states[0], "c_cache": states[1]}
         return ret
 
-    def select_state(self, states: Tuple[np.ndarray, Optional[np.ndarray]], idx: int) -> Tuple[np.ndarray, Optional[np.ndarray]]:
+    def select_state(
+        self, states: Tuple[np.ndarray, Optional[np.ndarray]], idx: int
+    ) -> Tuple[np.ndarray, Optional[np.ndarray]]:
         """Get specified ID state from decoder hidden states.
 
         Args:
@@ -162,11 +148,13 @@ class TransducerDecoder(BatchScorerInterface):
 
         """
         return (
-            states[0][:, idx: idx + 1, :],
-            states[1][:, idx: idx + 1, :] if self.dtype == "lstm" else None,
+            states[0][:, idx : idx + 1, :],
+            states[1][:, idx : idx + 1, :] if self.dtype == "lstm" else None,
         )
 
-    def init_state(self, batch_size: int = 1) -> Tuple[np.ndarray, Optional[np.ndarray]]:
+    def init_state(
+        self, batch_size: int = 1
+    ) -> Tuple[np.ndarray, Optional[np.ndarray]]:
         """Initialize decoder states.
 
         Args:
@@ -176,12 +164,10 @@ class TransducerDecoder(BatchScorerInterface):
             : Initial decoder hidden states. ((N, B, D_dec), (N, B, D_dec))
 
         """
-        h_n = np.zeros((self.n_layers, batch_size,
-                        self.odim), dtype=np.float32)
+        h_n = np.zeros((self.n_layers, batch_size, self.odim), dtype=np.float32)
 
         if self.dtype == "lstm":
-            c_n = np.zeros((self.n_layers, batch_size,
-                            self.odim), dtype=np.float32)
+            c_n = np.zeros((self.n_layers, batch_size, self.odim), dtype=np.float32)
             return (h_n, c_n)
 
         return (h_n, None)

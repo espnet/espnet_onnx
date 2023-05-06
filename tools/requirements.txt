@@ -1,8 +1,8 @@
-numpy==1.21
+numpy
 onnxruntime
 librosa
 sentencepiece
-typeguard
+typeguard==2.13
 pyyaml
 g2p_en
 jamo

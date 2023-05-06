@@ -1,10 +1,9 @@
-model_dir: /home/circleci/models/kamo-naoyuki-mini_an4_asr_train_raw_bpe_valid.acc.best.tgz
 tag_name: rnn
 optimization:
   CPU:
   Quantize:
 use_ort_for_espnet: false
-check_optimize: 
+check_optimize:
 check_export:
   - encoder
   - decoder

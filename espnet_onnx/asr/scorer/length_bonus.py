@@ -1,11 +1,9 @@
 """Length bonus module."""
-from typing import Any
-from typing import List
-from typing import Tuple
+from typing import Any, List, Tuple
 
 import numpy as np
 
-from .interface import BatchScorerInterface
+from espnet_onnx.asr.scorer.interface import BatchScorerInterface
 
 
 class LengthBonus(BatchScorerInterface):

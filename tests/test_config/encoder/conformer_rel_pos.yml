@@ -1,10 +1,10 @@
 encoder: conformer
 encoder_conf:
   activation_type: swish
-  attention_dropout_rate: 0.1
+  attention_dropout_rate: 0.0
   attention_heads: 4
   cnn_module_kernel: 31
-  dropout_rate: 0.1
+  dropout_rate: 0.0
   input_layer: conv2d
   linear_units: 512
   macaron_style: true
@@ -12,7 +12,7 @@ encoder_conf:
   num_blocks: 3
   output_size: 256
   pos_enc_layer_type: rel_pos
-  positional_dropout_rate: 0.1
+  positional_dropout_rate: 0.0
   selfattention_layer_type: rel_selfattn
   use_cnn_module: true
 frontend: default

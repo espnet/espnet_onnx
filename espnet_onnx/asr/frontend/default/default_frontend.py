@@ -1,15 +1,10 @@
-from typing import (
-    Union,
-    List
-)
-from pathlib import Path
-from typeguard import check_argument_types
+from typing import List
 
 import numpy as np
-import onnxruntime
+from typeguard import check_argument_types
 
-from espnet_onnx.asr.frontend.default.stft import Stft
 from espnet_onnx.asr.frontend.default.logmel import LogMel
+from espnet_onnx.asr.frontend.default.stft import Stft
 from espnet_onnx.utils.config import Config
 
 
@@ -35,10 +30,9 @@ class DefaultFrontend:
         assert check_argument_types()
         # 1. Domain-conversion: e.g. Stft: time -> time-freq
         input_stft, feats_lens = self.stft(inputs, input_length)
-        
+
         # 2. [Option] Speech enhancement
         # Currently this is not supported.
-        # if self.config.apply_enhance:
 
         # 3. STFT -> Power spectrum
         # h: ComplexTensor(B, T, F) -> torch.Tensor(B, T, F)

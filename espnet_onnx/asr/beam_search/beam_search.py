@@ -1,26 +1,16 @@
 """Beam search module."""
-from typing import (
-    Any,
-    Dict,
-    List,
-    Tuple
-)
-from typeguard import check_argument_types
-
 import logging
 from itertools import chain
-import numpy as np
+from typing import Any, Dict, List, Tuple
 
-from espnet_onnx.asr.scorer.interface import (
-    PartialScorerInterface,
-    ScorerInterface,
-)
-from espnet_onnx.utils.function import (
-    topk,
-    end_detect
-)
+import numpy as np
+from typeguard import check_argument_types
+
+from espnet_onnx.asr.beam_search.hyps import Hypothesis
+from espnet_onnx.asr.scorer.interface import (PartialScorerInterface,
+                                              ScorerInterface)
 from espnet_onnx.utils.config import Config
-from .hyps import Hypothesis
+from espnet_onnx.utils.function import end_detect, topk
 
 
 class BeamSearch:
@@ -78,8 +68,7 @@ class BeamSearch:
         self.sos = token_config.sos
         self.eos = token_config.eos
         self.token_list = token_config.list
-        self.pre_beam_size = int(
-            bs_config.pre_beam_ratio * bs_config.beam_size)
+        self.pre_beam_size = int(bs_config.pre_beam_ratio * bs_config.beam_size)
         self.beam_size = bs_config.beam_size
         self.n_vocab = len(self.token_list)
         if (
@@ -88,7 +77,8 @@ class BeamSearch:
             and bs_config.pre_beam_score_key not in self.full_scorers
         ):
             raise KeyError(
-                f"{bs_config.pre_beam_score_key} is not found in {self.full_scorers}")
+                f"{bs_config.pre_beam_score_key} is not found in {self.full_scorers}"
+            )
 
         self.pre_beam_score_key = bs_config.pre_beam_score_key
         self.do_pre_beam = (
@@ -177,8 +167,7 @@ class BeamSearch:
         scores = dict()
         states = dict()
         for k, d in self.part_scorers.items():
-            scores[k], states[k] = d.score_partial(
-                hyp.yseq, ids, hyp.states[k], x)
+            scores[k], states[k] = d.score_partial(hyp.yseq, ids, hyp.states[k], x)
         return scores, states
 
     def beam(
@@ -254,9 +243,7 @@ class BeamSearch:
             new_states[k] = d.select_state(part_states[k], part_idx)
         return new_states
 
-    def search(
-        self, running_hyps: List[Hypothesis], x: np.ndarray
-    ) -> List[Hypothesis]:
+    def search(self, running_hyps: List[Hypothesis], x: np.ndarray) -> List[Hypothesis]:
         """Search new tokens for running hypotheses and encoded speech x.
         Args:
             running_hyps (List[Hypothesis]): Running hypotheses on beam
@@ -305,9 +292,7 @@ class BeamSearch:
             ]
         return best_hyps
 
-    def __call__(
-        self, x: np.ndarray
-    ) -> List[Hypothesis]:
+    def __call__(self, x: np.ndarray) -> List[Hypothesis]:
         """Perform beam search.
         Args:
             x (np.ndarray): Encoded speech feature (T, D)
@@ -335,7 +320,9 @@ class BeamSearch:
             # post process of one iteration
             running_hyps = self.post_process(i, maxlen, best, ended_hyps)
             # end detection
-            if self.maxlenratio == 0.0 and end_detect([h.asdict() for h in ended_hyps], i):
+            if self.maxlenratio == 0.0 and end_detect(
+                [h.asdict() for h in ended_hyps], i
+            ):
                 logging.debug(f"End detected at {i}")
                 break
             if len(running_hyps) == 0:
@@ -364,8 +351,7 @@ class BeamSearch:
                 f"{v:6.2f} * {self.weights[k]:3} = {v * self.weights[k]:6.2f} for {k}"
             )
         logging.debug(f"Total log probability: {best.score:.2f}")
-        logging.debug(
-            f"Normalized log probability: {best.score / len(best.yseq):.2f}")
+        logging.debug(f"Normalized log probability: {best.score / len(best.yseq):.2f}")
         logging.debug(f"Total number of ended hypotheses: {len(nbest_hyps)}")
         if self.token_list is not None:
             logging.debug(
@@ -395,8 +381,7 @@ class BeamSearch:
         if self.token_list is not None:
             logging.debug(
                 "Best hypo: "
-                + "".join([self.token_list[x]
-                           for x in running_hyps[0].yseq[1:]])
+                + "".join([self.token_list[x] for x in running_hyps[0].yseq[1:]])
             )
         # add eos in the final loop to avoid that there are no ended hyps
         if i == maxlen - 1:

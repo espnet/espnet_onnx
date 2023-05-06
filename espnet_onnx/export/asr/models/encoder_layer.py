@@ -1,16 +1,7 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-# Copyright 2019 Shigeki Karita
-#  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
-
 """Encoder self-attention layer definition."""
 
 import torch
-
 from torch import nn
-
-from espnet.nets.pytorch_backend.transformer.layer_norm import LayerNorm
 
 
 class OnnxEncoderLayer(nn.Module):
@@ -35,32 +26,24 @@ class OnnxEncoderLayer(nn.Module):
             as-is with given probability.
     """
 
-    def __init__(
-        self,
-        model,
-        model_type='espnet'
-    ):
+    def __init__(self, model, model_type="espnet"):
         """Construct an EncoderLayer object."""
         super().__init__()
         self.self_attn = model.self_attn
-        if model_type == 'espnet':
+        if model_type == "espnet":
             self.feed_forward = model.feed_forward
-            if hasattr(model, 'norm1'):
+            if hasattr(model, "norm1"):
                 self.norm1 = model.norm1
-            if hasattr(model, 'norm2'):
+            if hasattr(model, "norm2"):
                 self.norm2 = model.norm2
             self.size = model.size
             self.normalize_before = model.normalize_before
             self.concat_after = model.concat_after
             if self.concat_after:
                 self.concat_linear = model.concat_linear
-                
-        elif model_type == 'hubert':
-            self.feed_forward = FeedForward(
-                model.fc1,
-                model.activation_fn,
-                model.fc2
-            )
+
+        elif model_type == "hubert":
+            self.feed_forward = FeedForward(model.fc1, model.activation_fn, model.fc2)
             self.norm1 = model.self_attn_layer_norm
             self.norm2 = model.final_layer_norm
             self.size = model.embedding_dim
@@ -95,7 +78,7 @@ class OnnxEncoderLayer(nn.Module):
             x = self.concat_linear(x_concat) + residual
         else:
             x = self.self_attn(x_q, x, x, mask) + residual
-            
+
         if not self.normalize_before:
             x = self.norm1(x)
 
@@ -118,7 +101,7 @@ class FeedForward(nn.Module):
         self.fc1 = fc1
         self.activation = activation
         self.fc2 = fc2
-    
+
     def forward(self, x):
         x = self.activation(self.fc1(x))
         x = self.fc2(x)

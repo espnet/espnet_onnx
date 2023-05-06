@@ -1,24 +1,20 @@
-import os
 import math
 
 import torch
 import torch.nn as nn
-import numpy as np
-
-from espnet.nets.pytorch_backend.transformer.attention import MultiHeadedAttention
 
 
 class OnnxMultiHeadedAttention(nn.Module):
-    def __init__(self, model, model_type='espnet'):
+    def __init__(self, model, model_type="espnet"):
         super().__init__()
-        if model_type == 'espnet':
+        if model_type == "espnet":
             self.d_k = model.d_k
             self.h = model.h
             self.linear_q = model.linear_q
             self.linear_k = model.linear_k
             self.linear_v = model.linear_v
             self.linear_out = model.linear_out
-        elif model_type == 'hubert':
+        elif model_type == "hubert":
             self.d_k = model.head_dim
             self.h = model.num_heads
             self.linear_q = model.q_proj
@@ -27,7 +23,7 @@ class OnnxMultiHeadedAttention(nn.Module):
             self.linear_out = model.out_proj
         self.attn = None
         self.all_head_size = self.h * self.d_k
-    
+
     def forward(self, query, key, value, mask):
         q, k, v = self.forward_qkv(query, key, value)
         scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(self.d_k)
@@ -46,14 +42,14 @@ class OnnxMultiHeadedAttention(nn.Module):
         k = self.transpose_for_scores(k)
         v = self.transpose_for_scores(v)
         return q, k, v
-    
+
     def forward_attention(self, value, scores, mask):
         if mask is not None:
             scores = scores + mask
 
         self.attn = torch.softmax(scores, dim=-1)
         context_layer = torch.matmul(self.attn, value)  # (batch, head, time1, d_k)
-        
+
         context_layer = context_layer.permute(0, 2, 1, 3).contiguous()
         new_context_layer_shape = context_layer.size()[:-2] + (self.all_head_size,)
         context_layer = context_layer.view(new_context_layer_shape)
@@ -67,12 +63,14 @@ class OnnxRelPosMultiHeadedAttention(OnnxMultiHeadedAttention):
         self.pos_bias_u = model.pos_bias_u
         self.pos_bias_v = model.pos_bias_v
         self.is_legacy = is_legacy
-    
+
     def forward(self, query, key, value, pos_emb, mask):
         q, k, v = self.forward_qkv(query, key, value)
         q = q.transpose(1, 2)  # (batch, time1, head, d_k)
 
-        p = self.transpose_for_scores(self.linear_pos(pos_emb)) # (batch, head, time1, d_k)
+        p = self.transpose_for_scores(
+            self.linear_pos(pos_emb)
+        )  # (batch, head, time1, d_k)
 
         # (batch, head, time1, d_k)
         q_with_bias_u = (q + self.pos_bias_u).transpose(1, 2)

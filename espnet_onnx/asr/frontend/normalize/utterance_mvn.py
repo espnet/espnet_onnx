@@ -1,19 +1,14 @@
 from typing import Tuple
-from typeguard import check_argument_types
 
 import numpy as np
+from typeguard import check_argument_types
 
-from espnet_onnx.utils.function import (
-    make_pad_mask,
-    mask_fill
-)
 from espnet_onnx.utils.config import Config
+from espnet_onnx.utils.function import make_pad_mask, mask_fill
+
 
 class UtteranceMVN:
-    def __init__(
-        self,
-        config: Config
-    ):
+    def __init__(self, config: Config):
         assert check_argument_types()
         self.norm_means = config.norm_means
         self.norm_vars = config.norm_vars
