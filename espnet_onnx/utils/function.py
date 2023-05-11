@@ -29,7 +29,7 @@ def mask_fill(arr, mask, mask_value):
     Returns:
         np.ndarray: Masked array
     """
-    arr[mask.astype(np.bool) == True] = mask_value
+    arr[mask.astype(bool) == True] = mask_value
     return arr
 
 
