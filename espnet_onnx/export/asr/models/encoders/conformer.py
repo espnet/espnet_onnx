@@ -41,7 +41,6 @@ class ConformerEncoder(nn.Module, AbsExportModel):
         # replace multihead attention module into customized module.
         for i, d in enumerate(self.model.encoders):
             # d is EncoderLayer
-            # Conformer optimization is currently not supported.
             if isinstance(d.self_attn, LegacyRelPositionMultiHeadedAttention):
                 d.self_attn = OnnxRelPosMultiHeadedAttention(
                     d.self_attn, is_legacy=True

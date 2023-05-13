@@ -75,9 +75,9 @@ class OnnxEncoderLayer(nn.Module):
 
         if self.concat_after:
             x_concat = torch.cat((x, self.self_attn(x_q, x, x, mask)), dim=-1)
-            x = self.concat_linear(x_concat) + residual
+            x = residual + self.concat_linear(x_concat)
         else:
-            x = self.self_attn(x_q, x, x, mask) + residual
+            x = residual + self.self_attn(x_q, x, x, mask)
 
         if not self.normalize_before:
             x = self.norm1(x)
@@ -85,7 +85,7 @@ class OnnxEncoderLayer(nn.Module):
         residual = x
         if self.normalize_before:
             x = self.norm2(x)
-        x = self.feed_forward(x) + residual
+        x = residual + self.feed_forward(x)
         if not self.normalize_before:
             x = self.norm2(x)
 
