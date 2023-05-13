@@ -6,7 +6,7 @@ requirements = {
         "librosa>=0.8.0",
         "onnxruntime",
         "sentencepiece>=0.1.91,!=0.1.92",
-        "typeguard>=2.7.0",
+        "typeguard==2.13.0",
         "PyYAML>=5.1.2",
         "g2p-en",
         "jamo==0.4.1",  # For kss
