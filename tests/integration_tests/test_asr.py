@@ -10,6 +10,7 @@ from .test_utils import *
 asr_config_names = [
     # 'original/rnn',
     "original/transformer",
+    "custom/transformer",
     "original/conformer",
     "original/conformer_transducer",
     "custom/conformer_cpu",
