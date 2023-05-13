@@ -23,9 +23,8 @@ class AbsModel(ABC):
             tag_config = get_tag_config()
             if tag_name not in tag_config.keys():
                 raise RuntimeError(
-                    f'Model path for tag_name "{tag_name}" is not set on tag_config.yaml.'
-                    + "You have to export to onnx format with `espnet_onnx.export.asr.export_asr.ModelExport`,"
-                    + "or have to set exported model path in tag_config.yaml."
+                    f'Model path for tag_name "{tag_name}" not found.'
+                    + "Please export to onnx format first, or set proper path."
                 )
             self.model_dir = tag_config[tag_name]
 
