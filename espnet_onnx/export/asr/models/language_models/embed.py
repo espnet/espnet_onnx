@@ -97,7 +97,7 @@ class OnnxPositionalEncoding(torch.nn.Module):
         class RelPositionalEncoding.
     """
 
-    def __init__(self, model, max_seq_len=512, reverse=False, use_cache=True):
+    def __init__(self, model, max_seq_len=512, reverse=False, use_cache=True, **kwargs):
         """Construct an PositionalEncoding object."""
         super(OnnxPositionalEncoding, self).__init__()
         self.d_model = model.d_model
@@ -167,7 +167,7 @@ class OnnxScaledPositionalEncoding(OnnxPositionalEncoding):
 
     """
 
-    def __init__(self, model, max_seq_len=512, use_cache=True):
+    def __init__(self, model, max_seq_len=512, use_cache=True, **kwargs):
         """Initialize class."""
         super().__init__(model, max_seq_len, use_cache=use_cache)
         self.alpha = torch.nn.Parameter(torch.tensor(1.0))
@@ -221,7 +221,7 @@ class OnnxLegacyRelPositionalEncoding(OnnxPositionalEncoding):
 
     """
 
-    def __init__(self, model, max_seq_len=512, use_cache=True):
+    def __init__(self, model, max_seq_len=512, use_cache=True, **kwargs):
         """Initialize class."""
         super().__init__(model, max_seq_len, reverse=True, use_cache=use_cache)
 
@@ -268,7 +268,7 @@ class OnnxRelPositionalEncoding(torch.nn.Module):
         max_seq_len (int): Maximum input length.
     """
 
-    def __init__(self, model, max_seq_len=512, use_cache=True):
+    def __init__(self, model, max_seq_len=512, use_cache=True, **kwargs):
         """Construct an PositionalEncoding object."""
         super(OnnxRelPositionalEncoding, self).__init__()
         self.d_model = model.d_model
@@ -353,7 +353,7 @@ class OnnxRelPositionalEncoding(torch.nn.Module):
 class OnnxStreamPositionalEncoding(torch.nn.Module):
     """Streaming Positional encoding."""
 
-    def __init__(self, model, max_seq_len=5000, use_cache=True):
+    def __init__(self, model, max_seq_len=5000, use_cache=True, **kwargs):
         """Construct an PositionalEncoding object."""
         super(StreamPositionalEncoding, self).__init__()
         self.use_cache = use_cache

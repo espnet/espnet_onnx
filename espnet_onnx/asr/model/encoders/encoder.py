@@ -78,9 +78,9 @@ class Encoder:
             ["encoder_out", "encoder_out_lens"], {"feats": feats}
         )
 
-        if self.config.enc_type == "RNNEncoder":
-            encoder_out = mask_fill(
-                encoder_out, make_pad_mask(feat_length, encoder_out, 1), 0.0
-            )
+        # if self.config.enc_type == "RNNEncoder":
+        #     encoder_out = mask_fill(
+        #         encoder_out, make_pad_mask(feat_length, encoder_out, 1), 0.0
+        #     )
 
         return encoder_out, encoder_out_lens

@@ -28,12 +28,16 @@ from espnet_onnx.utils.config import save_config, update_model_path
 
 
 class ASRModelExport:
-    def __init__(self, cache_dir: Union[Path, str] = None):
+    def __init__(self, cache_dir: Union[Path, str] = None, convert_map: Union[str, Path] = None):
         assert check_argument_types()
         if cache_dir is None:
             cache_dir = Path.home() / ".cache" / "espnet_onnx"
+        
+        if convert_map is None:
+            convert_map = Path(os.path.dirname(__file__)).parent / "convert_map.yml"
 
         self.cache_dir = Path(cache_dir)
+        self.convert_map = convert_map
         self.export_config = dict(
             use_gpu=False,
             only_onnxruntime=False,
@@ -70,6 +74,7 @@ class ASRModelExport:
             model.asr_model.frontend,
             model.asr_model.preencoder,
             self.export_config,
+            self.convert_map,
         )
         enc_out_size = enc_model.get_output_size()
         self._export_encoder(enc_model, export_dir, verbose)

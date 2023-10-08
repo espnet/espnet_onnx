@@ -183,3 +183,8 @@ def get_class():
 def wav_files(request):
     wav_dir = request.config.getoption("--wav_dir")
     return glob.glob(os.path.join(wav_dir, "*"))
+
+
+@pytest.fixture
+def get_convert_map():
+    return Path(os.path.dirname(__file__)).parent / "espnet_onnx" / "export" / "convert_map.yml"

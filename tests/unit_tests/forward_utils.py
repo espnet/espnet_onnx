@@ -10,10 +10,10 @@ def run_onnx_enc(model, dummy_input, model_type):
     encoder_out, _ = model.run(
         ["encoder_out", "encoder_out_lens"], {"feats": dummy_input}
     )
-    if model_type[:3] == "rnn":
-        encoder_out = mask_fill(
-            encoder_out, make_pad_mask(feat_length, encoder_out, 1), 0.0
-        )
+    # if model_type[:3] == "rnn":
+    #     encoder_out = mask_fill(
+    #         encoder_out, make_pad_mask(feat_length, encoder_out, 1), 0.0
+    #     )
     return encoder_out
 
 

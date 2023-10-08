@@ -110,7 +110,7 @@ def test_infer_encoder(enc_type, feat_lens, load_config, get_class):
     for fl in feat_lens:
         dummy_input = torch.randn(1, fl, input_size)  # (B, L, D)
         # compute torch model
-        torch_out = encoder_espnet(dummy_input, torch.Tensor([fl]))
+        torch_out = encoder_espnet(dummy_input, torch.LongTensor([fl]))
         if type(torch_out) == tuple:
             torch_out = torch_out[0]
         # compute onnx model

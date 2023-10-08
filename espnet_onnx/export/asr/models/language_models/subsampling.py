@@ -14,7 +14,7 @@ class OnnxConv2dSubsampling(torch.nn.Module):
 
     """
 
-    def __init__(self, model):
+    def __init__(self, model, **kwargs):
         """Construct an Conv2dSubsampling object."""
         super().__init__()
         self.conv = model.conv
@@ -65,7 +65,7 @@ class OnnxConv2dSubsampling2(torch.nn.Module):
 
     """
 
-    def __init__(self, model):
+    def __init__(self, model, **kwargs):
         """Construct an Conv2dSubsampling object."""
         super().__init__()
         self.conv = model.conv
@@ -116,7 +116,7 @@ class OnnxConv2dSubsampling6(torch.nn.Module):
 
     """
 
-    def __init__(self, model):
+    def __init__(self, model, **kwargs):
         """Construct an Conv2dSubsampling object."""
         super().__init__()
         self.conv = model.conv
@@ -156,7 +156,7 @@ class OnnxConv2dSubsampling8(torch.nn.Module):
 
     """
 
-    def __init__(self, model):
+    def __init__(self, model, **kwargs):
         """Construct an Conv2dSubsampling object."""
         super().__init__()
         self.conv = model.conv
