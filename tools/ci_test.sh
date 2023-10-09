@@ -17,12 +17,14 @@ pip install --upgrade pip
 rm -rf ${home_dir}/.local/lib/python*
 pip install wheel
 wget ${custom_ort_url}
-pip install ${custom_ort_file}
 
 pip install torch==2.0.1+cpu torchvision==0.15.2+cpu torchaudio==2.0.2 --index-url https://download.pytorch.org/whl/cpu
-pip install -r ${home_dir}/espnet_onnx/tools/requirements_export.txt
+pip install -r ${home_dir}/espnet_onnx/tools/requirements_test.txt
+pip install ${custom_ort_file}
 pip install pytest
 
+# Avoid version conflict.
+pip install espnet --no-deps
 
 # Step 2: install s3prl
 if [ ! -d ${s3prl_path} ]; then
@@ -34,7 +36,6 @@ fi
 # Step 3: install
 cd ${s3prl_path}
 pip install -e .
-
 
 # Step 4: Run tests
 cd ${home_dir}/espnet_onnx
