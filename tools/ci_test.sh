@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Step 0: Hyper parameters
-custom_ort_url="https://github.com/espnet/espnet_onnx/releases/download/custom_ort_v1.11.1.espnet.3/onnxruntime-1.11.1.espnet-cp38-cp38-linux_x86_64.whl"
-custom_ort_file="onnxruntime-1.11.1.espnet-cp38-cp38-linux_x86_64.whl"
+custom_ort_url="https://github.com/espnet/espnet_onnx/releases/download/custom_ort_v1.11.1.espnet.3/onnxruntime_gpu-1.11.1.espnet-cp38-cp38-linux_x86_64.whl"
+custom_ort_file="onnxruntime_gpu-1.11.1.espnet-cp38-cp38-linux_x86_64.whl"
 s3prl_path="/home/circleci/s3prl"
 home_dir="/home/circleci"
 
@@ -19,7 +19,7 @@ pip install wheel
 wget ${custom_ort_url}
 pip install ${custom_ort_file}
 
-pip install torch==1.11.0 torchvision==0.12.0 torchaudio==0.11.0
+pip install torch==2.0.1+cpu torchvision==0.15.2+cpu torchaudio==2.0.2 --index-url https://download.pytorch.org/whl/cpu
 pip install -r ${home_dir}/espnet_onnx/tools/requirements_export.txt
 pip install pytest
 
