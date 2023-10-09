@@ -32,7 +32,7 @@ class ASRModelExport:
         assert check_argument_types()
         if cache_dir is None:
             cache_dir = Path.home() / ".cache" / "espnet_onnx"
-        
+
         if convert_map is None:
             convert_map = Path(os.path.dirname(__file__)).parent / "convert_map.yml"
 

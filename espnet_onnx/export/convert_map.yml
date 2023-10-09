@@ -11,7 +11,7 @@ asr:
     to: espnet_onnx.export.asr.models.language_models.embed.OnnxPositionalEncoding
   - from: espnet.nets.pytorch_backend.transformer.embedding.StreamPositionalEncoding
     to: espnet_onnx.export.asr.models.language_models.embed.OnnxStreamPositionalEncoding
-  
+
   # RNN encoder need to be replaced.
   - from: espnet2.asr.encoder.rnn_encoder.RNNEncoder
     to: espnet_onnx.export.asr.models.encoders.rnn.RNNEncoder
@@ -41,4 +41,3 @@ asr_optimization:
   #   is_legacy: false
   # - from: espnet.nets.pytorch_backend.transformer.attention.MultiHeadedAttention
   #   to: espnet_onnx.export.asr.models.multihead_att.OnnxMultiHeadedAttention
-

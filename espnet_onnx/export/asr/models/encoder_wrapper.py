@@ -22,7 +22,7 @@ class DefaultEncoder(nn.Module, AbsExportModel):
         if self.is_optimizable():
             self.num_heads = self.model.num_heads
             self.hidden_size = self.model.hidden_size
-    
+
     def get_frontend(self, kwargs):
         from espnet_onnx.export.asr.models import get_frontend_models
 
@@ -31,7 +31,7 @@ class DefaultEncoder(nn.Module, AbsExportModel):
             self.submodel = []
             self.submodel.append(self.frontend_model)
             self.feats_dim = self.frontend_model.output_dim
-    
+
     def forward(self, feats):
         feats_length = torch.ones(feats[:, :, 0].shape).sum(dim=-1).type(torch.long)
         return self.model(feats, feats_length)
@@ -68,7 +68,7 @@ class DefaultEncoder(nn.Module, AbsExportModel):
         ret = {}
         is_vggrnn = 'rnn' in type(self.model).__module__ and \
             any(['OnnxVGG2l' in type(m).__name__ for m in asr_model.encoder.modules()])
-        
+
         ret.update(
             enc_type='DefaultEncoder',
             model_path=os.path.join(path, f"{self.model_name}.onnx"),
@@ -82,4 +82,3 @@ class DefaultEncoder(nn.Module, AbsExportModel):
         if ret["do_normalize"]:
             ret.update(normalize=get_norm_config(asr_model.normalize, path))
         return ret
-
