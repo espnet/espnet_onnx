@@ -23,6 +23,10 @@ encoder_cases = [
     ("rnn_rnn", [50, 100]),
     ("rnn_rnnp", [50, 100]),
     ("rnn_vggrnn", [50, 100]),
+    ("branchformer_concat", [50, 100]),
+    ("branchformer_lave", [50, 100]),
+    ("branchformer_fave", [50, 100]),
+    ("e_branchformer", [50, 100]),
 ]
 
 decoder_cases = [
