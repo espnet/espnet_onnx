@@ -15,12 +15,8 @@ asr:
   # RNN encoder need to be replaced.
   - from: espnet2.asr.encoder.rnn_encoder.RNNEncoder
     to: espnet_onnx.export.asr.models.encoders.rnn.RNNEncoder
-  # - from: espnet.nets.pytorch_backend.rnn.encoders.RNN
-  #   to: espnet_onnx.export.asr.models.encoders.rnn.OnnxRNN
-  # - from: espnet.nets.pytorch_backend.rnn.encoders.RNNP
-  #   to: espnet_onnx.export.asr.models.encoders.rnn.OnnxRNNP
-  # - from: espnet.nets.pytorch_backend.rnn.encoders.VGG2L
-  #   to: espnet_onnx.export.asr.models.encoders.rnn.OnnxVGG2l
+  - from: espnet2.asr.encoder.vgg_rnn_encoder.VGGRNNEncoder
+    to: espnet_onnx.export.asr.models.encoders.rnn.RNNEncoder
 
   # Streaming encoder
   - from: espnet2.asr.encoder.contextual_block_conformer_encoder.ContextualBlockConformerEncoder
@@ -37,12 +33,12 @@ asr_optimization:
     to: espnet_onnx.export.asr.models.encoders.transformer.TransformerEncoder
 
   # Attention layer for optimization
-  - from: espnet.nets.pytorch_backend.transformer.attention.LegacyRelPositionMultiHeadedAttention
-    to: espnet_onnx.export.asr.models.multihead_att.OnnxRelPosMultiHeadedAttention
-    is_legacy: true
-  - from: espnet.nets.pytorch_backend.transformer.attention.RelPositionMultiHeadedAttention
-    to: espnet_onnx.export.asr.models.multihead_att.OnnxRelPosMultiHeadedAttention
-    is_legacy: false
-  - from: espnet.nets.pytorch_backend.transformer.attention.MultiHeadedAttention
-    to: espnet_onnx.export.asr.models.multihead_att.OnnxMultiHeadedAttention
+  # - from: espnet.nets.pytorch_backend.transformer.attention.LegacyRelPositionMultiHeadedAttention
+  #   to: espnet_onnx.export.asr.models.multihead_att.OnnxRelPosMultiHeadedAttention
+  #   is_legacy: true
+  # - from: espnet.nets.pytorch_backend.transformer.attention.RelPositionMultiHeadedAttention
+  #   to: espnet_onnx.export.asr.models.multihead_att.OnnxRelPosMultiHeadedAttention
+  #   is_legacy: false
+  # - from: espnet.nets.pytorch_backend.transformer.attention.MultiHeadedAttention
+  #   to: espnet_onnx.export.asr.models.multihead_att.OnnxMultiHeadedAttention
 

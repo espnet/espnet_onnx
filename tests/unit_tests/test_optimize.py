@@ -1,9 +1,11 @@
 import glob
 import os
 
+import torch
 import pytest
 
 from espnet_onnx.export.optimize.optimizer import optimize_model
+from espnet_onnx.export.asr.models import get_encoder
 
 from ..op_test_utils import check_op_type_count
 
@@ -36,8 +38,31 @@ def test_optimize(
     use_custom_ort,
     use_gpu,
     model_export,
+    load_config,
+    get_class,
+    get_convert_map,
 ):
     export_dir = model_export.cache_dir / "test" / model_type / f"cache_{model_name}"
+    export_dir.mkdir(parents=True, exist_ok=True)
+
+    if model_type == "encoder":
+        export_dir = model_export.cache_dir / "test" / model_type / f"cache_{model_name}_opt"
+        export_dir.mkdir(parents=True, exist_ok=True)
+        model_config = load_config(model_name, model_type="encoder")
+        frontend = get_class(
+            "frontend", model_config.frontend, model_config.frontend_conf.dic
+        )
+        input_size = frontend.output_size()
+        encoder = get_class(
+            "encoder",
+            model_config.encoder,
+            model_config.encoder_conf.dic,
+            input_size=input_size,
+        )
+        enc_wrapper = get_encoder(encoder, frontend, None, { "optimize": True }, get_convert_map)
+        print(enc_wrapper)
+        model_export._export_encoder(enc_wrapper, export_dir, verbose=False)
+
     output_dir = (
         model_export.cache_dir
         / "test"
