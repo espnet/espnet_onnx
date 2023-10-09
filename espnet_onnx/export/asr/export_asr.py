@@ -38,11 +38,17 @@ class ASRModelExport:
 
         self.cache_dir = Path(cache_dir)
         self.convert_map = convert_map
+
+        # Use opset_version=12 to avoid optimization error.
+        # When using the original onnxruntime, 'axes' is moved to input from opset_version=13
+        # so optimized model will be invalid for onnxruntime<=1.14.1 (latest in 2023/05)
+        # onnxruntime-1.14.1.espnet is fixed, so developers can use opset_version>12 with 1.14.1.espnet
         self.export_config = dict(
             use_gpu=False,
             only_onnxruntime=False,
             float16=False,
             use_ort_for_espnet=False,
+            opset_version=12,
         )
 
     def export(
@@ -233,7 +239,7 @@ class ASRModelExport:
             dummy_input,
             os.path.join(path, f"{model.model_name}.onnx"),
             verbose=verbose,
-            opset_version=15,
+            opset_version=self.export_config["opset_version"],
             input_names=model.get_input_names(),
             output_names=model.get_output_names(),
             dynamic_axes=model.get_dynamic_axes(),

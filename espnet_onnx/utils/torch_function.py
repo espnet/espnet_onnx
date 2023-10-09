@@ -58,4 +58,10 @@ def normalize(
 
 
 def subsequent_mask(size: torch.Tensor):
-    return torch.ones(size, size).tril()
+    # workaround for torch.tril
+    # tril() is a supported op with opset_version>14,
+    # but opset_version>13 may cause optimization error.
+    arange = torch.arange(size)
+    arange2 = torch.arange(size)
+    mask = arange.unsqueeze(-1).expand(-1, size) >= (arange2)
+    return torch.ones(size, size).masked_fill(mask == 0, 0)

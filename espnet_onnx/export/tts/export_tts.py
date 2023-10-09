@@ -27,7 +27,9 @@ class TTSModelExport:
             cache_dir = Path.home() / ".cache" / "espnet_onnx"
 
         self.cache_dir = Path(cache_dir)
-        self.export_config = {}
+        self.export_config = dict(
+            opset_version=12,
+        )
 
     def export(
         self,
@@ -154,7 +156,7 @@ class TTSModelExport:
             dummy_input,
             os.path.join(path, f"{model.model_name}.onnx"),
             verbose=verbose,
-            opset_version=15,
+            opset_version=self.export_config["opset_version"],
             input_names=model.get_input_names(),
             output_names=model.get_output_names(),
             dynamic_axes=model.get_dynamic_axes(),
