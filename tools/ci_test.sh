@@ -20,8 +20,9 @@ pip install wheel
 wget ${custom_ort_url}
 
 pip install torch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2
-pip install -r ${home_dir}/espnet_onnx/tools/requirements_export.txt
+pip install -r ${home_dir}/espnet_onnx/tools/requirements_test.txt
 pip install pytest
+pip install ${custom_ort_file}
 
 # Avoid version conflict.
 pip install espnet --no-deps
