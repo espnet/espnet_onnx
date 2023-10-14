@@ -25,7 +25,7 @@ pip install pytest
 pip install ${custom_ort_file}
 
 # Avoid version conflict.
-pip install espnet --no-deps
+pip install espnet==202308 --no-deps
 
 # Step 2: install s3prl
 if [ ! -d ${s3prl_path} ]; then
