@@ -6,7 +6,7 @@ requirements = {
         "librosa>=0.8.0",
         "onnxruntime",
         "sentencepiece>=0.1.91,!=0.1.92",
-        "typeguard>=2.7.0",
+        "typeguard==2.13.0",
         "PyYAML>=5.1.2",
         "g2p-en",
         "jamo==0.4.1",  # For kss
@@ -19,7 +19,7 @@ requirements = {
 
 setup(
     name="espnet_onnx",
-    version="0.1.10",
+    version="0.1.11",
     url="https://github.com/Masao-Someki/espnet_onnx",
     author="Masao Someki",
     author_email="masao.someki@gmail.com",
@@ -38,6 +38,7 @@ setup(
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
         "Operating System :: OS Independent",

@@ -135,7 +135,7 @@ class RNNEncoder(nn.Module, AbsExportModel):
         for module in self.enc:
             feats, ilens, states = module(feats, ilens)
             current_states.append(states)
-        
-        # feats = 
+
+        # feats =
         feats.masked_fill_(make_pad_mask(ilens + 1, feats, 1), 0.0)
         return feats, ilens, current_states

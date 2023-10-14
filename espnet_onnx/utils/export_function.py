@@ -22,7 +22,7 @@ def get_replace_modules(convert_map_path, task):
         raise ValueError(f"task {task} is not defined in {convert_map_path}")
     if not isinstance(convert_map[task], Iterable):
         raise ValueError(f"task {task} is not iterable")
-    
+
     cmap = convert_map[task]
     for replacement in cmap:
         rep.append({
@@ -30,7 +30,7 @@ def get_replace_modules(convert_map_path, task):
             'to': import_class(replacement.dic.pop('to')),
             **replacement.dic
         })
-    
+
     return rep
 
 
