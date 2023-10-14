@@ -2,15 +2,15 @@ asr:
   # Position Embedding
   # Onnx embedding layer will use cahce the position embedding matrix
   - from: espnet.nets.pytorch_backend.transformer.embedding.LegacyRelPositionalEncoding
-    to: espnet_onnx.export.asr.models.language_models.embed.OnnxLegacyRelPositionalEncoding
+    to: espnet_onnx.export.asr.models.layers.embed.OnnxLegacyRelPositionalEncoding
   - from: espnet.nets.pytorch_backend.transformer.embedding.ScaledPositionalEncoding
-    to: espnet_onnx.export.asr.models.language_models.embed.OnnxScaledPositionalEncoding
+    to: espnet_onnx.export.asr.models.layers.embed.OnnxScaledPositionalEncoding
   - from: espnet.nets.pytorch_backend.transformer.embedding.RelPositionalEncoding
-    to: espnet_onnx.export.asr.models.language_models.embed.OnnxRelPositionalEncoding
+    to: espnet_onnx.export.asr.models.layers.embed.OnnxRelPositionalEncoding
   - from: espnet.nets.pytorch_backend.transformer.embedding.PositionalEncoding
-    to: espnet_onnx.export.asr.models.language_models.embed.OnnxPositionalEncoding
+    to: espnet_onnx.export.asr.models.layers.embed.OnnxPositionalEncoding
   - from: espnet.nets.pytorch_backend.transformer.embedding.StreamPositionalEncoding
-    to: espnet_onnx.export.asr.models.language_models.embed.OnnxStreamPositionalEncoding
+    to: espnet_onnx.export.asr.models.layers.embed.OnnxStreamPositionalEncoding
   
   # RNN encoder need to be replaced.
   - from: espnet2.asr.encoder.rnn_encoder.RNNEncoder
@@ -31,14 +31,4 @@ asr_optimization:
     to: espnet_onnx.export.asr.models.encoders.conformer.ConformerEncoder
   - from: espnet2.asr.encoder.transformer_encoder.TransformerEncoder
     to: espnet_onnx.export.asr.models.encoders.transformer.TransformerEncoder
-
-  # Attention layer for optimization
-  # - from: espnet.nets.pytorch_backend.transformer.attention.LegacyRelPositionMultiHeadedAttention
-  #   to: espnet_onnx.export.asr.models.multihead_att.OnnxRelPosMultiHeadedAttention
-  #   is_legacy: true
-  # - from: espnet.nets.pytorch_backend.transformer.attention.RelPositionMultiHeadedAttention
-  #   to: espnet_onnx.export.asr.models.multihead_att.OnnxRelPosMultiHeadedAttention
-  #   is_legacy: false
-  # - from: espnet.nets.pytorch_backend.transformer.attention.MultiHeadedAttention
-  #   to: espnet_onnx.export.asr.models.multihead_att.OnnxMultiHeadedAttention
 

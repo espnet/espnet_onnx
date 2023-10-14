@@ -6,8 +6,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from espnet.nets.pytorch_backend.rnn.attentions import NoAtt
 
-from espnet_onnx.export.layers.attention import OnnxNoAtt, get_attention
-from espnet_onnx.export.layers.predecoder import PreDecoder
+from espnet_onnx.export.asr.models.layers.attention import OnnxNoAtt, get_attention
+from espnet_onnx.export.asr.models.decoders.predecoder import PreDecoder
 from espnet_onnx.utils.abs_model import AbsExportModel
 from espnet_onnx.utils.function import make_pad_mask
 

@@ -13,7 +13,7 @@ from espnet.nets.pytorch_backend.transformer.subsampling import (
 from espnet.nets.pytorch_backend.transformer.subsampling_without_posenc import \
     Conv2dSubsamplingWOPosEnc
 
-from espnet_onnx.export.asr.models.language_models.subsampling import (
+from espnet_onnx.export.asr.models.layers.subsampling import (
     OnnxConv2dSubsampling, OnnxConv2dSubsampling2, OnnxConv2dSubsampling6,
     OnnxConv2dSubsampling8)
 
