@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Step 0: Hyper parameters
-custom_ort_url="https://github.com/espnet/espnet_onnx/releases/download/custom_ort_v1.11.1.espnet.3/onnxruntime_gpu-1.11.1.espnet-cp38-cp38-linux_x86_64.whl"
-custom_ort_file="onnxruntime_gpu-1.11.1.espnet-cp38-cp38-linux_x86_64.whl"
+custom_ort_url="https://github.com/Masao-Someki/onnxruntime/releases/download/v1.14.1.espnet/onnxruntime_gpu-1.14.1.espnet-cp38-cp38-linux_x86_64.whl"
+custom_ort_file="onnxruntime_gpu-1.14.1.espnet-cp38-cp38-linux_x86_64.whl"
 
 s3prl_path="/home/circleci/s3prl"
 home_dir="/home/circleci"
