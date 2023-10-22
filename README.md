@@ -74,6 +74,9 @@ cd pytorch_binding && python3 -m pip install -e .
 
 6. If you want to develop optimization, you also need to develop onnxruntime. Please clone the onnxruntime repository.
 
+7. Since espnet==202308(latest on v0.2.0 release) requires `protobuf<=3.20.1` while the latest onnx requires `protobuf>=3.20.2`, you may get error with installation.
+   In this case, first, install the espnet==202308, update protobuf to 3.20.3, and then install other libraries.
+
 
 ## Usage
 
