@@ -1,0 +1,28 @@
+encoder: branchformer
+encoder_conf:
+    output_size: 256
+    use_attn: true
+    attention_heads: 4
+    attention_layer_type: rel_selfattn
+    pos_enc_layer_type: rel_pos
+    rel_pos_type: latest
+    use_cgmlp: true
+    cgmlp_linear_units: 512
+    cgmlp_conv_kernel: 31
+    use_linear_after_conv: false
+    gate_activation: identity
+    merge_method: learned_ave
+    cgmlp_weight: 0.5               # used only if merge_method is "fixed_ave"
+    attn_branch_drop_rate: 0.0      # used only if merge_method is "learned_ave"
+    num_blocks: 3
+    dropout_rate: 0.0
+    positional_dropout_rate: 0.0
+    attention_dropout_rate: 0.0
+    input_layer: conv2d
+    stochastic_depth_rate: 0.0
+
+frontend: default
+frontend_conf:
+  fs: 16k
+  hop_length: 256
+  n_fft: 256

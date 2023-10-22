@@ -21,6 +21,10 @@ encoder_cases = [
     "contextual_block_transformer",
     "contextual_block_conformer6",
     "contextual_block_transformer6",
+    "branchformer_concat",
+    "branchformer_lave",
+    "branchformer_fave",
+    "e_branchformer",
 ]
 
 decoder_cases = [
@@ -52,7 +56,7 @@ def save_model(onnx_model, export_dir, model_export, model_type):
 
 
 @pytest.mark.parametrize("enc_type", encoder_cases)
-def test_export_encoder(enc_type, load_config, model_export, get_class):
+def test_export_encoder(enc_type, load_config, model_export, get_class, get_convert_map):
     model_config = load_config(enc_type, model_type="encoder")
     # prepare input_dim from frontend
     frontend = get_class(
@@ -74,7 +78,7 @@ def test_export_encoder(enc_type, load_config, model_export, get_class):
     torch.save(encoder.state_dict(), str(export_dir / f"{enc_type}.pth"))
 
     # create encoder onnx wrapper and export
-    enc_wrapper = get_encoder(encoder, frontend, None, {})
+    enc_wrapper = get_encoder(encoder, frontend, None, {}, get_convert_map)
     save_model(enc_wrapper, export_dir, model_export, "encoder")
 
     if "contextual" in enc_type:

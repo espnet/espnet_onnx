@@ -28,12 +28,17 @@ from espnet_onnx.utils.config import save_config, update_model_path
 
 
 class ASRModelExport:
-    def __init__(self, cache_dir: Union[Path, str] = None):
+    def __init__(self, cache_dir: Union[Path, str] = None, convert_map: Union[str, Path] = None):
         assert check_argument_types()
         if cache_dir is None:
             cache_dir = Path.home() / ".cache" / "espnet_onnx"
 
+        if convert_map is None:
+            convert_map = Path(os.path.dirname(__file__)).parent / "convert_map.yml"
+
         self.cache_dir = Path(cache_dir)
+        self.convert_map = convert_map
+
         # Use opset_version=12 to avoid optimization error.
         # When using the original onnxruntime, 'axes' is moved to input from opset_version=13
         # so optimized model will be invalid for onnxruntime<=1.14.1 (latest in 2023/05)
@@ -75,6 +80,7 @@ class ASRModelExport:
             model.asr_model.frontend,
             model.asr_model.preencoder,
             self.export_config,
+            self.convert_map,
         )
         enc_out_size = enc_model.get_output_size()
         self._export_encoder(enc_model, export_dir, verbose)

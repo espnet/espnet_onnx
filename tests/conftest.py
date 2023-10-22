@@ -3,30 +3,6 @@ import os
 from pathlib import Path
 
 import pytest
-from espnet2.asr.decoder.abs_decoder import AbsDecoder
-from espnet2.asr.decoder.rnn_decoder import RNNDecoder
-from espnet2.asr.decoder.transformer_decoder import (
-    DynamicConvolution2DTransformerDecoder,
-    DynamicConvolutionTransformerDecoder,
-    LightweightConvolution2DTransformerDecoder,
-    LightweightConvolutionTransformerDecoder, TransformerDecoder)
-from espnet2.asr.encoder.abs_encoder import AbsEncoder
-from espnet2.asr.encoder.conformer_encoder import ConformerEncoder
-from espnet2.asr.encoder.contextual_block_conformer_encoder import \
-    ContextualBlockConformerEncoder
-from espnet2.asr.encoder.contextual_block_transformer_encoder import \
-    ContextualBlockTransformerEncoder
-from espnet2.asr.encoder.hubert_encoder import (FairseqHubertEncoder,
-                                                FairseqHubertPretrainEncoder)
-from espnet2.asr.encoder.rnn_encoder import RNNEncoder
-from espnet2.asr.encoder.transformer_encoder import TransformerEncoder
-from espnet2.asr.encoder.vgg_rnn_encoder import VGGRNNEncoder
-from espnet2.asr.encoder.wav2vec2_encoder import FairSeqWav2Vec2Encoder
-from espnet2.asr.frontend.abs_frontend import AbsFrontend
-from espnet2.asr.frontend.default import DefaultFrontend
-from espnet2.asr.frontend.fused import FusedFrontends
-from espnet2.asr.frontend.s3prl import S3prlFrontend
-from espnet2.asr.frontend.windowing import SlidingWindow
 from espnet2.lm.abs_model import AbsLM
 from espnet2.lm.seq_rnn_lm import SequentialRNNLM
 from espnet2.lm.transformer_lm import TransformerLM
@@ -34,11 +10,6 @@ from espnet2.train.class_choices import ClassChoices
 
 from espnet_onnx.export import ASRModelExport, TTSModelExport
 from espnet_onnx.utils.config import get_config
-
-try:
-    from espnet2.asr.transducer.transducer_decoder import TransducerDecoder
-except:
-    from espnet2.asr.decoder.transducer_decoder import TransducerDecoder
 
 from espnet2.gan_tts.hifigan import HiFiGANGenerator
 from espnet2.gan_tts.jets import JETS
@@ -52,6 +23,12 @@ from espnet2.tts.fastspeech import FastSpeech
 from espnet2.tts.fastspeech2 import FastSpeech2
 from espnet2.tts.tacotron2 import Tacotron2
 from espnet2.tts.transformer import Transformer
+
+from espnet2.tasks.asr import (
+    encoder_choices,
+    frontend_choices,
+    decoder_choices,
+)
 
 
 def pytest_addoption(parser):
@@ -92,47 +69,9 @@ def model_export_tts():
 
 
 class_choices = {
-    "frontend": ClassChoices(
-        name="frontend",
-        classes=dict(
-            default=DefaultFrontend,
-            sliding_window=SlidingWindow,
-            s3prl=S3prlFrontend,
-            fused=FusedFrontends,
-        ),
-        type_check=AbsFrontend,
-        default="default",
-    ),
-    "encoder": ClassChoices(
-        "encoder",
-        classes=dict(
-            conformer=ConformerEncoder,
-            transformer=TransformerEncoder,
-            contextual_block_transformer=ContextualBlockTransformerEncoder,
-            contextual_block_conformer=ContextualBlockConformerEncoder,
-            vgg_rnn=VGGRNNEncoder,
-            rnn=RNNEncoder,
-            wav2vec2=FairSeqWav2Vec2Encoder,
-            hubert=FairseqHubertEncoder,
-            hubert_pretrain=FairseqHubertPretrainEncoder,
-        ),
-        type_check=AbsEncoder,
-        default="rnn",
-    ),
-    "decoder": ClassChoices(
-        "decoder",
-        classes=dict(
-            transformer=TransformerDecoder,
-            lightweight_conv=LightweightConvolutionTransformerDecoder,
-            lightweight_conv2d=LightweightConvolution2DTransformerDecoder,
-            dynamic_conv=DynamicConvolutionTransformerDecoder,
-            dynamic_conv2d=DynamicConvolution2DTransformerDecoder,
-            rnn=RNNDecoder,
-            transducer=TransducerDecoder,
-        ),
-        type_check=AbsDecoder,
-        default="rnn",
-    ),
+    "frontend": frontend_choices,
+    "encoder": encoder_choices,
+    "decoder": decoder_choices,
     "lm": ClassChoices(
         "lm",
         classes=dict(
@@ -183,3 +122,8 @@ def get_class():
 def wav_files(request):
     wav_dir = request.config.getoption("--wav_dir")
     return glob.glob(os.path.join(wav_dir, "*"))
+
+
+@pytest.fixture
+def get_convert_map():
+    return Path(os.path.dirname(__file__)).parent / "espnet_onnx" / "export" / "convert_map.yml"

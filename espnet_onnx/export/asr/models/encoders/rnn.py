@@ -1,15 +1,11 @@
-import os
 
 import six
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from espnet2.asr.encoder.vgg_rnn_encoder import \
-    VGGRNNEncoder as espnetVGGRNNEncoder
 from espnet.nets.pytorch_backend.rnn.encoders import RNN, RNNP, VGG2L
+from espnet.nets.pytorch_backend.nets_utils import make_pad_mask
 
-from espnet_onnx.export.asr.get_config import (get_frontend_config,
-                                               get_norm_config)
 from espnet_onnx.utils.abs_model import AbsExportModel
 
 
@@ -101,7 +97,7 @@ class OnnxVGG2l(nn.Module):
             xs_pad.size(0), xs_pad.size(1), xs_pad.size(2) * xs_pad.size(3)
         )
 
-        ilens = torch.ceil(ilens / 4).type(torch.long)
+        ilens = torch.ceil(ilens / 4)#.type(torch.int32)
         return xs_pad, ilens, None  # no state in this layer
 
 
@@ -120,68 +116,26 @@ class RNNEncoderLayer(nn.Module):
 
 
 class RNNEncoder(nn.Module, AbsExportModel):
-    def __init__(self, model, frontend, preencoder, feats_dim=80, **kwargs):
+    def __init__(self, model, preencoder, feats_dim=80, **kwargs):
         super().__init__()
         self.model = model
         self.model_name = "rnn_encoder"
         self.enc = nn.ModuleList()
         self.feats_dim = feats_dim
-        self.frontend = frontend
         for e in model.enc:
             self.enc.append(RNNEncoderLayer(e))
 
-        self.get_frontend(kwargs)
         self.preencoder = preencoder
 
-    def get_frontend(self, kwargs):
-        from espnet_onnx.export.asr.models import get_frontend_models
-
-        self.frontend_model = get_frontend_models(self.frontend, kwargs)
-        if self.frontend_model is not None:
-            self.submodel = []
-            self.submodel.append(self.frontend_model)
-            self.feats_dim = self.frontend_model.output_dim
-
-    def forward(self, feats):
+    def forward(self, feats, ilens):
         current_states = []
-        ilens = torch.ones(feats[:, :, 0].shape).sum(dim=-1).type(torch.long)
         if self.preencoder is not None:
             feats, ilens = self.preencoder(feats, ilens)
 
         for module in self.enc:
             feats, ilens, states = module(feats, ilens)
             current_states.append(states)
+
+        # feats =
+        feats.masked_fill_(make_pad_mask(ilens + 1, feats, 1), 0.0)
         return feats, ilens, current_states
-
-    def get_output_size(self):
-        return self.model._output_size
-
-    def get_dummy_inputs(self):
-        feats = torch.randn(1, 100, self.feats_dim)
-        return feats
-
-    def get_input_names(self):
-        return ["feats"]
-
-    def get_output_names(self):
-        return ["encoder_out", "encoder_out_lens"]
-
-    def get_dynamic_axes(self):
-        return {"feats": {1: "feats_length"}}
-
-    def get_model_config(self, asr_model=None, path=None):
-        ret = {}
-        ret.update(
-            enc_type="RNNEncoder",
-            model_path=os.path.join(path, f"{self.model_name}.onnx"),
-            is_vggrnn=isinstance(self.model, espnetVGGRNNEncoder),
-            frontend=get_frontend_config(asr_model.frontend),
-            do_normalize=asr_model.normalize is not None,
-            do_postencoder=asr_model.postencoder is not None,
-        )
-        if ret["do_normalize"]:
-            ret.update(normalize=get_norm_config(asr_model.normalize, path))
-        # Currently, postencoder is not supported.
-        # if ret['do_postencoder']:
-        #     ret.update(postencoder=get_postenc_config(self.model.postencoder))
-        return ret

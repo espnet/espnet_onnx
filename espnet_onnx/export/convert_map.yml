@@ -1,0 +1,33 @@
+asr:
+  # Position Embedding
+  # Onnx embedding layer will use cahce the position embedding matrix
+  - from: espnet.nets.pytorch_backend.transformer.embedding.LegacyRelPositionalEncoding
+    to: espnet_onnx.export.asr.models.layers.embed.OnnxLegacyRelPositionalEncoding
+  - from: espnet.nets.pytorch_backend.transformer.embedding.ScaledPositionalEncoding
+    to: espnet_onnx.export.asr.models.layers.embed.OnnxScaledPositionalEncoding
+  - from: espnet.nets.pytorch_backend.transformer.embedding.RelPositionalEncoding
+    to: espnet_onnx.export.asr.models.layers.embed.OnnxRelPositionalEncoding
+  - from: espnet.nets.pytorch_backend.transformer.embedding.PositionalEncoding
+    to: espnet_onnx.export.asr.models.layers.embed.OnnxPositionalEncoding
+  - from: espnet.nets.pytorch_backend.transformer.embedding.StreamPositionalEncoding
+    to: espnet_onnx.export.asr.models.layers.embed.OnnxStreamPositionalEncoding
+
+  # RNN encoder need to be replaced.
+  - from: espnet2.asr.encoder.rnn_encoder.RNNEncoder
+    to: espnet_onnx.export.asr.models.encoders.rnn.RNNEncoder
+  - from: espnet2.asr.encoder.vgg_rnn_encoder.VGGRNNEncoder
+    to: espnet_onnx.export.asr.models.encoders.rnn.RNNEncoder
+
+  # Streaming encoder
+  - from: espnet2.asr.encoder.contextual_block_conformer_encoder.ContextualBlockConformerEncoder
+    to: espnet_onnx.export.asr.models.encoders.contextual_block_xformer.ContextualBlockXformerEncoder
+  - from: espnet2.asr.encoder.contextual_block_transformer_encoder.ContextualBlockTransformerEncoder
+    to: espnet_onnx.export.asr.models.encoders.contextual_block_xformer.ContextualBlockXformerEncoder
+
+
+asr_optimization:
+  # specific encoder model for optimization
+  - from: espnet2.asr.encoder.conformer_encoder.ConformerEncoder
+    to: espnet_onnx.export.asr.models.encoders.conformer.ConformerEncoder
+  - from: espnet2.asr.encoder.transformer_encoder.TransformerEncoder
+    to: espnet_onnx.export.asr.models.encoders.transformer.TransformerEncoder

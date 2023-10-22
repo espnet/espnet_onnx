@@ -23,6 +23,10 @@ encoder_cases = [
     ("rnn_rnn", [50, 100]),
     ("rnn_rnnp", [50, 100]),
     ("rnn_vggrnn", [50, 100]),
+    ("branchformer_concat", [50, 100]),
+    ("branchformer_lave", [50, 100]),
+    ("branchformer_fave", [50, 100]),
+    ("e_branchformer", [50, 100]),
 ]
 
 decoder_cases = [
@@ -110,7 +114,7 @@ def test_infer_encoder(enc_type, feat_lens, load_config, get_class):
     for fl in feat_lens:
         dummy_input = torch.randn(1, fl, input_size)  # (B, L, D)
         # compute torch model
-        torch_out = encoder_espnet(dummy_input, torch.Tensor([fl]))
+        torch_out = encoder_espnet(dummy_input, torch.LongTensor([fl]))
         if type(torch_out) == tuple:
             torch_out = torch_out[0]
         # compute onnx model

@@ -5,9 +5,9 @@ import torch.nn as nn
 from espnet.nets.pytorch_backend.transformer.attention import \
     MultiHeadedAttention
 
-from espnet_onnx.export.asr.models.decoder_layer import OnnxDecoderLayer
-from espnet_onnx.export.asr.models.language_models.embed import Embedding
-from espnet_onnx.export.asr.models.multihead_att import \
+from espnet_onnx.export.asr.models.layers.decoder_layer import OnnxDecoderLayer
+from espnet_onnx.export.asr.models.layers.embed import Embedding
+from espnet_onnx.export.asr.models.layers.multihead_att import \
     OnnxMultiHeadedAttention
 from espnet_onnx.utils.abs_model import AbsExportModel
 from espnet_onnx.utils.function import subsequent_mask

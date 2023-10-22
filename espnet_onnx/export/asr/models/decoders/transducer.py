@@ -3,7 +3,7 @@ import os
 import torch
 import torch.nn as nn
 
-from espnet_onnx.export.asr.models.language_models.embed import Embedding
+from espnet_onnx.export.asr.models.layers.embed import Embedding
 from espnet_onnx.utils.abs_model import AbsExportModel
 
 

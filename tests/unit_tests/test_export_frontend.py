@@ -27,7 +27,7 @@ def save_model(onnx_model, export_dir, model_export):
 
 
 @pytest.mark.parametrize("enc_type", encoder_cases)
-def test_export_frontend(enc_type, load_config, model_export, get_class):
+def test_export_frontend(enc_type, load_config, model_export, get_class, get_convert_map):
     model_config = load_config(enc_type, model_type="frontend")
     # prepare input_dim from frontend
     frontend = get_class(
@@ -49,7 +49,7 @@ def test_export_frontend(enc_type, load_config, model_export, get_class):
         model_config.encoder_conf.dic,
         input_size=input_size,
     )
-    enc_wrapper = get_encoder(encoder, frontend, None, {})
+    enc_wrapper = get_encoder(encoder, frontend, None, {}, get_convert_map)
     save_model(enc_wrapper, export_dir, model_export)
 
     assert len(os.path.join(export_dir, "*frontend.onnx")) > 0

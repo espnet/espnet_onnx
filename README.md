@@ -2,7 +2,7 @@
 
 ![](https://circleci.com/gh/espnet/espnet_onnx.svg?style=shield)
 ![](https://img.shields.io/badge/licence-MIT-blue)
-[![](https://img.shields.io/badge/pypi-0.1.11-brightgreen)](https://pypi.org/project/espnet-onnx/)
+[![](https://img.shields.io/badge/pypi-0.2.0-brightgreen)](https://pypi.org/project/espnet-onnx/)
 
 **ESPnet without PyTorch!**
 
@@ -321,6 +321,10 @@ To avoid the cache problem, I modified some scripts from the original espnet imp
 ASR: [Supported architecture for ASR](./docs/ASRSupported.md)
 
 TTS: [Supported architecture for TTS](./docs/TTSSupported.md)
+
+## Developer's Guide
+
+ASR: [Developer's Guide](./docs/DeveloperGuide.md)
 
 ## References
 

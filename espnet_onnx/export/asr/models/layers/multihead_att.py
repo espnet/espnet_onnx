@@ -5,7 +5,7 @@ import torch.nn as nn
 
 
 class OnnxMultiHeadedAttention(nn.Module):
-    def __init__(self, model, model_type="espnet"):
+    def __init__(self, model, model_type="espnet", **kwargs):
         super().__init__()
         if model_type == "espnet":
             self.d_k = model.d_k
@@ -57,7 +57,7 @@ class OnnxMultiHeadedAttention(nn.Module):
 
 
 class OnnxRelPosMultiHeadedAttention(OnnxMultiHeadedAttention):
-    def __init__(self, model, is_legacy=False):
+    def __init__(self, model, is_legacy=False, **kwargs):
         super().__init__(model)
         self.linear_pos = model.linear_pos
         self.pos_bias_u = model.pos_bias_u
