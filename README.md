@@ -322,6 +322,10 @@ ASR: [Supported architecture for ASR](./docs/ASRSupported.md)
 
 TTS: [Supported architecture for TTS](./docs/TTSSupported.md)
 
+## Developer's Guide
+
+ASR: [Developer's Guide](./docs/DeveloperGuide.md)
+
 ## References
 
 - [ESPNet: end-to-end speech processing toolkit](https://github.com/espnet/espnet)

@@ -15,6 +15,9 @@
 | FairseqHubertEncoder               | x         |
 | FairseqHubertPretrainEncoder       | x         |
 | LongformerEncoder                  | x         |
+| BranchformerEncoder                | ◯         |
+| E-BranchformerEncoder              | ◯         |
+
 
 **Decoder**
 
