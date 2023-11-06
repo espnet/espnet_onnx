@@ -16,25 +16,25 @@
 
 | arch name       | supported |
 | --------------- | --------- |
-| ParallelWaveGAN | ◯         |
-| MelGAN          | ◯         |
-| HiFiGAN         | ◯         |
-| StyleMelGAN     | x         |
+| ParallelWaveGAN | yes       |
+| MelGAN          | yes       |
+| HiFiGAN         | yes       |
+| StyleMelGAN     | no        |
 
 **Attention**
 
 | arch name    | supported |
 | ------------ | --------- |
-| AttLoc       | ◯         |
-| AttForward   | x         |
-| AttForwardTA | x         |
+| AttLoc       | yes       |
+| AttForward   | no        |
+| AttForwardTA | no        |
 
 **PositionalEmbedding**
 
 | arch name                   | supported |
 | --------------------------- | --------- |
-| PositionalEncoding          | ◯         |
-| ScaledPositionalEncoding    | ◯         |
-| LegacyRelPositionalEncoding | ◯         |
-| RelPositionalEncoding       | ◯         |
-| StreamPositionalEncoding    | ◯         |
+| PositionalEncoding          | yes       |
+| ScaledPositionalEncoding    | yes       |
+| LegacyRelPositionalEncoding | yes       |
+| RelPositionalEncoding       | yes       |
+| StreamPositionalEncoding    | yes       |
