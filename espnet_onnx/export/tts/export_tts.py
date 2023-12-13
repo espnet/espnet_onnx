@@ -99,7 +99,7 @@ class TTSModelExport:
 
         config_name = base_dir / "config.yaml"
         save_config(model_config, config_name)
-        update_model_path(tag_name, base_dir)
+        update_model_path(tag_name, self.cache_dir, base_dir)
 
     def export_from_pretrained(
         self, tag_name: str, quantize: bool = False, pretrained_config: Dict = {}
