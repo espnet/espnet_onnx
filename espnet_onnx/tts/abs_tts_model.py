@@ -10,8 +10,7 @@ from espnet_onnx.asr.frontend.normalize.global_mvn import GlobalMVN
 from espnet_onnx.asr.postprocess.build_tokenizer import build_tokenizer
 from espnet_onnx.asr.postprocess.token_id_converter import TokenIDConverter
 from espnet_onnx.tts.model.duration_calculator import DurationCalculator
-from espnet_onnx.tts.model.preprocess.common_processor import \
-    CommonPreprocessor
+from espnet_onnx.tts.model.preprocess.common_processor import CommonPreprocessor
 from espnet_onnx.tts.model.tts_model import get_tts_model
 from espnet_onnx.tts.model.vocoders.griffin_lim import Spectrogram2Waveform
 from espnet_onnx.tts.model.vocoders.vocoder import Vocoder

@@ -1,23 +1,21 @@
-
 import torch.nn as nn
-from espnet.nets.pytorch_backend.transformer.attention import \
-    MultiHeadedAttention
+from espnet.nets.pytorch_backend.transformer.attention import MultiHeadedAttention
 from espnet.nets.pytorch_backend.transformer.subsampling import (
-    Conv2dSubsampling, Conv2dSubsampling2, Conv2dSubsampling6,
-    Conv2dSubsampling8)
+    Conv2dSubsampling,
+    Conv2dSubsampling2,
+    Conv2dSubsampling6,
+    Conv2dSubsampling8,
+)
 
 from espnet_onnx.export.asr.models.layers.encoder_layer import OnnxEncoderLayer
 from espnet_onnx.export.asr.models.layers.embed import Embedding
-from espnet_onnx.export.asr.models.layers.multihead_att import \
-    OnnxMultiHeadedAttention
+from espnet_onnx.export.asr.models.layers.multihead_att import OnnxMultiHeadedAttention
 from espnet_onnx.utils.abs_model import AbsExportModel
 from espnet_onnx.utils.torch_function import MakePadMask
 
 
 class TransformerEncoder(nn.Module, AbsExportModel):
-    def __init__(
-        self, model, preencoder=None, max_seq_len=512, feats_dim=80, **kwargs
-    ):
+    def __init__(self, model, preencoder=None, max_seq_len=512, feats_dim=80, **kwargs):
         super().__init__()
         self.embed = Embedding(model.embed, max_seq_len)
         self.model = model

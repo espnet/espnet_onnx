@@ -8,7 +8,7 @@ from espnet_onnx.utils.config import get_config
 
 def import_class(module):
     class_name = module.split(".")[-1]
-    module_name = '.'.join(module.split(".")[:-1])
+    module_name = ".".join(module.split(".")[:-1])
     m = import_module(module_name)
     return getattr(m, class_name)
 
@@ -25,11 +25,13 @@ def get_replace_modules(convert_map_path, task):
 
     cmap = convert_map[task]
     for replacement in cmap:
-        rep.append({
-            'from': import_class(replacement.dic.pop('from')),
-            'to': import_class(replacement.dic.pop('to')),
-            **replacement.dic
-        })
+        rep.append(
+            {
+                "from": import_class(replacement.dic.pop("from")),
+                "to": import_class(replacement.dic.pop("to")),
+                **replacement.dic,
+            }
+        )
 
     return rep
 
@@ -44,17 +46,23 @@ def replace_modules(replacements, parent_module, **kwargs):
     elif len(parent_module._modules.keys()) > 1:
         replaced = False
         for replacement in replacements:
-            if isinstance(parent_module, replacement['from']):
+            if isinstance(parent_module, replacement["from"]):
                 replaced = True
-                parent_module = replacement['to'](parent_module, **replacement, **kwargs)
+                parent_module = replacement["to"](
+                    parent_module, **replacement, **kwargs
+                )
 
         if not replaced:
             for k, v in parent_module._modules.items():
                 if isinstance(v, torch.nn.Module):
-                    setattr(parent_module, k, replace_modules(replacements, v, **kwargs))
+                    setattr(
+                        parent_module, k, replace_modules(replacements, v, **kwargs)
+                    )
     else:
         for replacement in replacements:
-            if isinstance(parent_module, replacement['from']):
-                parent_module = replacement['to'](parent_module, **replacement, **kwargs)
+            if isinstance(parent_module, replacement["from"]):
+                parent_module = replacement["to"](
+                    parent_module, **replacement, **kwargs
+                )
 
     return parent_module

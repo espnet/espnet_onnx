@@ -2,9 +2,19 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from espnet.nets.pytorch_backend.rnn.attentions import (
-    AttAdd, AttCov, AttCovLoc, AttDot, AttLoc, AttLoc2D, AttLocRec,
-    AttMultiHeadAdd, AttMultiHeadDot, AttMultiHeadLoc, AttMultiHeadMultiResLoc,
-    NoAtt)
+    AttAdd,
+    AttCov,
+    AttCovLoc,
+    AttDot,
+    AttLoc,
+    AttLoc2D,
+    AttLocRec,
+    AttMultiHeadAdd,
+    AttMultiHeadDot,
+    AttMultiHeadLoc,
+    AttMultiHeadMultiResLoc,
+    NoAtt,
+)
 
 from espnet_onnx.utils.torch_function import normalize
 

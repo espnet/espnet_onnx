@@ -6,8 +6,7 @@ import numpy as np
 from typeguard import check_argument_types
 
 from espnet_onnx.asr.abs_asr_model import AbsASRModel
-from espnet_onnx.asr.beam_search.batch_beam_search_online import \
-    BatchBeamSearchOnline
+from espnet_onnx.asr.beam_search.batch_beam_search_online import BatchBeamSearchOnline
 from espnet_onnx.asr.beam_search.hyps import Hypothesis
 
 

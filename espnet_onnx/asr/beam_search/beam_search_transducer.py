@@ -5,10 +5,14 @@ from typing import Any, Dict, List, Union
 import numpy as np
 from scipy.special import log_softmax
 
-from espnet_onnx.asr.beam_search.hyps import (ExtendedHypothesis,
-                                              TransducerHypothesis)
-from espnet_onnx.utils.function import (is_prefix, recombine_hyps,
-                                        select_k_expansions, subtract, topk)
+from espnet_onnx.asr.beam_search.hyps import ExtendedHypothesis, TransducerHypothesis
+from espnet_onnx.utils.function import (
+    is_prefix,
+    recombine_hyps,
+    select_k_expansions,
+    subtract,
+    topk,
+)
 
 
 class BeamSearchTransducer:

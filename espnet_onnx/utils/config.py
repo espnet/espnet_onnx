@@ -44,7 +44,7 @@ def update_model_path(tag_name, model_path, cache_dir=None):
         tag_config_path = Path.home() / ".cache" / "espnet_onnx" / "tag_config.yaml"
     else:
         tag_config_path = Path(cache_dir) / "tag_config.yaml"
-        
+
     if os.path.exists(tag_config_path):
         config = get_config(tag_config_path)
     else:

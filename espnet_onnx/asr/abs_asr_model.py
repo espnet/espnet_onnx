@@ -3,8 +3,7 @@ import os
 
 from espnet_onnx.asr.beam_search.batch_beam_search import BatchBeamSearch
 from espnet_onnx.asr.beam_search.beam_search import BeamSearch
-from espnet_onnx.asr.beam_search.beam_search_transducer import \
-    BeamSearchTransducer
+from espnet_onnx.asr.beam_search.beam_search_transducer import BeamSearchTransducer
 from espnet_onnx.asr.model.decoder import get_decoder
 from espnet_onnx.asr.model.encoder import get_encoder
 from espnet_onnx.asr.model.joint_network import JointNetwork

@@ -1,16 +1,22 @@
-
 import torch.nn as nn
 from espnet.nets.pytorch_backend.transformer.attention import (
-    LegacyRelPositionMultiHeadedAttention, MultiHeadedAttention,
-    RelPositionMultiHeadedAttention)
+    LegacyRelPositionMultiHeadedAttention,
+    MultiHeadedAttention,
+    RelPositionMultiHeadedAttention,
+)
 from espnet.nets.pytorch_backend.transformer.subsampling import (
-    Conv2dSubsampling, Conv2dSubsampling2, Conv2dSubsampling6,
-    Conv2dSubsampling8)
+    Conv2dSubsampling,
+    Conv2dSubsampling2,
+    Conv2dSubsampling6,
+    Conv2dSubsampling8,
+)
 
 from espnet_onnx.export.asr.models.layers.conformer_layer import OnnxConformerLayer
 from espnet_onnx.export.asr.models.layers.embed import Embedding
 from espnet_onnx.export.asr.models.layers.multihead_att import (
-    OnnxMultiHeadedAttention, OnnxRelPosMultiHeadedAttention)
+    OnnxMultiHeadedAttention,
+    OnnxRelPosMultiHeadedAttention,
+)
 from espnet_onnx.utils.abs_model import AbsExportModel
 from espnet_onnx.utils.torch_function import MakePadMask
 

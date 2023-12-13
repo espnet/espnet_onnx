@@ -12,11 +12,11 @@ class DefaultEncoder(nn.Module, AbsExportModel):
     def __init__(self, model, frontend, feats_dim=80, **kwargs):
         super().__init__()
         self.model = model
-        self.model_name = 'default_encoder'
+        self.model_name = "default_encoder"
         self.frontend = frontend
         self.feats_dim = feats_dim
         self.get_frontend(kwargs)
-        for k,v in kwargs.items():
+        for k, v in kwargs.items():
             setattr(self, k, v)
 
         if self.is_optimizable():
@@ -37,10 +37,10 @@ class DefaultEncoder(nn.Module, AbsExportModel):
         return self.model(feats, feats_length)
 
     def get_output_size(self):
-        if 'RNNEncoder' in type(self.model).__module__:
+        if "RNNEncoder" in type(self.model).__module__:
             # check RNN first
             return self.model.model_output_size
-        elif 'espnet2' in type(self.model).__module__:
+        elif "espnet2" in type(self.model).__module__:
             # default espnet model
             return self.model.encoders[0].size
         else:
@@ -48,8 +48,10 @@ class DefaultEncoder(nn.Module, AbsExportModel):
             return self.model.model.encoders[0].size
 
     def is_optimizable(self):
-        return 'espnet_onnx' in type(self.model).__module__ \
-                and 'rnn' not in type(self.model).__module__
+        return (
+            "espnet_onnx" in type(self.model).__module__
+            and "rnn" not in type(self.model).__module__
+        )
 
     def get_dummy_inputs(self):
         feats = torch.randn(1, 100, self.feats_dim)
@@ -66,11 +68,12 @@ class DefaultEncoder(nn.Module, AbsExportModel):
 
     def get_model_config(self, asr_model=None, path=None):
         ret = {}
-        is_vggrnn = 'rnn' in type(self.model).__module__ and \
-            any(['OnnxVGG2l' in type(m).__name__ for m in asr_model.encoder.modules()])
+        is_vggrnn = "rnn" in type(self.model).__module__ and any(
+            ["OnnxVGG2l" in type(m).__name__ for m in asr_model.encoder.modules()]
+        )
 
         ret.update(
-            enc_type='DefaultEncoder',
+            enc_type="DefaultEncoder",
             model_path=os.path.join(path, f"{self.model_name}.onnx"),
             is_vggrnn=is_vggrnn,
             frontend=get_frontend_config(
