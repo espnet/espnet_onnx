@@ -6,8 +6,7 @@ import numpy as np
 from typeguard import check_argument_types
 
 from espnet_onnx.asr.abs_asr_model import AbsASRModel
-from espnet_onnx.asr.beam_search.batch_beam_search_online import \
-    BatchBeamSearchOnline
+from espnet_onnx.asr.beam_search.batch_beam_search_online import BatchBeamSearchOnline
 from espnet_onnx.asr.beam_search.hyps import Hypothesis
 
 
@@ -19,6 +18,7 @@ class StreamingSpeech2Text(AbsASRModel):
         tag_name: str = None,
         model_dir: Union[Path, str] = None,
         providers: List[str] = ["CPUExecutionProvider"],
+        cache_dir: Optional[Union[Path, str]] = None,
         use_quantized: bool = False,
         block_size: int = 40,
         hop_size: int = 16,
@@ -28,7 +28,7 @@ class StreamingSpeech2Text(AbsASRModel):
         decoder_text_length_limit=0,
     ):
         assert check_argument_types()
-        self._check_argument(tag_name, model_dir)
+        self._check_argument(tag_name, model_dir, cache_dir)
         self._load_config()
 
         # check onnxruntime version and providers

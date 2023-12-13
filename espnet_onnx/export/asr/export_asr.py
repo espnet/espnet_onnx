@@ -15,20 +15,29 @@ from espnet_model_zoo.downloader import ModelDownloader
 from onnxruntime.quantization import quantize_dynamic
 from typeguard import check_argument_types
 
-from espnet_onnx.export.asr.get_config import (get_beam_config,
-                                               get_ngram_config,
-                                               get_token_config,
-                                               get_tokenizer_config,
-                                               get_trans_beam_config,
-                                               get_weights_transducer)
-from espnet_onnx.export.asr.models import (CTC, JointNetwork, get_decoder,
-                                           get_encoder, get_lm)
+from espnet_onnx.export.asr.get_config import (
+    get_beam_config,
+    get_ngram_config,
+    get_token_config,
+    get_tokenizer_config,
+    get_trans_beam_config,
+    get_weights_transducer,
+)
+from espnet_onnx.export.asr.models import (
+    CTC,
+    JointNetwork,
+    get_decoder,
+    get_encoder,
+    get_lm,
+)
 from espnet_onnx.export.optimize.optimizer import optimize_model
 from espnet_onnx.utils.config import save_config, update_model_path
 
 
 class ASRModelExport:
-    def __init__(self, cache_dir: Union[Path, str] = None, convert_map: Union[str, Path] = None):
+    def __init__(
+        self, cache_dir: Union[Path, str] = None, convert_map: Union[str, Path] = None
+    ):
         assert check_argument_types()
         if cache_dir is None:
             cache_dir = Path.home() / ".cache" / "espnet_onnx"
@@ -169,7 +178,7 @@ class ASRModelExport:
 
         config_name = base_dir / "config.yaml"
         save_config(model_config, config_name)
-        update_model_path(tag_name, base_dir)
+        update_model_path(tag_name, base_dir, self.cache_dir)
 
     def export_from_pretrained(
         self,

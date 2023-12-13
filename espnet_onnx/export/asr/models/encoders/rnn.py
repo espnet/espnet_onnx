@@ -1,4 +1,3 @@
-
 import six
 import torch
 import torch.nn as nn
@@ -97,7 +96,7 @@ class OnnxVGG2l(nn.Module):
             xs_pad.size(0), xs_pad.size(1), xs_pad.size(2) * xs_pad.size(3)
         )
 
-        ilens = torch.ceil(ilens / 4)#.type(torch.int32)
+        ilens = torch.ceil(ilens / 4)  # .type(torch.int32)
         return xs_pad, ilens, None  # no state in this layer
 
 

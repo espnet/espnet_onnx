@@ -10,32 +10,15 @@ from espnet_onnx.asr.frontend.normalize.global_mvn import GlobalMVN
 from espnet_onnx.asr.postprocess.build_tokenizer import build_tokenizer
 from espnet_onnx.asr.postprocess.token_id_converter import TokenIDConverter
 from espnet_onnx.tts.model.duration_calculator import DurationCalculator
-from espnet_onnx.tts.model.preprocess.common_processor import \
-    CommonPreprocessor
+from espnet_onnx.tts.model.preprocess.common_processor import CommonPreprocessor
 from espnet_onnx.tts.model.tts_model import get_tts_model
 from espnet_onnx.tts.model.vocoders.griffin_lim import Spectrogram2Waveform
 from espnet_onnx.tts.model.vocoders.vocoder import Vocoder
 from espnet_onnx.utils.abs_model import AbsModel
-from espnet_onnx.utils.config import get_config, get_tag_config
+from espnet_onnx.utils.config import get_config
 
 
 class AbsTTSModel(AbsModel):
-    def _check_argument(self, tag_name, model_dir):
-        self.model_dir = model_dir
-
-        if tag_name is None and model_dir is None:
-            raise ValueError("tag_name or model_dir should be defined.")
-
-        if tag_name is not None:
-            tag_config = get_tag_config()
-            if tag_name not in tag_config.keys():
-                raise RuntimeError(
-                    f'Model path for tag_name "{tag_name}" is not set on tag_config.yaml.'
-                    + "You have to export to onnx format with `espnet_onnx.export.asr.export_asr.ModelExport`,"
-                    + "or have to set exported model path in tag_config.yaml."
-                )
-            self.model_dir = tag_config[tag_name]
-
     def _load_config(self):
         config_file = glob.glob(os.path.join(self.model_dir, "config.*"))[0]
         self.config = get_config(config_file)

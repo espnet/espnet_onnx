@@ -5,8 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from espnet_onnx.export.asr.models.layers.encoder_layer import OnnxEncoderLayer
-from espnet_onnx.export.asr.models.layers.multihead_att import \
-    OnnxMultiHeadedAttention
+from espnet_onnx.export.asr.models.layers.multihead_att import OnnxMultiHeadedAttention
 from espnet_onnx.utils.abs_model import AbsExportModel
 from espnet_onnx.utils.torch_function import MakePadMask
 

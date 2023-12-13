@@ -1,5 +1,6 @@
 import warnings
-from typing import List
+from typing import List, Optional, Union
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -89,13 +90,14 @@ class TorchFrontend:
         providers: list = ["CPUExecutionProvider"],
         use_quantized: bool = False,
         torch_input: bool = False,
+        cache_dir: Optional[Union[Path, str]] = None,
     ):
         import glob
         import os
 
         from espnet_onnx.utils.config import get_config, get_tag_config
 
-        tag_config = get_tag_config()
+        tag_config = get_tag_config(cache_dir)
         if tag_name not in tag_config.keys():
             raise RuntimeError(
                 f'Model path for tag_name "{tag_name}" is not set on tag_config.yaml.'

@@ -38,9 +38,13 @@ def save_config(config, path):
         raise ValueError(f"File type {ext} is not supported.")
 
 
-def update_model_path(tag_name, model_path):
+def update_model_path(tag_name, model_path, cache_dir=None):
     # get configuration of the tag name.
-    tag_config_path = Path.home() / ".cache" / "espnet_onnx" / "tag_config.yaml"
+    if cache_dir is None:
+        tag_config_path = Path.home() / ".cache" / "espnet_onnx" / "tag_config.yaml"
+    else:
+        tag_config_path = Path(cache_dir) / "tag_config.yaml"
+
     if os.path.exists(tag_config_path):
         config = get_config(tag_config_path)
     else:
@@ -55,8 +59,12 @@ def update_model_path(tag_name, model_path):
     save_config(config, tag_config_path)
 
 
-def get_tag_config():
-    tag_config_path = Path.home() / ".cache" / "espnet_onnx" / "tag_config.yaml"
+def get_tag_config(cache_dir=None):
+    if cache_dir is None:
+        tag_config_path = Path.home() / ".cache" / "espnet_onnx" / "tag_config.yaml"
+    else:
+        tag_config_path = Path(cache_dir) / "tag_config.yaml"
+
     if os.path.exists(tag_config_path):
         config = get_config(tag_config_path)
     else:

@@ -62,6 +62,9 @@ def load_config(request):
 def model_export():
     return ASRModelExport(Path.home() / ".cache" / "espnet_onnx")
 
+@pytest.fixture
+def custom_dir_model_export():
+    return ASRModelExport("./test_export_dir")
 
 @pytest.fixture
 def model_export_tts():

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Optional
 
 import numpy as np
 from typeguard import check_argument_types
@@ -16,9 +16,10 @@ class Text2Speech(AbsTTSModel):
         model_dir: Union[Path, str] = None,
         providers: List[str] = ["CPUExecutionProvider"],
         use_quantized: bool = False,
+        cache_dir: Optional[Union[Path, str]] = None,
     ):
         assert check_argument_types()
-        self._check_argument(tag_name, model_dir)
+        self._check_argument(tag_name, model_dir, cache_dir)
         self._load_config()
 
         # check onnxruntime version and providers

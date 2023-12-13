@@ -4,8 +4,7 @@ from typing import Optional
 import torch
 import torch.nn as nn
 
-from espnet_onnx.export.tts.models.tts_models.fastspeech2 import \
-    OnnxStyleEncoder
+from espnet_onnx.export.tts.models.tts_models.fastspeech2 import OnnxStyleEncoder
 from espnet_onnx.export.tts.models.vocoders.hifigan import OnnxHiFiGANVocoder
 from espnet_onnx.utils.abs_model import AbsExportModel
 from espnet_onnx.utils.torch_function import MakePadMask, normalize

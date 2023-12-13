@@ -4,10 +4,10 @@ from typing import Iterable, Union
 from typeguard import check_argument_types
 
 from espnet_onnx.asr.postprocess.tokenizers.char_tokenizer import CharTokenizer
-from espnet_onnx.asr.postprocess.tokenizers.phoneme_tokenizer import \
-    PhonemeTokenizer
-from espnet_onnx.asr.postprocess.tokenizers.sentencepiece_tokenizer import \
-    SentencepiecesTokenizer
+from espnet_onnx.asr.postprocess.tokenizers.phoneme_tokenizer import PhonemeTokenizer
+from espnet_onnx.asr.postprocess.tokenizers.sentencepiece_tokenizer import (
+    SentencepiecesTokenizer,
+)
 from espnet_onnx.asr.postprocess.tokenizers.word_tokenizer import WordTokenizer
 
 

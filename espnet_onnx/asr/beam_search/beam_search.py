@@ -7,8 +7,7 @@ import numpy as np
 from typeguard import check_argument_types
 
 from espnet_onnx.asr.beam_search.hyps import Hypothesis
-from espnet_onnx.asr.scorer.interface import (PartialScorerInterface,
-                                              ScorerInterface)
+from espnet_onnx.asr.scorer.interface import PartialScorerInterface, ScorerInterface
 from espnet_onnx.utils.config import Config
 from espnet_onnx.utils.function import end_detect, topk
 
