@@ -13,14 +13,17 @@ from espnet_onnx.utils.config import get_config, get_tag_config
 
 
 class AbsModel(ABC):
-    def _check_argument(self, tag_name, model_dir):
+    def _check_argument(self, tag_name, model_dir, cache_dir=None):
         self.model_dir = model_dir
 
         if tag_name is None and model_dir is None:
             raise ValueError("tag_name or model_dir should be defined.")
 
+        if model_dir is not None and cache_dir is not None:
+            raise RuntimeError("Both model_dir and cache_dir should not be defined.")
+
         if tag_name is not None:
-            tag_config = get_tag_config()
+            tag_config = get_tag_config(cache_dir)
             if tag_name not in tag_config.keys():
                 raise RuntimeError(
                     f'Model path for tag_name "{tag_name}" not found.'
