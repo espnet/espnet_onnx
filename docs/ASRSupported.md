@@ -4,95 +4,95 @@
 
 | arch name                          | supported |
 | ---------------------------------- | --------- |
-| ConformerEncoder                   | ◯         |
-| ContextualBlockConformerEncoder    | ◯         |
-| ContextualBlockTransformerEncoderx | ◯         |
-| FairseqHubertEncoder               | x         |
-| RNNEncoder                         | ◯         |
-| TransformerEncoder                 | ◯         |
-| VGGRNNEncoderx                     | ◯         |
-| FairSeqWav2Vec2Encoder             | x         |
-| FairseqHubertEncoder               | x         |
-| FairseqHubertPretrainEncoder       | x         |
-| LongformerEncoder                  | x         |
-| BranchformerEncoder                | ◯         |
-| E-BranchformerEncoder              | ◯         |
+| ConformerEncoder                   | Yes       |
+| ContextualBlockConformerEncoder    | Yes       |
+| ContextualBlockTransformerEncoderx | Yes       |
+| FairseqHubertEncoder               | No        |
+| RNNEncoder                         | Yes       |
+| TransformerEncoder                 | Yes       |
+| VGGRNNEncoderx                     | Yes       |
+| FairSeqWav2Vec2Encoder             | No        |
+| FairseqHubertEncoder               | No        |
+| FairseqHubertPretrainEncoder       | No        |
+| LongformerEncoder                  | No        |
+| BranchformerEncoder                | Yes       |
+| E-BranchformerEncoder              | Yes       |
 
 
 **Decoder**
 
 | arch name                                  | supported |
 | ------------------------------------------ | --------- |
-| RNNDecoder                                 | ◯         |
-| TransformerDecoder                         | ◯         |
-| LightweightConvolutionTransformerDecoder   | ◯         |
-| LightweightConvolution2DTransformerDecoder | ◯         |
-| DynamicConvolutionTransformerDecoder       | x         |
-| DynamicConvolution2DTransformerDecoder     | x         |
-| TransducerDecoder                          | ◯         |
-| MLMDecoder                                 | x         |
+| RNNDecoder                                 | Yes       |
+| TransformerDecoder                         | Yes       |
+| LightweightConvolutionTransformerDecoder   | Yes       |
+| LightweightConvolution2DTransformerDecoder | Yes       |
+| DynamicConvolutionTransformerDecoder       | No        |
+| DynamicConvolution2DTransformerDecoder     | No        |
+| TransducerDecoder                          | Yes       |
+| MLMDecoder                                 | No        |
 
 **Language Model**
 
 | arch name       | supported |
 | --------------- | --------- |
-| SequentialRNNLM | ◯         |
-| TransformerLM   | ◯         |
+| SequentialRNNLM | Yes       |
+| TransformerLM   | Yes       |
 
 **frontend**
 
 | arch name       | supported |
 | --------------- | --------- |
-| DefaultFrontend | ◯         |
-| SlidingWindow   | x         |
-| HuBERT          | ◯         |
-| Wav2Vec         | x         |
-| FusedFrontends  | x         |
+| DefaultFrontend | Yes       |
+| SlidingWindow   | No        |
+| HuBERT          | Yes       |
+| Wav2Vec         | No        |
+| FusedFrontends  | No        |
 
 **normalize**
 
 | arch name    | supported |
 | ------------ | --------- |
-| GlobalMVN    | ◯         |
-| UtteranceMVN | ◯         |
+| GlobalMVN    | Yes       |
+| UtteranceMVN | Yes       |
 
 **PositionalEmbedding**
 
 | arch name                   | supported |
 | --------------------------- | --------- |
-| PositionalEncoding          | ◯         |
-| ScaledPositionalEncoding    | ◯         |
-| LegacyRelPositionalEncoding | ◯         |
-| RelPositionalEncoding       | ◯         |
-| StreamPositionalEncoding    | ◯         |
+| PositionalEncoding          | Yes       |
+| ScaledPositionalEncoding    | Yes       |
+| LegacyRelPositionalEncoding | Yes       |
+| RelPositionalEncoding       | Yes       |
+| StreamPositionalEncoding    | Yes       |
 
 **Attention**
 
 | arch name               | supported |
 | ----------------------- | --------- |
-| NoAtt                   | ◯         |
-| AttDot                  | ◯         |
-| AttAdd                  | ◯         |
-| AttLoc                  | ◯         |
-| AttCov                  | ◯         |
-| AttLoc2D                | x         |
-| AttLocRec               | x         |
-| AttCovLoc               | ◯         |
-| AttMultiHeadDot         | x         |
-| AttMultiHeadAdd         | x         |
-| AttMultiHeadLoc         | x         |
-| AttMultiHeadMultiResLoc | x         |
-| AttForward              | x         |
-| AttForwardTA            | x         |
+| NoAtt                   | Yes       |
+| AttDot                  | Yes       |
+| AttAdd                  | Yes       |
+| AttLoc                  | Yes       |
+| AttCov                  | Yes       |
+| AttLoc2D                | No        |
+| AttLocRec               | No        |
+| AttCovLoc               | Yes       |
+| AttMultiHeadDot         | No        |
+| AttMultiHeadAdd         | No        |
+| AttMultiHeadLoc         | No        |
+| AttMultiHeadMultiResLoc | No        |
+| AttForward              | No        |
+| AttForwardTA            | No        |
 
 **pre encoder**
 The following shows the encoder module that support preencoder export and inference.
 | arch name       | supported |
 | --------------- | --------- |
-| RNN             | ◯         |
-| Transformer     | ◯         |
-| Conformer       | ◯         |
-| ContextualBlock | x         |
+| RNN             | Yes       |
+| Transformer     | Yes       |
+| Conformer       | Yes       |
+| ContextualBlock | No        |
 
 **post encoder**
 not supported.
