@@ -181,7 +181,7 @@ class OnnxScaledPositionalEncoding(OnnxPositionalEncoding):
     def __init__(self, model, max_seq_len=512, use_cache=True, **kwargs):
         """Initialize class."""
         super().__init__(model, max_seq_len, use_cache=use_cache)
-        self.alpha = torch.nn.Parameter(torch.tensor(1.0))
+        self.alpha = model.alpha
 
     def reset_parameters(self):
         """Reset parameters."""
