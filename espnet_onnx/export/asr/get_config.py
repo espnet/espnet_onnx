@@ -90,6 +90,10 @@ def get_frontend_config(asr_frontend_model, frontend=None, **kwargs):
         frontend_config = frontend.get_model_config(**kwargs)
     elif isinstance(asr_frontend_model, DefaultFrontend):
         frontend_config = get_default_frontend(asr_frontend_model)
+    elif asr_frontend_model is None:
+        frontend_config = {
+            "frontend_type": None,
+        }
     else:
         raise ValueError("Currently only s3prl is supported.")
 

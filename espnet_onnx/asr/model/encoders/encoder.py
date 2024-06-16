@@ -29,7 +29,11 @@ class Encoder:
                 self.config.model_path, providers=providers
             )
 
-        self.frontend = Frontend(self.config.frontend, providers, use_quantized)
+        if self.config.frontend.frontend_type is None:
+            self.frontend = None
+        else:
+            self.frontend = Frontend(self.config.frontend, providers, use_quantized)
+
         if self.config.do_normalize:
             if self.config.normalize.type == "gmvn":
                 self.normalize = GlobalMVN(self.config.normalize)
@@ -51,7 +55,11 @@ class Encoder:
             speech_lengths: (Batch, )
         """
         # 1. Extract feature
-        feats, feat_length = self.frontend(speech, speech_length)
+        if self.frontend is not None:
+            feats, feat_length = self.frontend(speech, speech_length)
+        else:
+            feats = speech
+            feat_length = speech_length
 
         # 2. normalize with global MVN
         if self.config.do_normalize:
