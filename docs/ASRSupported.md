@@ -48,6 +48,7 @@
 | HuBERT          | Yes       |
 | Wav2Vec         | No        |
 | FusedFrontends  | No        |
+| No Frontend     | Yes       |
 
 **normalize**
 
