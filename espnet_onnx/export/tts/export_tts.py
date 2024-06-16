@@ -23,7 +23,7 @@ from espnet_onnx.utils.config import save_config, update_model_path
 
 
 class TTSModelExport:
-    def __init__(self, cache_dir: Union[Path, str] = None):
+    def __init__(self, cache_dir: Union[Path, str] = None, max_seq_len: int = 512):
         assert check_argument_types()
         if cache_dir is None:
             cache_dir = Path.home() / ".cache" / "espnet_onnx"
@@ -31,6 +31,7 @@ class TTSModelExport:
         self.cache_dir = Path(cache_dir)
         self.export_config = dict(
             opset_version=12,
+            max_seq_len=max_seq_len,
         )
 
     def export(
