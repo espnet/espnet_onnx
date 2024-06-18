@@ -56,7 +56,7 @@ def get_encoder(model, frontend, preencoder, export_config, convert_map):
             ),
             model,
             preencoder=preencoder,
-            export_config=export_config,
+            **export_config,
         )
         return DefaultEncoder(_model, frontend, **export_config)
 
