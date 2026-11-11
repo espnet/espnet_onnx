@@ -1,4 +1,4 @@
-bpemodel: /home/circleci/espnet_onnx/tests/integration_tests/test_files/bpe.model
+bpemodel: tests/integration_tests/test_files/bpe.model
 
 lm: transformer
 lm_conf:
@@ -15,5 +15,5 @@ model_conf:
 
 init: null
 
-token_list: /home/circleci/espnet_onnx/tests/integration_tests/test_files/token.txt
+token_list: tests/integration_tests/test_files/token.txt
 token_type: bpe

@@ -1,4 +1,4 @@
-bpemodel: /home/circleci/espnet_onnx/tests/integration_tests/test_files/bpe.model
+bpemodel: tests/integration_tests/test_files/bpe.model
 
 ctc_conf:
   ctc_type: builtin
@@ -55,7 +55,7 @@ model_conf:
 
 normalize: global_mvn
 normalize_conf:
-  stats_file: /home/circleci/espnet_onnx/tests/integration_tests/test_files/feats_stats.npz
+  stats_file: tests/integration_tests/test_files/feats_stats.npz
 
-token_list: /home/circleci/espnet_onnx/tests/integration_tests/test_files/token.txt
+token_list: tests/integration_tests/test_files/token.txt
 token_type: bpe
