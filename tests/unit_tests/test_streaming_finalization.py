@@ -23,14 +23,17 @@ class TailScorer(BatchScorerInterface):
 class BufferedEncoder:
     def reset(self):
         self.blocks = 0
+        self.n_processed_blocks = 0
         self.flush_calls = 0
         self.chunk_lengths = []
+        self.chunks = []
 
     def init_state(self):
         return {"step": 0}
 
     def __call__(self, speech, speech_length, states):
         self.chunk_lengths.append(speech.shape[1])
+        self.chunks.append(speech[0].copy())
         return np.ones((1, 4, 1), dtype=np.float32), states
 
     def forward_final(self, states):
@@ -40,6 +43,7 @@ class BufferedEncoder:
 
     def increment(self):
         self.blocks += 1
+        self.n_processed_blocks += 1
 
 
 def make_streaming_model(look_ahead=2):
@@ -48,6 +52,7 @@ def make_streaming_model(look_ahead=2):
     model.encoder = BufferedEncoder()
     model.initial_wav_length = 10
     model.hop_size = 4
+    model._window_overlap = 0
     model.beam_search = BatchBeamSearchOnline(
         Config({
             "beam_size": 1,
@@ -99,3 +104,46 @@ def test_empty_utterance_has_no_hypothesis():
     model = make_streaming_model()
     assert model.simulate(np.zeros(0, dtype=np.float32)) == []
     assert model.encoder.flush_calls == 0
+
+
+@pytest.mark.parametrize("chunk_size", [1, 3, 4, 10, 29])
+def test_start_chunks_end_preserves_audio_and_finalizes(chunk_size):
+    speech = np.arange(29, dtype=np.float32)
+    model = make_streaming_model()
+    model.start()
+    for offset in range(0, len(speech), chunk_size):
+        model(speech[offset : offset + chunk_size])
+    result = model.end()
+    assert result[0][0] == "2"
+    assert model.encoder.chunk_lengths == [10, 4, 4, 4, 4, 4]
+    received = np.concatenate(model.encoder.chunks)
+    np.testing.assert_array_equal(received[:len(speech)], speech)
+    np.testing.assert_array_equal(received[len(speech):], 0)
+
+
+def test_initial_small_chunk_waits_for_context():
+    model = make_streaming_model()
+    assert model(np.zeros(4, dtype=np.float32)) == []
+    assert model.encoder.chunk_lengths == []
+    assert model.end()[0][0] == "2"
+    assert model.encoder.chunk_lengths == [10]
+
+
+def test_left_padding_once_and_no_padding_between_chunks():
+    model = make_streaming_model()
+    model._window_overlap = 2
+    speech = np.arange(1, 18, dtype=np.float32)
+    model.start()
+    for offset in range(0, len(speech), 3):
+        model(speech[offset : offset + 3])
+    chunks_before_end = len(model.encoder.chunks)
+    model.end()
+    assert len(model.encoder.chunks) == chunks_before_end
+    assert model.encoder.chunk_lengths == [10, 4, 4, 4, 4]
+    chunks = model.encoder.chunks
+    np.testing.assert_array_equal(chunks[0], np.r_[0, speech[:9]])
+    for previous, current in zip(chunks, chunks[1:]):
+        np.testing.assert_array_equal(previous[-2:], current[:2])
+        assert np.all(current > 0)
+    reconstructed = np.concatenate([chunks[0], *(chunk[2:] for chunk in chunks[1:])])
+    np.testing.assert_array_equal(reconstructed, np.r_[0, speech])

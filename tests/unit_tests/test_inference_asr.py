@@ -1,6 +1,7 @@
 import glob
 import os
 from pathlib import Path
+from unittest.mock import Mock
 
 import numpy as np
 import onnxruntime as ort
@@ -10,6 +11,9 @@ import torch
 from espnet_onnx.asr.model.decoder import get_decoder
 from espnet_onnx.asr.model.lm import get_lm
 from espnet_onnx.asr.model.encoders.streaming import StreamingEncoder
+from espnet_onnx.asr.asr_streaming import StreamingSpeech2Text
+from espnet_onnx.asr.frontend.frontend import Frontend
+from espnet_onnx.export.asr.get_config import get_frontend_config
 from espnet_onnx.utils.config import Config, get_config
 
 from .forward_utils import (run_onnx_enc, run_rnn_dec, run_streaming_enc,
@@ -307,6 +311,46 @@ def test_infer_streaming_encoder(
         assert tail.shape == (1, hop_size, pe.shape[-1])
         assert np.isfinite(tail).all()
         assert states["buffer_after_downsampling"].shape[1] == block_size - hop_size
+
+        # The public API must accept fixed-size live chunks, including the
+        # first and final partial windows, without accumulating STFT frames.
+        frontend_config = get_frontend_config(frontend)
+        frontend_config["stft"].update(
+            n_fft=512, win_length=512, hop_length=128, center=False
+        )
+        frontend_config["logmel"]["n_fft"] = 512
+        streaming.config.frontend = Config(frontend_config)
+        streaming.config.do_normalize = False
+        streaming.frontend = Frontend(streaming.config.frontend, PROVIDERS)
+        options = ort.SessionOptions()
+        options.intra_op_num_threads = 1
+        options.inter_op_num_threads = 1
+        streaming.encoder = ort.InferenceSession(
+            model_file, sess_options=options, providers=PROVIDERS
+        )
+        live = StreamingSpeech2Text.__new__(StreamingSpeech2Text)
+        live.config = Config({"encoder": streaming.config})
+        live.encoder = streaming
+        live.beam_search = Mock(return_value=[])
+        live._window_overlap = 512
+        live.initial_wav_length = (block_size + 2) * subsample * 128 + 512
+        live.hop_size = hop_size * subsample * 128 + 512
+        speech = np.zeros(
+            live.initial_wav_length + 32 * (live.hop_size - 512) + 37,
+            dtype=np.float32,
+        )
+        live.start()
+        for start in range(0, len(speech), live.hop_size):
+            live(speech[start : start + live.hop_size])
+        assert live.end() == []
+        expected = np.array(live.enc_feats)
+        assert np.isfinite(expected).all()
+        assert (
+            live.streaming_states["buffer_after_downsampling"].shape[1]
+            == block_size - hop_size
+        )
+        assert live.simulate(speech) == []
+        np.testing.assert_allclose(live.enc_feats, expected)
 
 
 def create_input_stream(
