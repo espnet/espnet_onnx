@@ -1,8 +1,8 @@
 #!/bin/bash
 
+set -euo pipefail
+
 # Step 0: Hyper parameters
-custom_ort_url="https://github.com/Masao-Someki/onnxruntime/releases/download/v1.14.1.espnet/onnxruntime_gpu-1.14.1.espnet-cp38-cp38-linux_x86_64.whl"
-custom_ort_file="onnxruntime_gpu-1.14.1.espnet-cp38-cp38-linux_x86_64.whl"
 
 s3prl_path="/home/circleci/s3prl"
 home_dir="/home/circleci"
@@ -14,18 +14,9 @@ python3 -m venv venv
 source ${home_dir}/venv/bin/activate
 
 ## install dependencies
-pip install --upgrade pip
-rm -rf ${home_dir}/.local/lib/python*
-pip install wheel
-wget ${custom_ort_url}
-
-pip install torch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2
-pip install -r ${home_dir}/espnet_onnx/tools/requirements_test.txt
-pip install pytest
-pip install ${custom_ort_file}
-
-# Avoid version conflict.
-pip install espnet==202308 --no-deps
+python -m pip install --upgrade pip wheel
+python -m pip install torch==2.11.0 torchaudio==2.11.0 --index-url https://download.pytorch.org/whl/cpu
+python -m pip install -r "${home_dir}/espnet_onnx/tools/requirements_test.txt" -e "${home_dir}/espnet_onnx"
 
 # Step 2: install s3prl
 if [ ! -d ${s3prl_path} ]; then

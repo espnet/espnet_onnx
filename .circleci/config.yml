@@ -6,7 +6,7 @@ jobs:
   run_tests:
     working_directory: ~/espnet_onnx
     docker:
-      - image: circleci/python:3.8
+      - image: cimg/python:3.13
     environment:
       PYTHONPATH: ~/s3prl
 
@@ -14,10 +14,10 @@ jobs:
       - checkout
       - run: sudo apt-get -y update; sudo apt-get install libsndfile1
       - restore_cache: # restore s3prl folder
-          key: s3prl
+          key: s3prl-py313-v1
       - run: bash /home/circleci/espnet_onnx/tools/ci_test.sh
       - save_cache:
-          key: s3prl
+          key: s3prl-py313-v1
           paths:
             - ~/s3prl
             - ~/.cache/s3prl
