@@ -48,6 +48,9 @@ class StreamingSpeech2Text(AbsASRModel):
         self.config.encoder.block_size = block_size
         self.config.encoder.hop_size = hop_size
         self.config.encoder.look_ahead = look_ahead
+        # Windows already include the FFT context. Center padding would add
+        # extra feature frames on every block and grow the encoder cache.
+        self.config.encoder.frontend.stft.center = False
 
         self._build_model(providers, use_quantized)
 
@@ -68,25 +71,18 @@ class StreamingSpeech2Text(AbsASRModel):
 
         # streaming related parameters
         self._init_streaming_config()
+        self._window_overlap = self.config.encoder.frontend.stft.n_fft
         self.hop_size = (
             self.config.encoder.frontend.stft.hop_length
             * self.config.encoder.subsample
             * hop_size
-            + (
-                self.config.encoder.frontend.stft.n_fft
-                // self.config.encoder.frontend.stft.hop_length
-            )
-            * self.config.encoder.frontend.stft.hop_length
+            + self._window_overlap
         )
         self.initial_wav_length = (
             self.config.encoder.frontend.stft.hop_length
             * self.config.encoder.subsample
             * (block_size + 2)
-            + (
-                self.config.encoder.frontend.stft.n_fft
-                // self.config.encoder.frontend.stft.hop_length
-            )
-            * self.config.encoder.frontend.stft.hop_length
+            + self._window_overlap
         )
 
     def __call__(
@@ -95,13 +91,43 @@ class StreamingSpeech2Text(AbsASRModel):
         """Inference
 
         Args:
-            data: Input speech data
+            speech: Consecutive mono audio samples. Chunks may have any length;
+                samples are buffered until a complete encoder window is available.
 
         Returns:
             text, token, token_int, hyp
 
         """
         assert check_argument_types()
+
+        if self._final_result is not None:
+            raise RuntimeError("Call start() before processing another utterance.")
+        if speech.ndim != 1:
+            raise ValueError("Streaming input must be a one-dimensional waveform.")
+
+        self._pending_speech = np.concatenate(
+            [self._pending_speech, speech.astype(np.float32, copy=False)]
+        )
+        if len(speech):
+            self._has_pending_audio = True
+        result = []
+        required = (
+            self.initial_wav_length
+            if self.encoder.n_processed_blocks == 0
+            else self.hop_size
+        )
+        while len(self._pending_speech) >= required:
+            chunk = self._pending_speech[:required]
+            self._pending_speech = self._pending_speech[
+                required - self._window_overlap :
+            ]
+            self._has_pending_audio = len(self._pending_speech) > self._window_overlap
+            result = self._process_chunk(chunk)
+            required = self.hop_size
+        return result
+
+    def _process_chunk(self, speech):
+        """Process one complete encoder window."""
 
         # check dtype
         if speech.dtype != np.float32:
@@ -127,32 +153,56 @@ class StreamingSpeech2Text(AbsASRModel):
             return self._get_result(best_hyps[0])
 
     def simulate(self, speech: np.ndarray, print_every_hypo: bool = False):
-        # This function will simulate streaming asr with the given audio.
+        """Feed recorded audio through the same public API as live audio."""
         self.start()
-        process_num = (len(speech) - self.initial_wav_length) // self.hop_size + 1
-        logging.info(f"Processing audio with {process_num + 1} processes.")
-        padded_speech = self.pad(
-            speech, length=process_num * self.hop_size + self.initial_wav_length
-        )
+        for i, start in enumerate(range(0, len(speech), self.hop_size)):
+            nbest = self(speech[start : start + self.hop_size])
+            if print_every_hypo and nbest:
+                logging.info(f"Result at position {i} : {nbest[0][0]}")
+        return self.end()
 
-        # initial iteration
-        start = 0
-        end = self.initial_wav_length
-        nbest = self(padded_speech[start:end])
-        if print_every_hypo and nbest != []:
-            logging.info(f"Result at position {0} : {nbest[0][0]}")
+    def end(self):
+        """Flush encoder look-ahead and return the final recognition result.
 
-        # second and later iterations
-        for i in range(process_num):
-            start = self.hop_size * i + self.initial_wav_length
-            end = self.hop_size * (i + 1) + self.initial_wav_length
-            nbest = self(padded_speech[start:end])
-            if print_every_hypo and nbest != []:
-                logging.info(f"Result at position {i+1} : {nbest[0][0]}")
+        Call once all audio chunks have been supplied. Repeated calls return
+        the same result; start() begins a new utterance.
+        """
+        if self._final_result is not None:
+            return self._final_result
+        if self._has_pending_audio:
+            required = (
+                self.initial_wav_length
+                if self.encoder.n_processed_blocks == 0
+                else self.hop_size
+            )
+            chunk = self.pad(self._pending_speech, length=required)
+            self._pending_speech = np.empty(0, dtype=np.float32)
+            self._process_chunk(chunk)
+        if not self.enc_feats:
+            self._final_result = []
+            return self._final_result
 
-        return nbest
+        # Each extra encoder block releases hop_size frames held for look-ahead.
+        config = self.config.encoder
+        flush_blocks = (config.look_ahead + config.hop_size - 1) // config.hop_size
+        remaining = config.look_ahead
+        for _ in range(flush_blocks):
+            enc, self.streaming_states = self.encoder.forward_final(
+                self.streaming_states
+            )
+            take = min(remaining, enc.shape[1])
+            self.enc_feats.extend(enc[0, :take].tolist())
+            remaining -= take
+            self.encoder.increment()
+
+        best_hyps = self.beam_search(np.array(self.enc_feats, dtype=np.float32))
+        self._final_result = self._get_result(best_hyps[0]) if best_hyps else []
+        return self._final_result
 
     def _init_streaming_config(self):
+        self._final_result = None
+        self._pending_speech = np.empty(0, dtype=np.float32)
+        self._has_pending_audio = False
         self.enc_feats = []
         self.streaming_states = {
             "buffer_before_downsampling": None,
@@ -163,6 +213,9 @@ class StreamingSpeech2Text(AbsASRModel):
 
     def start(self):
         self._init_streaming_config()
+        # Center the first analysis window using left context once. Subsequent
+        # windows reuse real samples from the preceding chunk, without padding.
+        self._pending_speech = np.zeros(self._window_overlap // 2, dtype=np.float32)
         self.encoder.reset()
         self.streaming_states = self.encoder.init_state()
         self.beam_search.start()

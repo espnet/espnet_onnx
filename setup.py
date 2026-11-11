@@ -19,7 +19,7 @@ requirements = {
 
 setup(
     name="espnet_onnx",
-    version="0.2.1",
+    version="0.2.2",
     url="https://github.com/Masao-Someki/espnet_onnx",
     author="Masao Someki",
     author_email="masao.someki@gmail.com",
@@ -29,6 +29,7 @@ setup(
     keywords="espnet onnxruntime",
     license="MIT",
     packages=find_packages(include=["espnet_onnx*"]),
+    package_data={"espnet_onnx.export": ["convert_map.yml"]},
     install_requires=requirements["install"],
     tests_require=requirements["test"],
     python_requires=">=3.7.0",

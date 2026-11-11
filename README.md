@@ -182,12 +182,18 @@ stream_asr = StreamingSpeech2Text(tag_name)
 stream_asr.start()
 while streaming:
   wav = <some code to get wav>
-  assert len(wav) == stream_asr.hop_size
-  stream_text = stream_asr(wav)[0][0]
+  nbest = stream_asr(wav)
+  if nbest:
+    stream_text = nbest[0][0]
 
-# You can get non-streaming asr result with end function
+# Flush the remaining audio and look-ahead to obtain the final result.
 nbest = stream_asr.end()
 ```
+
+Pass consecutive mono audio samples without padding individual chunks. The
+streaming API buffers the initial context and retains STFT overlap internally;
+it may return an empty list while waiting for enough audio. Call `end()` after
+the last chunk to finalize recognition.
 
 You can also simulate streaming model with your wav file with `simulate` function. Passing `True` as the second argument will show the streaming text as the following code.
 

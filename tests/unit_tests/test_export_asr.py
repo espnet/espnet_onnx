@@ -76,6 +76,7 @@ def test_export_encoder(enc_type, load_config, model_export, get_class, get_conv
 
     # create encoder onnx wrapper and export
     enc_wrapper = get_encoder(encoder, frontend, None, {}, get_convert_map)
+    assert enc_wrapper.get_output_size() == encoder.output_size()
     save_model(enc_wrapper, export_dir, model_export, "encoder")
 
     if "contextual" in enc_type:
