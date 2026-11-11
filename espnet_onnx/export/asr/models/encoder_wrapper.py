@@ -48,15 +48,10 @@ class DefaultEncoder(nn.Module, AbsExportModel):
         return self.model(feats, feats_length)
 
     def get_output_size(self):
-        if "RNNEncoder" in type(self.model).__module__:
-            # check RNN first
-            return self.model.model_output_size
-        elif "espnet2" in type(self.model).__module__:
-            # default espnet model
-            return self.model.encoders[0].size
-        else:
-            # optimized espnet_onnx model
-            return self.model.model.encoders[0].size
+        model = self.model
+        if "espnet_onnx" in type(model).__module__:
+            model = model.model
+        return model.output_size()
 
     def is_optimizable(self):
         return (
