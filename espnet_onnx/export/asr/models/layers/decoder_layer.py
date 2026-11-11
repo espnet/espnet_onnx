@@ -61,11 +61,14 @@ class OnnxDecoderLayer(nn.Module):
             x = self.norm1(x)
 
         if cache is not None:
-            x_q = x[:, -1:, :]
-            residual = residual[:, -1:, :]
+            # Keep the last-token selection dynamic even when exporting a
+            # one-token prefix; slicing can otherwise become an identity.
+            last_index = torch.arange(x.size(1) - 1, x.size(1), device=x.device)
+            x_q = torch.index_select(x, 1, last_index)
+            residual = torch.index_select(residual, 1, last_index)
             tgt_q_mask = None
             if mask is not None:
-                tgt_q_mask = mask[:, :, -1:]
+                tgt_q_mask = torch.index_select(mask, 2, last_index)
         else:
             x_q = x
             tgt_q_mask = mask

@@ -1,5 +1,6 @@
 import glob
 import os
+import warnings
 
 import yaml
 from espnet2.bin.asr_inference import Speech2Text
@@ -58,15 +59,25 @@ def check_optimize(model_config, file_paths):
         if device is not None and model_config["optimization"][device] is not None:
             if device == "Quantize":
                 for k in model_config["optimization"]["Quantize"].keys():
-                    check_op_type_count(
+                    fused = check_op_type_count(
                         file_paths["quantize"][k],
                         model_config["optimization"]["Quantize"][k],
                     )
+                    if not fused:
+                        warnings.warn(
+                            f"ONNX Runtime did not emit legacy static fusions for {k}",
+                            RuntimeWarning,
+                        )
             else:
                 for k in model_config["optimization"][device].keys():
-                    check_op_type_count(
+                    fused = check_op_type_count(
                         file_paths["full"][k], model_config["optimization"][device][k]
                     )
+                    if not fused:
+                        warnings.warn(
+                            f"ONNX Runtime did not emit legacy static fusions for {k}",
+                            RuntimeWarning,
+                        )
 
 
 def load_yaml(path):

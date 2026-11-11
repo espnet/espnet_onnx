@@ -18,15 +18,25 @@ class Encoder:
         use_quantized: bool = False,
     ):
         self.config = encoder_config
+        session_options = onnxruntime.SessionOptions()
+        # ORT's MatMulScaleFusion produces an invalid broadcast for dynamic
+        # attention graphs exported by the torch dynamo ONNX exporter.
+        session_options.graph_optimization_level = (
+            onnxruntime.GraphOptimizationLevel.ORT_DISABLE_ALL
+        )
         # Note that id model was optimized and quantized,
         # then the quantized model should be optimized.
         if use_quantized:
             self.encoder = onnxruntime.InferenceSession(
-                self.config.quantized_model_path, providers=providers
+                self.config.quantized_model_path,
+                sess_options=session_options,
+                providers=providers,
             )
         else:
             self.encoder = onnxruntime.InferenceSession(
-                self.config.model_path, providers=providers
+                self.config.model_path,
+                sess_options=session_options,
+                providers=providers,
             )
 
         if self.config.frontend.frontend_type is None:

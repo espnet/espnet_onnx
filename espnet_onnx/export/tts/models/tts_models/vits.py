@@ -1,3 +1,4 @@
+import copy
 import math
 from typing import Optional, Tuple
 
@@ -5,6 +6,7 @@ import torch
 import torch.nn as nn
 
 from espnet_onnx.export.asr.models.layers.embed import get_pos_emb
+from espnet_onnx.export.tts.models.tts_models.vits_flow import OnnxConvFlow
 from espnet_onnx.utils.abs_model import AbsExportModel
 from espnet_onnx.utils.torch_function import MakePadMask, normalize
 
@@ -21,7 +23,7 @@ class OnnxTextEncoder(nn.Module):
 
     def forward(self, x, x_lengths):
         x = self.model.emb(x) * math.sqrt(self.model.attention_dim)
-        x_mask = 1 - self.make_pad_mask(x_lengths).unsqueeze(1)
+        x_mask = 1 - self.make_pad_mask(x_lengths, maxlen=x.shape[1]).unsqueeze(1)
         # encoder assume the channel last (B, T_text, attention_dim)
         # but mask shape shoud be (B, 1, T_text)
         x, _ = self.model.encoder(x, x_mask)
@@ -51,7 +53,14 @@ class OnnxVITSGenerator(nn.Module):
         self.decoder = model.decoder
         self.posterior_encoder = model.posterior_encoder
         self.flow = model.flow
-        self.duration_predictor = model.duration_predictor
+        self.duration_predictor = copy.deepcopy(model.duration_predictor)
+        if hasattr(self.duration_predictor, "flows"):
+            from espnet2.gan_tts.vits.flow import ConvFlow
+
+            self.duration_predictor.flows = nn.ModuleList(
+                OnnxConvFlow(flow) if isinstance(flow, ConvFlow) else flow
+                for flow in self.duration_predictor.flows
+            )
         self.model = model
         self.noise_scale = noise_scale
         self.noise_scale_dur = noise_scale_dur
@@ -192,6 +201,7 @@ class OnnxVITSGenerator(nn.Module):
 
             # decoder
             z_p = m_p + torch.randn_like(m_p) * torch.exp(logs_p) * self.noise_scale
+            torch._check(z_p.shape[2] >= 1)
             z = self.flow(z_p, y_mask, g=g, inverse=True)
             wav = self.decoder((z * y_mask), g=g)
 

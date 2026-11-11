@@ -12,6 +12,7 @@ import torch
 from espnet2.bin.asr_inference import Speech2Text
 from espnet2.text.sentencepiece_tokenizer import SentencepiecesTokenizer
 from espnet_model_zoo.downloader import ModelDownloader
+from onnx import TensorProto
 from onnxruntime.quantization import quantize_dynamic
 from typeguard import check_argument_types
 
@@ -32,6 +33,7 @@ from espnet_onnx.export.asr.models import (
 )
 from espnet_onnx.export.optimize.optimizer import optimize_model
 from espnet_onnx.utils.config import save_config, update_model_path
+from espnet_onnx.utils.onnx_export import export_onnx
 
 
 class ASRModelExport:
@@ -48,16 +50,12 @@ class ASRModelExport:
         self.cache_dir = Path(cache_dir)
         self.convert_map = convert_map
 
-        # Use opset_version=12 to avoid optimization error.
-        # When using the original onnxruntime, 'axes' is moved to input from opset_version=13
-        # so optimized model will be invalid for onnxruntime<=1.14.1 (latest in 2023/05)
-        # onnxruntime-1.14.1.espnet is fixed, so developers can use opset_version>12 with 1.14.1.espnet
         self.export_config = dict(
             use_gpu=False,
             only_onnxruntime=False,
             float16=False,
             use_ort_for_espnet=False,
-            opset_version=12,
+            opset_version=18,
         )
 
     def export(
@@ -243,15 +241,12 @@ class ASRModelExport:
         else:
             dummy_input = model.get_dummy_inputs()
 
-        torch.onnx.export(
+        export_onnx(
             model,
             dummy_input,
             os.path.join(path, f"{model.model_name}.onnx"),
             verbose=verbose,
             opset_version=self.export_config["opset_version"],
-            input_names=model.get_input_names(),
-            output_names=model.get_output_names(),
-            dynamic_axes=model.get_dynamic_axes(),
         )
 
         # export submodel if required
@@ -332,7 +327,12 @@ class ASRModelExport:
         for m in models:
             basename = os.path.basename(m).split(".")[0]
             export_file = os.path.join(model_to, basename + "_qt.onnx")
-            quantize_dynamic(m, export_file, op_types_to_quantize=op_types_to_quantize)
+            quantize_dynamic(
+                m,
+                export_file,
+                op_types_to_quantize=op_types_to_quantize,
+                extra_options={"DefaultTensorType": TensorProto.FLOAT},
+            )
             ret[basename] = export_file
             if os.path.exists(os.path.join(model_from, basename + "-opt.onnx")):
                 os.remove(os.path.join(model_from, basename + "-opt.onnx"))

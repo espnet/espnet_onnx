@@ -22,7 +22,7 @@ device:
   - Quantize
   - GPU
 model_config:
-  asr_train_config: /home/circleci/espnet_onnx/tests/test_config/integration/model_config/cfm_ctc_att.yaml
+  asr_train_config: tests/test_config/integration/model_config/cfm_ctc_att.yaml
   use_transducer: false
   use_lm: true
-  lm_train_config: /home/circleci/espnet_onnx/tests/test_config/integration/model_config/transformer_lm.yaml
+  lm_train_config: tests/test_config/integration/model_config/transformer_lm.yaml

@@ -19,6 +19,7 @@ class OnnxConv2dSubsampling(torch.nn.Module):
         super().__init__()
         self.conv = model.conv
         self.out = model.out
+        self.pos_enc = getattr(model, "pos_enc", None)
 
     def forward(self, x, x_mask):
         """Subsample x.
@@ -38,6 +39,8 @@ class OnnxConv2dSubsampling(torch.nn.Module):
         x = self.conv(x)
         b, c, t, f = x.size()
         x = self.out(x.transpose(1, 2).contiguous().view(b, t, c * f))
+        if self.pos_enc is not None:
+            x = self.pos_enc(x)
         if x_mask is None:
             return x, None
         return x, x_mask[:, :-2:2][:, :-2:2]
@@ -51,7 +54,7 @@ class OnnxConv2dSubsampling(torch.nn.Module):
         """
         if key != -1:
             raise NotImplementedError("Support only `-1` (for `reset_parameters`).")
-        return self.out[key]
+        return self.pos_enc if self.pos_enc is not None else self.out[key]
 
 
 class OnnxConv2dSubsampling2(torch.nn.Module):
@@ -70,6 +73,7 @@ class OnnxConv2dSubsampling2(torch.nn.Module):
         super().__init__()
         self.conv = model.conv
         self.out = model.out
+        self.pos_enc = getattr(model, "pos_enc", None)
 
     def forward(self, x, x_mask):
         """Subsample x.
@@ -89,6 +93,8 @@ class OnnxConv2dSubsampling2(torch.nn.Module):
         x = self.conv(x)
         b, c, t, f = x.size()
         x = self.out(x.transpose(1, 2).contiguous().view(b, t, c * f))
+        if self.pos_enc is not None:
+            x = self.pos_enc(x)
         if x_mask is None:
             return x, None
         return x, x_mask[:, :-2:2][:, :-2:1]
@@ -102,7 +108,7 @@ class OnnxConv2dSubsampling2(torch.nn.Module):
         """
         if key != -1:
             raise NotImplementedError("Support only `-1` (for `reset_parameters`).")
-        return self.out[key]
+        return self.pos_enc if self.pos_enc is not None else self.out[key]
 
 
 class OnnxConv2dSubsampling6(torch.nn.Module):
@@ -121,6 +127,7 @@ class OnnxConv2dSubsampling6(torch.nn.Module):
         super().__init__()
         self.conv = model.conv
         self.out = model.out
+        self.pos_enc = getattr(model, "pos_enc", None)
 
     def forward(self, x, x_mask):
         """Subsample x.
@@ -140,6 +147,8 @@ class OnnxConv2dSubsampling6(torch.nn.Module):
         x = self.conv(x)
         b, c, t, f = x.size()
         x = self.out(x.transpose(1, 2).contiguous().view(b, t, c * f))
+        if self.pos_enc is not None:
+            x = self.pos_enc(x)
         if x_mask is None:
             return x, None
         return x, x_mask[:, :-2:2][:, :-4:3]
@@ -161,6 +170,7 @@ class OnnxConv2dSubsampling8(torch.nn.Module):
         super().__init__()
         self.conv = model.conv
         self.out = model.out
+        self.pos_enc = getattr(model, "pos_enc", None)
 
     def forward(self, x, x_mask):
         """Subsample x.
@@ -180,6 +190,8 @@ class OnnxConv2dSubsampling8(torch.nn.Module):
         x = self.conv(x)
         b, c, t, f = x.size()
         x = self.out(x.transpose(1, 2).contiguous().view(b, t, c * f))
+        if self.pos_enc is not None:
+            x = self.pos_enc(x)
         if x_mask is None:
             return x, None
         return x, x_mask[:, :-2:2][:, :-2:2][:, :-2:2]

@@ -68,8 +68,14 @@ class OnnxEncoderLayer(nn.Module):
             x = self.norm1(x)
 
         if cache is not None:
-            x_q = x[:, -1:, :]
-            residual = residual[:, -1:, :]
+            # torch.export can specialize a `-1:` slice to the example length
+            # when the first cached token sequence also has length one. Build
+            # the final-token index from the symbolic runtime length instead.
+            last_index = torch.arange(
+                x.size(1) - 1, x.size(1), device=x.device
+            )
+            x_q = torch.index_select(x, 1, last_index)
+            residual = torch.index_select(residual, 1, last_index)
         else:
             x_q = x
 

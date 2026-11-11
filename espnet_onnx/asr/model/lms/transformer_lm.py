@@ -47,23 +47,8 @@ class TransformerLM(BatchScorerInterface):
                 and next state for ys
 
         """
-        y = y[None, :]
-        input_dic = {"tgt": y}
-
-        if state is None:
-            state = [
-                np.zeros((1, 1, self.odim), dtype=np.float32)
-                for _ in range(self.nlayers)
-            ]
-
-        input_dic.update({k: v for k, v in zip(self.enc_in_cache_names, state)})
-        decoded, *new_state = self.lm_session.run(self.enc_output_names, input_dic)
-
-        if self.nlayers == 1:
-            new_state = [new_state]
-
-        logp = log_softmax(decoded, axis=-1).squeeze(0)
-        return logp, new_state
+        logp, states = self.batch_score(y[None, :], [state], x[None, :])
+        return logp[0], states[0]
 
     def batch_score(
         self, ys: np.ndarray, states: List[Any], xs: np.ndarray
@@ -85,13 +70,17 @@ class TransformerLM(BatchScorerInterface):
         # merge states
         ys = ys.astype(np.int64)
         n_batch = len(ys)
-        is_first_iteration = False
+        if states[0] is None and ys.shape[1] > 1:
+            # Build every layer's causal history when scoring a whole prefix
+            # without an existing cache.
+            for length in range(1, ys.shape[1] + 1):
+                logp, states = self.batch_score(ys[:, :length], states, xs)
+            return logp, states
         if states[0] is None:
             batch_state = [
-                np.zeros((1, 1, self.odim), dtype=np.float32)
+                np.zeros((n_batch, 0, self.odim), dtype=np.float32)
                 for _ in range(self.nlayers)
             ]
-            is_first_iteration = True
         else:
             # transpose state of [batch, layer] into [layer, batch]
             batch_state = [
@@ -103,10 +92,6 @@ class TransformerLM(BatchScorerInterface):
         input_dic.update({k: v for k, v in zip(self.enc_in_cache_names, batch_state)})
         decoded, *new_state = self.lm_session.run(self.enc_output_names, input_dic)
         logp = log_softmax(decoded, axis=-1)
-
-        # if first iteration, remove the first row
-        if is_first_iteration:
-            new_state = [new_state[i][:, -1:] for i in range(len(new_state))]
 
         # transpose state of [layer, batch] into [batch, layer]
         state_list = [

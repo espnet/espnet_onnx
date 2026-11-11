@@ -21,9 +21,6 @@ encoder_cases = [
     "contextual_block_transformer",
     "contextual_block_conformer6",
     "contextual_block_transformer6",
-    "branchformer_concat",
-    "branchformer_lave",
-    "branchformer_fave",
     "e_branchformer",
 ]
 

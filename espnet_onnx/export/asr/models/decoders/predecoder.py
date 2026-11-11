@@ -2,7 +2,7 @@ import os
 
 import torch
 import torch.nn as nn
-from espnet.nets.pytorch_backend.rnn.attentions import NoAtt
+from espnet2.legacy.nets.pytorch_backend.rnn.attentions import NoAtt
 
 from espnet_onnx.export.asr.models.layers.attention import require_tanh
 from espnet_onnx.utils.abs_model import AbsExportModel

@@ -1,8 +1,8 @@
-numpy
+numpy>=2.0.0
 onnxruntime
-librosa
-sentencepiece
-typeguard==2.13
+librosa>=0.10.2
+sentencepiece>=0.2.1
+typeguard==2.13.0
 pyyaml
 g2p_en
 jamo

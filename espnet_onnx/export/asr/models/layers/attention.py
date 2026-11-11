@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from espnet.nets.pytorch_backend.rnn.attentions import (
+from espnet2.legacy.nets.pytorch_backend.rnn.attentions import (
     AttAdd,
     AttCov,
     AttCovLoc,

@@ -25,18 +25,18 @@ class SequentialRNNLM(nn.Module, AbsExportModel):
         else:
             output, hidden1 = self.rnn(emb, hidden1)
 
-        decoded = self.decoder(
-            output.contiguous().view(output.size(0) * output.size(1), output.size(2))
-        )
+        # Linear accepts the complete (batch, time, hidden) tensor directly.
+        # Flattening and rebuilding the shape can freeze the example time length.
+        decoded = self.decoder(output)
         if self.rnn_type == "LSTM":
             return (
-                decoded.view(output.size(0), output.size(1), decoded.size(1)),
+                decoded,
                 hidden1,
                 hidden2,
             )
         else:
             return (
-                decoded.view(output.size(0), output.size(1), decoded.size(1)),
+                decoded,
                 hidden1,
             )
 
@@ -63,7 +63,7 @@ class SequentialRNNLM(nn.Module, AbsExportModel):
     def get_dynamic_axes(self):
         ret = {
             "x": {0: "x_batch", 1: "x_length"},
-            "y": {0: "y_batch"},
+            "y": {0: "y_batch", 1: "y_length"},
             "in_hidden1": {1: "hidden1_batch"},
             "out_hidden1": {1: "out_hidden1_batch"},
         }

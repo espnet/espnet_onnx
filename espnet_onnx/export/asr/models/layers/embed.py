@@ -4,20 +4,20 @@ import math
 
 import torch
 import torch.nn as nn
-from espnet.nets.pytorch_backend.transformer.embedding import (
+from espnet2.legacy.nets.pytorch_backend.transformer.embedding import (
     LegacyRelPositionalEncoding,
     PositionalEncoding,
     RelPositionalEncoding,
     ScaledPositionalEncoding,
     StreamPositionalEncoding,
 )
-from espnet.nets.pytorch_backend.transformer.subsampling import (
+from espnet2.legacy.nets.pytorch_backend.transformer.subsampling import (
     Conv2dSubsampling,
     Conv2dSubsampling2,
     Conv2dSubsampling6,
     Conv2dSubsampling8,
 )
-from espnet.nets.pytorch_backend.transformer.subsampling_without_posenc import (
+from espnet2.legacy.nets.pytorch_backend.transformer.subsampling_without_posenc import (
     Conv2dSubsamplingWOPosEnc,
 )
 
@@ -31,15 +31,15 @@ from espnet_onnx.export.asr.models.layers.subsampling import (
 
 def get_pos_emb(pos_emb, max_seq_len=512, use_cache=True):
     if isinstance(pos_emb, LegacyRelPositionalEncoding):
-        return OnnxLegacyRelPositionalEncoding(pos_emb, max_seq_len, use_cache)
+        return OnnxLegacyRelPositionalEncoding(pos_emb, max_seq_len, use_cache=use_cache)
     elif isinstance(pos_emb, ScaledPositionalEncoding):
-        return OnnxScaledPositionalEncoding(pos_emb, max_seq_len, use_cache)
+        return OnnxScaledPositionalEncoding(pos_emb, max_seq_len, use_cache=use_cache)
     elif isinstance(pos_emb, RelPositionalEncoding):
-        return OnnxRelPositionalEncoding(pos_emb, max_seq_len, use_cache)
+        return OnnxRelPositionalEncoding(pos_emb, max_seq_len, use_cache=use_cache)
     elif isinstance(pos_emb, PositionalEncoding):
-        return OnnxPositionalEncoding(pos_emb, max_seq_len, use_cache)
+        return OnnxPositionalEncoding(pos_emb, max_seq_len, use_cache=use_cache)
     elif isinstance(pos_emb, StreamPositionalEncoding):
-        return OnnxStreamPositionalEncoding(pos_emb, max_seq_len, use_cache)
+        return OnnxStreamPositionalEncoding(pos_emb, max_seq_len, use_cache=use_cache)
     elif (isinstance(pos_emb, nn.Sequential) and len(pos_emb) == 0) or (
         isinstance(pos_emb, Conv2dSubsamplingWOPosEnc)
     ):
@@ -52,21 +52,31 @@ class Embedding(nn.Module):
     def __init__(self, model, max_seq_len=512, use_cache=True):
         super().__init__()
         self.model = model
-        if not isinstance(model, nn.Embedding):
+        if not isinstance(model, (nn.Embedding, nn.Linear)):
             if isinstance(model, Conv2dSubsampling):
                 self.model = OnnxConv2dSubsampling(model)
-                self.model.out[-1] = get_pos_emb(model.out[-1], max_seq_len)
+                self._replace_subsampling_pos_emb(model, max_seq_len, use_cache)
             elif isinstance(model, Conv2dSubsampling2):
                 self.model = OnnxConv2dSubsampling2(model)
-                self.model.out[-1] = get_pos_emb(model.out[-1], max_seq_len)
+                self._replace_subsampling_pos_emb(model, max_seq_len, use_cache)
             elif isinstance(model, Conv2dSubsampling6):
                 self.model = OnnxConv2dSubsampling6(model)
-                self.model.out[-1] = get_pos_emb(model.out[-1], max_seq_len)
+                self._replace_subsampling_pos_emb(model, max_seq_len, use_cache)
             elif isinstance(model, Conv2dSubsampling8):
                 self.model = OnnxConv2dSubsampling8(model)
-                self.model.out[-1] = get_pos_emb(model.out[-1], max_seq_len)
+                self._replace_subsampling_pos_emb(model, max_seq_len, use_cache)
             else:
-                self.model[-1] = get_pos_emb(model[-1], max_seq_len)
+                self.model[-1] = get_pos_emb(model[-1], max_seq_len, use_cache=use_cache)
+
+    def _replace_subsampling_pos_emb(self, model, max_seq_len, use_cache):
+        if hasattr(model, "pos_enc"):
+            self.model.pos_enc = get_pos_emb(
+                model.pos_enc, max_seq_len, use_cache=use_cache
+            )
+        elif isinstance(model.out, nn.Sequential):
+            self.model.out[-1] = get_pos_emb(
+                model.out[-1], max_seq_len, use_cache=use_cache
+            )
 
     def forward(self, x, mask=None):
         if mask is None:

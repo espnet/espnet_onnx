@@ -2,6 +2,7 @@ import argparse
 import os
 from pathlib import Path
 
+import onnxruntime
 import pytest
 import torch
 from espnet2.tasks.tts import TTSTask
@@ -62,9 +63,22 @@ def test_export_tts(tts_type, cls, load_config, model_export_tts, get_class):
     )
     if "tacotron" in tts_type:
         tts_wrapper_encoder = cls[0](tts)
-        save_model(
+        encoder_dir = save_model(
             tts.enc, tts_wrapper_encoder, model_export_tts, "tts", tts_type + "_encoder"
         )
+        encoder_session = onnxruntime.InferenceSession(
+            str(encoder_dir / "tts_model_encoder.onnx"),
+            providers=["CPUExecutionProvider"],
+        )
+        tts_wrapper_encoder.eval()
+        for length in (1, 2, 5, 11):
+            text = torch.randint(0, 78, (length,))
+            with torch.no_grad():
+                expected = tts_wrapper_encoder(text)
+            actual = encoder_session.run(None, {"text": text.numpy()})[0]
+            torch.testing.assert_close(
+                torch.from_numpy(actual), expected, rtol=1e-4, atol=1e-5
+            )
         tts_wrapper_decoder = cls[1](tts)
         export_dir = save_model(
             tts.dec, tts_wrapper_decoder, model_export_tts, "tts", tts_type + "_decoder"

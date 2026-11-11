@@ -1,4 +1,6 @@
+import shutil
 import subprocess
+import warnings
 from pathlib import Path
 from typing import Union
 
@@ -33,4 +35,22 @@ def optimize_model(
 
     args.extend(["--model_type", model_type])
 
-    subprocess.check_call(args)
+    result = subprocess.run(args, capture_output=True, text=True, check=False)
+    if result.returncode:
+        unsupported_espnet = (
+            model_type == "espnet"
+            and "invalid choice: 'espnet'" in result.stderr
+        )
+        if not unsupported_espnet:
+            raise subprocess.CalledProcessError(
+                result.returncode, args, output=result.stdout, stderr=result.stderr
+            )
+        # Stock ORT does not contain ESPnet's optional custom graph fusions.
+        Path(output_model).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(input_model, output_model)
+        warnings.warn(
+            "This ONNX Runtime build does not support ESPnet graph fusion; "
+            "the exported model was kept without static optimization.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
