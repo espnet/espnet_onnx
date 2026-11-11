@@ -3,18 +3,18 @@ from setuptools import find_packages, setup
 requirements = {
     "install": [
         "setuptools>=38.5.1",
-        "librosa>=0.8.0",
+        "librosa>=0.10.2",
         "onnxruntime",
-        "sentencepiece>=0.1.91,!=0.1.92",
+        "sentencepiece>=0.2.1",
         "typeguard==2.13.0",
         "PyYAML>=5.1.2",
         "g2p-en",
         "jamo==0.4.1",  # For kss
         "six",
-        "numpy",
+        "numpy>=2.0.0",
         "espnet_tts_frontend",  # required for TTS preprocess.
     ],
-    "test": ["torch>=1.11.0", "espnet", "pytest"],
+    "test": ["torch>=2.11.0", "espnet>=202611", "onnx>=1.22.0", "onnxscript", "pytest"],
 }
 
 setup(
