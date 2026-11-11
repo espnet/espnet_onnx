@@ -1,6 +1,6 @@
 # espnet_onnx
 
-![](https://circleci.com/gh/espnet/espnet_onnx.svg?style=shield)
+![Tests](https://github.com/espnet/espnet_onnx/actions/workflows/tests.yml/badge.svg)
 ![](https://img.shields.io/badge/licence-MIT-blue)
 [![](https://img.shields.io/badge/pypi-0.2.1-brightgreen)](https://pypi.org/project/espnet-onnx/)
 
