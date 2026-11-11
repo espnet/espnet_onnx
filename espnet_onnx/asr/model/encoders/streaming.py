@@ -98,9 +98,7 @@ class StreamingEncoder:
             ),
             dtype=np.float32,
         )
-        input_dict = self.get_input_dict(dummy_xs_pad, states)
-        ys_pad, *_ = self.encoder.run(self.outputs, input_dict)
-        return ys_pad, None
+        return self.forward_encoder(dummy_xs_pad, states)
 
     def get_input_dict(self, x: np.ndarray, state: Dict[str, np.ndarray]):
         # x.length : hop_size * subsample + 1

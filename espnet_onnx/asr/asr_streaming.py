@@ -103,6 +103,9 @@ class StreamingSpeech2Text(AbsASRModel):
         """
         assert check_argument_types()
 
+        if self._final_result is not None:
+            raise RuntimeError("Call start() before processing another utterance.")
+
         # check dtype
         if speech.dtype != np.float32:
             speech = speech.astype(np.float32)
@@ -129,7 +132,10 @@ class StreamingSpeech2Text(AbsASRModel):
     def simulate(self, speech: np.ndarray, print_every_hypo: bool = False):
         # This function will simulate streaming asr with the given audio.
         self.start()
-        process_num = (len(speech) - self.initial_wav_length) // self.hop_size + 1
+        if len(speech) == 0:
+            return self.end()
+        remaining = max(0, len(speech) - self.initial_wav_length)
+        process_num = (remaining + self.hop_size - 1) // self.hop_size
         logging.info(f"Processing audio with {process_num + 1} processes.")
         padded_speech = self.pad(
             speech, length=process_num * self.hop_size + self.initial_wav_length
@@ -150,9 +156,39 @@ class StreamingSpeech2Text(AbsASRModel):
             if print_every_hypo and nbest != []:
                 logging.info(f"Result at position {i+1} : {nbest[0][0]}")
 
-        return nbest
+        return self.end()
+
+    def end(self):
+        """Flush encoder look-ahead and return the final recognition result.
+
+        Call once all audio chunks have been supplied. Repeated calls return
+        the same result; start() begins a new utterance.
+        """
+        if self._final_result is not None:
+            return self._final_result
+        if not self.enc_feats:
+            self._final_result = []
+            return self._final_result
+
+        # Each extra encoder block releases hop_size frames held for look-ahead.
+        config = self.config.encoder
+        flush_blocks = (config.look_ahead + config.hop_size - 1) // config.hop_size
+        remaining = config.look_ahead
+        for _ in range(flush_blocks):
+            enc, self.streaming_states = self.encoder.forward_final(
+                self.streaming_states
+            )
+            take = min(remaining, enc.shape[1])
+            self.enc_feats.extend(enc[0, :take].tolist())
+            remaining -= take
+            self.encoder.increment()
+
+        best_hyps = self.beam_search(np.array(self.enc_feats, dtype=np.float32))
+        self._final_result = self._get_result(best_hyps[0]) if best_hyps else []
+        return self._final_result
 
     def _init_streaming_config(self):
+        self._final_result = None
         self.enc_feats = []
         self.streaming_states = {
             "buffer_before_downsampling": None,

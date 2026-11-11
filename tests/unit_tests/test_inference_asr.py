@@ -9,7 +9,8 @@ import torch
 
 from espnet_onnx.asr.model.decoder import get_decoder
 from espnet_onnx.asr.model.lm import get_lm
-from espnet_onnx.utils.config import get_config
+from espnet_onnx.asr.model.encoders.streaming import StreamingEncoder
+from espnet_onnx.utils.config import Config, get_config
 
 from .forward_utils import (run_onnx_enc, run_rnn_dec, run_streaming_enc,
                             run_trans_dec, run_xformer_dec)
@@ -281,6 +282,31 @@ def test_infer_streaming_encoder(
     # compute onnx model
     onnx_out = run_streaming_enc(encoder_onnx, None, onnx_input, "onnx")
     check_output(torch_out, onnx_out)
+
+    if n_processed_blocks == 0:
+        # Exercise real state handoff, including the final look-ahead flush.
+        streaming = StreamingEncoder.__new__(StreamingEncoder)
+        streaming.config = Config({
+            "block_size": block_size,
+            "hop_size": hop_size,
+            "look_ahead": look_ahead,
+            "subsample": subsample,
+            "frontend": {"logmel": {"n_mels": input_size}},
+        })
+        streaming.encoder = encoder_onnx
+        streaming.pos_enc = pe
+        streaming.n_layers = model_config.encoder_conf.num_blocks
+        streaming.outputs = [output.name for output in encoder_onnx.get_outputs()]
+        streaming.reset()
+        states = streaming.init_state()
+        for length in ((block_size + 2) * subsample + 1, hop_size * subsample + 1):
+            features = np.zeros((1, length, input_size), dtype=np.float32)
+            _, states = streaming.forward_encoder(features, states)
+            streaming.increment()
+        tail, states = streaming.forward_final(states)
+        assert tail.shape == (1, hop_size, pe.shape[-1])
+        assert np.isfinite(tail).all()
+        assert states["buffer_after_downsampling"].shape[1] == block_size - hop_size
 
 
 def create_input_stream(
