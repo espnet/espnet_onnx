@@ -20,14 +20,22 @@ class XformerDecoder(BatchScorerInterface):
             config (Config):
             use_quantized (bool): Flag to use quantized model
         """
+        session_options = onnxruntime.SessionOptions()
+        # The runtime MatMulScaleFusion is invalid for some dynamo-exported
+        # cross-attention graphs with dynamic sequence lengths.
+        session_options.graph_optimization_level = (
+            onnxruntime.GraphOptimizationLevel.ORT_DISABLE_ALL
+        )
         if use_quantized:
             self.decoder = onnxruntime.InferenceSession(
                 config.quantized_model_path,
+                sess_options=session_options,
                 providers=providers,
             )
         else:
             self.decoder = onnxruntime.InferenceSession(
                 config.model_path,
+                sess_options=session_options,
                 providers=providers,
             )
         self.config = config

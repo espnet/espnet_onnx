@@ -38,8 +38,8 @@ jobs:
           for source in root.rglob("*.py"):
               text = source.read_text()
               updated = re.sub(
-                  r"^\s*torchaudio\.set_audio_backend\([^\n]*\)\s*\n",
-                  "",
+                  r"^([ \t]*)torchaudio\.set_audio_backend\([^\n]*\)[ \t]*$",
+                  r"\1pass",
                   text,
                   flags=re.MULTILINE,
               )
