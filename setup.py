@@ -29,6 +29,7 @@ setup(
     keywords="espnet onnxruntime",
     license="MIT",
     packages=find_packages(include=["espnet_onnx*"]),
+    package_data={"espnet_onnx.export": ["convert_map.yml"]},
     install_requires=requirements["install"],
     tests_require=requirements["test"],
     python_requires=">=3.7.0",
