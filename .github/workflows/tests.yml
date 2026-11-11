@@ -28,6 +28,21 @@ jobs:
         run: |
           git clone --depth 1 https://github.com/s3prl/s3prl.git "$RUNNER_TEMP/s3prl"
           python -m pip install -e "$RUNNER_TEMP/s3prl"
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          root = Path("$RUNNER_TEMP/s3prl")
+          for source in root.rglob("*.py"):
+              text = source.read_text()
+              text = re.sub(
+                  r"^\s*torchaudio\.set_audio_backend\([^\n]*\)\s*\n",
+                  "",
+                  text,
+                  flags=re.MULTILINE,
+              )
+              source.write_text(text)
+          PY
       - name: Run tests
         env:
           PYTHONPATH: ${{ runner.temp }}/s3prl

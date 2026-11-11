@@ -12,6 +12,7 @@ import torch
 from espnet2.bin.asr_inference import Speech2Text
 from espnet2.text.sentencepiece_tokenizer import SentencepiecesTokenizer
 from espnet_model_zoo.downloader import ModelDownloader
+from onnx import TensorProto
 from onnxruntime.quantization import quantize_dynamic
 from typeguard import check_argument_types
 
@@ -326,7 +327,12 @@ class ASRModelExport:
         for m in models:
             basename = os.path.basename(m).split(".")[0]
             export_file = os.path.join(model_to, basename + "_qt.onnx")
-            quantize_dynamic(m, export_file, op_types_to_quantize=op_types_to_quantize)
+            quantize_dynamic(
+                m,
+                export_file,
+                op_types_to_quantize=op_types_to_quantize,
+                extra_options={"DefaultTensorType": TensorProto.FLOAT},
+            )
             ret[basename] = export_file
             if os.path.exists(os.path.join(model_from, basename + "-opt.onnx")):
                 os.remove(os.path.join(model_from, basename + "-opt.onnx"))

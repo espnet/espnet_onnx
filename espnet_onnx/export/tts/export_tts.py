@@ -8,6 +8,7 @@ from typing import Dict, Union
 
 import torch
 from espnet2.bin.tts_inference import Text2Speech
+from onnx import TensorProto
 from onnxruntime.quantization import quantize_dynamic
 from typeguard import check_argument_types
 
@@ -187,7 +188,10 @@ class TTSModelExport:
             basename = os.path.basename(m).split(".")[0]
             export_file = os.path.join(model_to, basename + "_qt.onnx")
             quantize_dynamic(
-                m, export_file, op_types_to_quantize=["Attention", "MatMul"]
+                m,
+                export_file,
+                op_types_to_quantize=["Attention", "MatMul"],
+                extra_options={"DefaultTensorType": TensorProto.FLOAT},
             )
             ret[basename] = export_file
             temp_file_path = os.path.join(model_from, basename + "-opt.onnx")
