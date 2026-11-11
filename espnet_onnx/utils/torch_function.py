@@ -33,9 +33,14 @@ class MakePadMask(nn.Module):
         elif xs is not None:
             m = xs.shape[-1]
         else:
-            m = torch.max(lengths)
+            m = torch.max(lengths).item()
+            torch._check(m >= 0)
+            torch._check(m <= self.mask_pad.shape[-1])
 
-        mask = self.mask_pad[lengths - 1][..., :m].type(torch.float32)
+        indices = (lengths - 1).reshape(-1)
+        mask = torch.index_select(self.mask_pad, 0, indices)
+        mask = mask.reshape(*lengths.shape, self.mask_pad.shape[-1])[..., :m]
+        mask = mask.type(torch.float32)
 
         if length_dim == 1:
             return mask.transpose(1, 2)

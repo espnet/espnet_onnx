@@ -20,6 +20,7 @@ from espnet_onnx.export.tts.get_config import (
 from espnet_onnx.export.tts.models import get_tts_model, get_vocoder
 from espnet_onnx.utils.abs_model import AbsExportModel
 from espnet_onnx.utils.config import save_config, update_model_path
+from espnet_onnx.utils.onnx_export import export_onnx
 
 
 class TTSModelExport:
@@ -30,7 +31,7 @@ class TTSModelExport:
 
         self.cache_dir = Path(cache_dir)
         self.export_config = dict(
-            opset_version=12,
+            opset_version=18,
             max_seq_len=max_seq_len,
         )
 
@@ -154,15 +155,12 @@ class TTSModelExport:
         else:
             dummy_input = model.get_dummy_inputs()
 
-        torch.onnx.export(
+        export_onnx(
             model,
             dummy_input,
             os.path.join(path, f"{model.model_name}.onnx"),
             verbose=verbose,
             opset_version=self.export_config["opset_version"],
-            input_names=model.get_input_names(),
-            output_names=model.get_output_names(),
-            dynamic_axes=model.get_dynamic_axes(),
         )
 
         # export submodel if required

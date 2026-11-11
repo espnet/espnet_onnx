@@ -3,7 +3,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from espnet2.legacy.nets.pytorch_backend.rnn.encoders import RNN, RNNP, VGG2L
-from espnet2.legacy.nets.pytorch_backend.nets_utils import make_pad_mask
 
 from espnet_onnx.utils.abs_model import AbsExportModel
 
@@ -12,7 +11,7 @@ class OnnxRNNP(nn.Module):
     def __init__(self, model):
         super().__init__()
         self.model = model
-        self.subsample = model.subsample
+        self.subsample = tuple(int(value) for value in model.subsample)
         is_bidirectional = 2 if model.bidir else 1
         self.initial_state = torch.zeros(is_bidirectional * 1, 1, model.cdim)
 
@@ -35,8 +34,7 @@ class OnnxRNNP(nn.Module):
                 ilens = torch.div(ilens, sub, rounding_mode="trunc")
             # (sum _utt frame_utt) x dim
             projection_layer = getattr(self.model, "bt%d" % layer)
-            projected = projection_layer(ys.contiguous().view(-1, ys.size(2)))
-            xs_pad = projected.view(ys.size(0), ys.size(1), -1)
+            xs_pad = projection_layer(ys)
             if layer < self.model.elayers - 1:
                 xs_pad = torch.tanh(xs_pad)
 
@@ -61,12 +59,13 @@ class OnnxRNN(nn.Module):
         ys, states = self.nbrnn(xs_pad, hx=self.initial_state)
         # ys: utt list of frame x cdim x 2 (2: means bidirectional)
         # (sum _utt frame_utt) x dim
-        projected = torch.tanh(self.l_last(ys.contiguous().view(-1, ys.size(2))))
-        xs_pad = projected.view(ys.size(0), ys.size(1), -1)
+        xs_pad = torch.tanh(self.l_last(ys))
         return xs_pad, ilens, states  # x: utt list of frame x dim
 
 
 class OnnxVGG2l(nn.Module):
+    requires_strict_export = True
+
     def __init__(self, model):
         super().__init__()
         self.model = model
@@ -135,6 +134,6 @@ class RNNEncoder(nn.Module, AbsExportModel):
             feats, ilens, states = module(feats, ilens)
             current_states.append(states)
 
-        # feats =
-        feats.masked_fill_(make_pad_mask(ilens + 1, feats, 1), 0.0)
+        # The exported encoder accepts one unpadded utterance, so every
+        # produced frame is valid and no padding mask is needed.
         return feats, ilens, current_states

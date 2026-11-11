@@ -1,17 +1,21 @@
+import inspect
 import os
+
 import torch
 import torch.nn as nn
-from espnet_onnx.utils.abs_model import AbsExportModel
+
 from espnet_onnx.export.asr.get_config import (
     get_frontend_config,
     get_norm_config,
 )
+from espnet_onnx.utils.abs_model import AbsExportModel
 
 
 class DefaultEncoder(nn.Module, AbsExportModel):
     def __init__(self, model, frontend, feats_dim=80, **kwargs):
         super().__init__()
         self.model = model
+        self.accepts_masks = "masks" in inspect.signature(model.forward).parameters
         self.model_name = "default_encoder"
         self.frontend = frontend
         self.feats_dim = feats_dim
@@ -33,7 +37,14 @@ class DefaultEncoder(nn.Module, AbsExportModel):
             self.feats_dim = self.frontend_model.output_dim
 
     def forward(self, feats):
-        feats_length = torch.ones(feats[:, :, 0].shape).sum(dim=-1).type(torch.long)
+        feats_length = torch.full(
+            (feats.shape[0],), feats.shape[1], dtype=torch.long, device=feats.device
+        )
+        if self.accepts_masks:
+            padding_mask = torch.zeros(
+                feats.shape[:2], dtype=torch.bool, device=feats.device
+            )
+            return self.model(feats, feats_length, masks=padding_mask)
         return self.model(feats, feats_length)
 
     def get_output_size(self):

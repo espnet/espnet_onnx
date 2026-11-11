@@ -21,11 +21,13 @@ class OnnxLengthRegurator(nn.Module):
         # This class assumes that the batch size of x
         # should be 1.
         if self.alpha != 1.0:
-            dur = torch.round(ds.float() * alpha).long()
+            dur = torch.round(dur.float() * self.alpha).long()
         dur = dur[0]
-        dm = 1 - self.make_pad_mask(dur)
-        nz = torch.nonzero(dm)[:, 0]
-        return x[:, nz]
+        dur = torch.where(dur.sum() == 0, torch.ones_like(dur), dur)
+        indices = torch.repeat_interleave(
+            torch.arange(dur.shape[0], device=dur.device), dur
+        )
+        return torch.index_select(x, 1, indices)
 
 
 class OnnxReferenceEncoder(nn.Module):
@@ -61,7 +63,7 @@ class OnnxFastSpeech2(nn.Module, AbsExportModel):
         model,
         max_seq_len: int = 512,
         alpha: float = 1.0,
-        use_cache: bool = True,
+        use_cache: bool = False,
         **kwargs,
     ):
         super().__init__()
@@ -101,8 +103,8 @@ class OnnxFastSpeech2(nn.Module, AbsExportModel):
             self.decoder.embed, max_seq_len=max_seq_len, use_cache=use_cache
         )
 
-    def _source_mask(self, ilens):
-        x_masks = 1 - self.make_pad_mask(ilens)
+    def _source_mask(self, ilens, maxlen):
+        x_masks = 1 - self.make_pad_mask(ilens, maxlen=maxlen)
         return x_masks.unsqueeze(-2)
 
     def _integrate_with_spk_embed(
@@ -134,7 +136,9 @@ class OnnxFastSpeech2(nn.Module, AbsExportModel):
 
         # add eos at the last of sequence
         x = F.pad(x, [0, 1], "constant", self.eos)
-        text_lengths = torch.ones(x.shape).sum(dim=-1).type(torch.long)
+        text_lengths = torch.full(
+            (1,), x.shape[0], dtype=torch.long, device=x.device
+        )
 
         # setup batch axis
         xs, ys = x.unsqueeze(0), None
@@ -168,7 +172,7 @@ class OnnxFastSpeech2(nn.Module, AbsExportModel):
         sids: Optional[torch.Tensor] = None,
         lids: Optional[torch.Tensor] = None,
     ):
-        x_masks = self._source_mask(ilens)
+        x_masks = self._source_mask(ilens, xs.shape[1])
         hs, _ = self.encoder(xs, x_masks)  # (B, T_text, adim)
 
         # integrate with GST
@@ -190,7 +194,7 @@ class OnnxFastSpeech2(nn.Module, AbsExportModel):
             hs = self._integrate_with_spk_embed(hs, spembs)
 
         # forward duration predictor and variance predictors
-        d_masks = self.make_pad_mask(ilens)
+        d_masks = self.make_pad_mask(ilens, maxlen=xs.shape[1]).bool()
 
         p_outs = self.pitch_predictor(hs, d_masks.unsqueeze(-1))
         e_outs = self.energy_predictor(hs, d_masks.unsqueeze(-1))
@@ -201,6 +205,7 @@ class OnnxFastSpeech2(nn.Module, AbsExportModel):
         e_embs = self.energy_embed(e_outs.transpose(1, 2)).transpose(1, 2)
         hs = hs + e_embs + p_embs
         hs = self.length_regulator(hs, d_outs)  # (B, T_feats, adim)
+        torch._check(hs.shape[1] >= 1)
 
         # forward decoder
         h_masks = None

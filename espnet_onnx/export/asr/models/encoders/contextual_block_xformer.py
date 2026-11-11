@@ -3,6 +3,7 @@ from typing import Optional, Tuple
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from espnet2.legacy.nets.pytorch_backend.transformer.attention import MultiHeadedAttention
 from espnet2.legacy.nets.pytorch_backend.transformer.subsampling_without_posenc import (
     Conv2dSubsamplingWOPosEnc,
@@ -25,6 +26,12 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
 
         self.embed = model.embed
         self.subsample = model.subsample
+        self.minimum_input_frames = 1
+        if isinstance(self.embed, Conv2dSubsamplingWOPosEnc):
+            for kernel, stride in reversed(
+                list(zip(self.embed.kernels, self.embed.strides))
+            ):
+                self.minimum_input_frames = (self.minimum_input_frames - 1) * stride + kernel
 
         self.normalize_before = model.normalize_before
         self.encoders = model.encoders
@@ -81,11 +88,13 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
             pos_enc_xs: (B, L, D) L = block_size
             is_first: torch.Tensor. 1 for the first frame, 0 for the second and later frame.
         """
+        first = is_first[0].item()
+
         # compute preencoder
         # remove before_downsampling if first iteration
         xs_pad = torch.cat([buffer_before_downsampling, xs_pad], dim=1)
         xs_pad = xs_pad[
-            :, buffer_before_downsampling.size(1) * is_first[0] :
+            :, buffer_before_downsampling.size(1) * first :
         ]  # (B, L, overlap)
 
         n_samples = xs_pad.size(1) // self.subsample - 1
@@ -93,12 +102,14 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
         buffer_before_downsampling = xs_pad[:, -n_res_samples:]  # (B, L, overlap)
         xs_pad = xs_pad[:, : n_samples * self.subsample]  # (B, L, overlap)
 
+        if isinstance(self.embed, Conv2dSubsamplingWOPosEnc):
+            torch._check(xs_pad.shape[1] >= self.minimum_input_frames)
         xs_pad = self.compute_embed(xs_pad)
         xs_pad = torch.cat([buffer_after_downsampling, xs_pad], dim=1)
 
         # remove after_downsampling if first iteration
         xs_pad = xs_pad[
-            :, buffer_after_downsampling.size(1) * is_first[0] :
+            :, buffer_after_downsampling.size(1) * first :
         ]  # (B, L, overlap)
 
         block_num = max(0, xs_pad.size(1) - self.overlap_size) // self.hop_size
@@ -114,12 +125,15 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
         if self.ctx_pos_enc:
             addin = addin * self.xscale + pos_enc_addin
 
-        prev_addin = torch.cat([prev_addin, addin], dim=1)[:, is_first[0]].unsqueeze(1)
+        prev_addin = torch.index_select(
+            torch.cat([prev_addin, addin], dim=1), 1, is_first
+        )
 
         xs_pad = xs_pad * self.xscale + pos_enc_xs[:, : xs_pad.size(1)]
 
-        xs_chunk = torch.zeros(xs_pad.size(0), self.block_size, xs_pad.size(2))
-        xs_chunk[:, : xs_pad.size(1)] = xs_pad
+        padding = self.block_size - xs_pad.size(1)
+        torch._check(padding >= 0)
+        xs_chunk = F.pad(xs_pad, (0, 0, 0, padding))
 
         ys_chunk = torch.cat([prev_addin, xs_chunk, addin], dim=1).unsqueeze(1)
 
@@ -137,13 +151,13 @@ class ContextualBlockXformerEncoder(nn.Module, AbsExportModel):
                 dim=1,
             )
             # indicies[4] is 1 if first iteration, 0 in second or later iterations
-            ys_chunk[:, 0, 0, :] = tmp_array[:, is_first[0], :]
+            ys_chunk[:, 0, 0, :] = torch.index_select(tmp_array, 1, is_first).squeeze(1)
             next_encoder_ctx[:, i] = next_encoder_ctx_tmp[:, i]
 
         # remove addin
         ys_chunk = ys_chunk.squeeze(1)[:, 1:-1]
         ys_pad = ys_chunk[
-            :, self.offset_selector[is_first[0]] : self.block_size - self.look_ahead
+            :, self.offset * (1 - first) : self.block_size - self.look_ahead
         ]
 
         if self.normalize_before:

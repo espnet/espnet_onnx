@@ -1,9 +1,9 @@
-import logging
 from typing import Optional
 
 import torch
 import torch.nn as nn
 
+from espnet_onnx.export.asr.models.layers.embed import Embedding
 from espnet_onnx.export.tts.models.tts_models.fastspeech2 import OnnxStyleEncoder
 from espnet_onnx.export.tts.models.vocoders.hifigan import OnnxHiFiGANVocoder
 from espnet_onnx.utils.abs_model import AbsExportModel
@@ -19,24 +19,21 @@ class OnnxGaussianUpsampling(nn.Module):
     def __call__(self, hs, ds, d_masks=None):
         B = ds.size(0)
 
-        if ds.sum() == 0:
-            logging.warning(
-                "predicted durations includes all 0 sequences. "
-                "fill the first element with 1."
-            )
-            # NOTE(kan-bayashi): This case must not be happened in teacher forcing.
-            #   It will be happened in inference with a bad duration predictor.
-            #   So we do not need to care the padded sequence case here.
-            ds[ds.sum(dim=1).eq(0)] = 1
+        # Avoid a tensor-valued Python conditional: the exporter cannot specialize
+        # on whether model-predicted durations happen to sum to zero. Preserve the
+        # ESPnet fallback by assigning one frame to the first token in that case.
+        empty = ds.sum(dim=1, keepdim=True).eq(0)
+        first_token = torch.arange(ds.size(1), device=ds.device).eq(0).unsqueeze(0)
+        ds = ds + (empty & first_token).to(ds.dtype)
 
-        T_feats = ds.sum()
+        T_feats = ds.sum().item()
+        torch._check(T_feats >= 1)
         t = torch.arange(0, T_feats).unsqueeze(0).repeat(B, 1)
         c = ds.cumsum(dim=-1) - ds / 2
         energy = -1 * self.delta * (t.unsqueeze(-1) - c.unsqueeze(1)) ** 2
         if d_masks is not None:
-            energy = energy.masked_fill(
-                1 - d_masks.unsqueeze(1).repeat(1, T_feats, 1), -10000.0
-            )
+            padding_mask = d_masks.eq(0).unsqueeze(1).expand(-1, T_feats, -1)
+            energy = energy.masked_fill(padding_mask, -10000.0)
 
         p_attn = torch.softmax(energy, dim=2)  # (B, T_feats, T_text)
         hs = torch.matmul(p_attn, hs)
@@ -61,6 +58,10 @@ class OnnxJETSGenerator(nn.Module):
         self.make_pad_mask = MakePadMask(max_seq_len)
         self.encoder = model.encoder
         self.decoder = model.decoder
+        self.encoder.embed = Embedding(self.encoder.embed, max_seq_len=max_seq_len)
+        self.decoder.embed = Embedding(
+            self.decoder.embed, max_seq_len=max_seq_len, use_cache=False
+        )
         self.pitch_predictor = model.pitch_predictor
         self.energy_predictor = model.energy_predictor
         self.duration_predictor = model.duration_predictor
@@ -87,7 +88,7 @@ class OnnxJETSGenerator(nn.Module):
         spembs: Optional[torch.Tensor] = None,
         lids: Optional[torch.Tensor] = None,
     ):
-        x_masks = self._source_mask(text_lengths)
+        x_masks = self._source_mask(text_lengths, text.shape[1])
         hs, _ = self.encoder(text, x_masks)  # (B, T_text, adim)
 
         # integrate with GST
@@ -107,7 +108,7 @@ class OnnxJETSGenerator(nn.Module):
         if self.spk_embed_dim is not None:
             hs = self._integrate_with_spk_embed(hs, spembs)
 
-        h_masks = self.make_pad_mask(text_lengths)
+        h_masks = self.make_pad_mask(text_lengths, maxlen=text.shape[1]).bool()
         # forward duration predictor and variance predictors
         p_outs = self.pitch_predictor(hs, h_masks.unsqueeze(-1))
         e_outs = self.energy_predictor(hs, h_masks.unsqueeze(-1))
@@ -118,7 +119,7 @@ class OnnxJETSGenerator(nn.Module):
         hs = hs + e_embs + p_embs
 
         # upsampling
-        d_masks = 1 - self.make_pad_mask(text_lengths)
+        d_masks = 1 - self.make_pad_mask(text_lengths, maxlen=text.shape[1])
         hs = self.length_regulator(hs, d_outs, d_masks)  # (B, T_feats, adim)
 
         # forward decoder
@@ -128,8 +129,8 @@ class OnnxJETSGenerator(nn.Module):
         wav = self.generator(zs)
         return wav.squeeze(1), d_outs
 
-    def _source_mask(self, ilens: torch.Tensor) -> torch.Tensor:
-        x_masks = 1 - self.make_pad_mask(ilens)
+    def _source_mask(self, ilens: torch.Tensor, maxlen: int) -> torch.Tensor:
+        x_masks = 1 - self.make_pad_mask(ilens, maxlen=maxlen)
         return x_masks.unsqueeze(-2)
 
     def _integrate_with_spk_embed(
