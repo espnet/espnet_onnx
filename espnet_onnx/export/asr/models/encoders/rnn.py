@@ -2,8 +2,8 @@ import six
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from espnet.nets.pytorch_backend.rnn.encoders import RNN, RNNP, VGG2L
-from espnet.nets.pytorch_backend.nets_utils import make_pad_mask
+from espnet2.legacy.nets.pytorch_backend.rnn.encoders import RNN, RNNP, VGG2L
+from espnet2.legacy.nets.pytorch_backend.nets_utils import make_pad_mask
 
 from espnet_onnx.utils.abs_model import AbsExportModel
 

@@ -23,7 +23,7 @@ Now demonstration notebook is available in google colab!
 pip install espnet_onnx
 ```
 
-2. If you want to export pretrained model, you need to install `torch>=1.11.0`, `espnet`, `espnet_model_zoo`, `onnx` additionally.
+2. If you want to export pretrained model, you need to install `torch>=2.11.0`, `espnet>=202611`, `espnet_model_zoo`, `onnx` additionally. ESPnet requires Python 3.12 or 3.13.
 `onnx==1.12.0` might cause some errors. If you got an error while inference or exporting, please consider downgrading the onnx version.
 
 

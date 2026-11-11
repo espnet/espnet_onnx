@@ -2,7 +2,7 @@ import os
 
 import torch
 import torch.nn as nn
-from espnet.nets.pytorch_backend.transformer.attention import MultiHeadedAttention
+from espnet2.legacy.nets.pytorch_backend.transformer.attention import MultiHeadedAttention
 
 from espnet_onnx.export.asr.models.layers.decoder_layer import OnnxDecoderLayer
 from espnet_onnx.export.asr.models.layers.embed import Embedding

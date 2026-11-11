@@ -1,10 +1,10 @@
 import torch.nn as nn
-from espnet.nets.pytorch_backend.transformer.attention import (
+from espnet2.legacy.nets.pytorch_backend.transformer.attention import (
     LegacyRelPositionMultiHeadedAttention,
     MultiHeadedAttention,
     RelPositionMultiHeadedAttention,
 )
-from espnet.nets.pytorch_backend.transformer.subsampling import (
+from espnet2.legacy.nets.pytorch_backend.transformer.subsampling import (
     Conv2dSubsampling,
     Conv2dSubsampling2,
     Conv2dSubsampling6,

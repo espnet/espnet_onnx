@@ -4,20 +4,20 @@ import math
 
 import torch
 import torch.nn as nn
-from espnet.nets.pytorch_backend.transformer.embedding import (
+from espnet2.legacy.nets.pytorch_backend.transformer.embedding import (
     LegacyRelPositionalEncoding,
     PositionalEncoding,
     RelPositionalEncoding,
     ScaledPositionalEncoding,
     StreamPositionalEncoding,
 )
-from espnet.nets.pytorch_backend.transformer.subsampling import (
+from espnet2.legacy.nets.pytorch_backend.transformer.subsampling import (
     Conv2dSubsampling,
     Conv2dSubsampling2,
     Conv2dSubsampling6,
     Conv2dSubsampling8,
 )
-from espnet.nets.pytorch_backend.transformer.subsampling_without_posenc import (
+from espnet2.legacy.nets.pytorch_backend.transformer.subsampling_without_posenc import (
     Conv2dSubsamplingWOPosEnc,
 )
 

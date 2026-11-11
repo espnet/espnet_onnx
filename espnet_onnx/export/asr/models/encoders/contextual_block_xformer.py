@@ -3,8 +3,8 @@ from typing import Optional, Tuple
 
 import torch
 import torch.nn as nn
-from espnet.nets.pytorch_backend.transformer.attention import MultiHeadedAttention
-from espnet.nets.pytorch_backend.transformer.subsampling_without_posenc import (
+from espnet2.legacy.nets.pytorch_backend.transformer.attention import MultiHeadedAttention
+from espnet2.legacy.nets.pytorch_backend.transformer.subsampling_without_posenc import (
     Conv2dSubsamplingWOPosEnc,
 )
 

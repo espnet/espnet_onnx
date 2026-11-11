@@ -6,7 +6,7 @@ import six
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from espnet.nets.pytorch_backend.rnn.attentions import AttForward, AttForwardTA
+from espnet2.legacy.nets.pytorch_backend.rnn.attentions import AttForward, AttForwardTA
 
 from espnet_onnx.export.asr.models.layers.attention import get_attention
 from espnet_onnx.export.asr.models.decoders.predecoder import PreDecoder

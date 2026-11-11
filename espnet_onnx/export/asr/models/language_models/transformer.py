@@ -2,9 +2,9 @@ import os
 
 import torch
 import torch.nn as nn
-from espnet.nets.pytorch_backend.transducer.vgg2l import VGG2L
-from espnet.nets.pytorch_backend.transformer.attention import MultiHeadedAttention
-from espnet.nets.pytorch_backend.transformer.subsampling import (
+from espnet2.legacy.nets.pytorch_backend.transducer.vgg2l import VGG2L
+from espnet2.legacy.nets.pytorch_backend.transformer.attention import MultiHeadedAttention
+from espnet2.legacy.nets.pytorch_backend.transformer.subsampling import (
     Conv2dSubsampling,
     Conv2dSubsampling6,
     Conv2dSubsampling8,
