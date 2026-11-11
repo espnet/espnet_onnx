@@ -19,10 +19,10 @@ class Encoder:
     ):
         self.config = encoder_config
         session_options = onnxruntime.SessionOptions()
-        # ORT's extended MatMulScaleFusion produces an invalid broadcast for
-        # some dynamic Conformer attention graphs exported by torch.onnx.
+        # ORT's MatMulScaleFusion produces an invalid broadcast for dynamic
+        # attention graphs exported by the torch dynamo ONNX exporter.
         session_options.graph_optimization_level = (
-            onnxruntime.GraphOptimizationLevel.ORT_ENABLE_BASIC
+            onnxruntime.GraphOptimizationLevel.ORT_DISABLE_ALL
         )
         # Note that id model was optimized and quantized,
         # then the quantized model should be optimized.
