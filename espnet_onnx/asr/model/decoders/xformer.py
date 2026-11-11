@@ -69,7 +69,7 @@ class XformerDecoder(BatchScorerInterface):
         n_batch = len(ys)
         if states[0] is None:
             batch_state = [
-                np.zeros((1, 1, self.odim), dtype=np.float32)
+                np.zeros((n_batch, 1, self.odim), dtype=np.float32)
                 for _ in range(self.n_layers)
             ]
         else:

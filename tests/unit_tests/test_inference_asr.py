@@ -140,8 +140,12 @@ def test_infer_decoder(dec_type, feat_lens, load_config, get_class):
 
     # test output
     for fl in feat_lens:
-        dummy_input = torch.randn(1, fl, 256)
-        dummy_yseq = torch.LongTensor([0])
+        batch_size = 4 if dec_type == "transformer" else 1
+        dummy_input = torch.randn(batch_size, fl, 256)
+        if dec_type[:3] == "rnn":
+            dummy_yseq = torch.LongTensor([0])
+        else:
+            dummy_yseq = torch.zeros((batch_size, 1), dtype=torch.long)
         if dec_type[:3] == "rnn":
             torch_out = run_rnn_dec(decoder_espnet, dummy_input, dummy_yseq)
             onnx_out = run_rnn_dec(
@@ -149,7 +153,7 @@ def test_infer_decoder(dec_type, feat_lens, load_config, get_class):
             )
 
         elif dec_type == "transducer":
-            dummy_yseq = dummy_yseq.unsqueeze(0)
+            dummy_yseq = dummy_yseq[:1]
             h = torch.randn(1, 1, 256)
             torch_out = run_trans_dec(decoder_espnet, dummy_yseq, h, "torch")
             onnx_out = run_trans_dec(
@@ -157,7 +161,6 @@ def test_infer_decoder(dec_type, feat_lens, load_config, get_class):
             )
 
         else:
-            dummy_yseq = dummy_yseq.unsqueeze(0)
             torch_out = run_xformer_dec(
                 decoder_espnet, dummy_input, dummy_yseq, "torch"
             )
@@ -166,6 +169,28 @@ def test_infer_decoder(dec_type, feat_lens, load_config, get_class):
             )
 
         check_output(torch_out, onnx_out)
+
+    if dec_type == "transformer":
+        for batch_size in (1, 4, 20):
+            check_cached_batch_scores(decoder_espnet, decoder_onnx, batch_size)
+
+
+def check_cached_batch_scores(torch_model, onnx_model, batch_size):
+    """Exercise changing prefix lengths with real per-hypothesis caches."""
+    memory = torch.randn(batch_size, 30, 256)
+    tokens = torch.randint(1, 100, (batch_size, 3))
+    torch_states = [None] * batch_size
+    onnx_states = [None] * batch_size
+    for length in (1, 2, 3):
+        prefix = tokens[:, :length]
+        with torch.no_grad():
+            expected, torch_states = torch_model.batch_score(
+                prefix, torch_states, memory
+            )
+        actual, onnx_states = onnx_model.batch_score(
+            prefix.numpy(), onnx_states, memory.numpy()
+        )
+        check_output(expected, actual)
 
 
 @pytest.mark.parametrize("lm_type, feat_lens", lm_cases)
@@ -192,6 +217,10 @@ def test_infer_lm(lm_type, feat_lens, load_config, get_class):
         torch_out, _ = torch_model.batch_score(tgt, [None], dummy_input)
         onnx_out, _ = onnx_model.batch_score(tgt.numpy(), [None], dummy_input.numpy())
         check_output(torch_out, onnx_out)
+
+    if lm_type.startswith("transformer"):
+        for batch_size in (1, 4, 20):
+            check_cached_batch_scores(torch_model, onnx_model, batch_size)
 
 
 @pytest.mark.parametrize(

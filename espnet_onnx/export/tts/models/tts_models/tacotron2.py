@@ -38,8 +38,62 @@ class OnnxEncoderLayer(nn.Module):
         if self.model.blstm is None:
             return xs.transpose(1, 2)
 
-        xs, _ = self.model.blstm(xs.transpose(1, 2))  # (B, Tmax, C)
+        xs = xs.transpose(1, 2)
+        if torch.onnx.is_in_onnx_export():
+            xs = self._export_lstm(xs)
+        else:
+            xs, _ = self.model.blstm(xs)  # (B, Tmax, C)
         return xs[0]
+
+    def _export_lstm(self, xs):
+        """Work around torch.export specializing nn.LSTM's sequence length.
+
+        With PyTorch 2.11's dynamo ONNX exporter, tracing this encoder's
+        nn.LSTM specializes the text length to the dummy input length, causing
+        export to fail when that axis is declared dynamic. Emit ONNX LSTM
+        operators directly to preserve variable text lengths. This is an
+        exporter workaround; ordinary PyTorch inference uses nn.LSTM above.
+        """
+        lstm = self.model.blstm
+        directions = 2 if lstm.bidirectional else 1
+
+        def onnx_gates(weight):
+            i, f, g, o = weight.chunk(4, dim=0)
+            return torch.cat((i, o, f, g), dim=0)
+
+        for layer in range(lstm.num_layers):
+            weights, recurrent, biases = [], [], []
+            for suffix in (["", "_reverse"] if lstm.bidirectional else [""]):
+                name = f"_l{layer}{suffix}"
+                weights.append(onnx_gates(getattr(lstm, "weight_ih" + name)))
+                recurrent.append(onnx_gates(getattr(lstm, "weight_hh" + name)))
+                if lstm.bias:
+                    biases.append(
+                        torch.cat(
+                            (
+                                onnx_gates(getattr(lstm, "bias_ih" + name)),
+                                onnx_gates(getattr(lstm, "bias_hh" + name)),
+                            )
+                        )
+                    )
+            ys = torch.onnx.ops.symbolic(
+                "LSTM",
+                (
+                    xs.transpose(0, 1),
+                    torch.stack(weights),
+                    torch.stack(recurrent),
+                    torch.stack(biases) if lstm.bias else None,
+                ),
+                {
+                    "hidden_size": lstm.hidden_size,
+                    "direction": "bidirectional" if lstm.bidirectional else "forward",
+                },
+                dtype=xs.dtype,
+                shape=(xs.size(1), directions, xs.size(0), lstm.hidden_size),
+                version=22,
+            )
+            xs = ys.permute(2, 0, 1, 3).flatten(2)
+        return xs
 
 
 class OnnxTacotron2Encoder(nn.Module, AbsExportModel):

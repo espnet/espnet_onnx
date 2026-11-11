@@ -9,13 +9,18 @@ def dynamic_shapes_from_model(model, inputs):
     """Translate the model's flattened ONNX input axes to PyTorch's input tree."""
     input_names = iter(model.get_input_names())
     axes = model.get_dynamic_axes()
+    batch_dim = torch.export.Dim("batch", min=1)
 
     def shape_spec(value):
         if isinstance(value, torch.Tensor):
             name = next(input_names)
             return {
                 axis: (
-                    torch.export.Dim.DYNAMIC
+                    (
+                        batch_dim
+                        if axes[name][axis] == "batch"
+                        else torch.export.Dim.DYNAMIC
+                    )
                     if axis == 0
                     else torch.export.Dim.AUTO
                 )

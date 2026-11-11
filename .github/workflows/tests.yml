@@ -25,27 +25,5 @@ jobs:
         run: python -m pip install --upgrade pip wheel && python -m pip install torch==2.11.0 torchaudio==2.11.0 --index-url https://download.pytorch.org/whl/cpu
       - name: Install project and test dependencies
         run: python -m pip install -r tools/requirements_test.txt -e .
-      - name: Install s3prl
-        run: |
-          git clone --depth 1 https://github.com/s3prl/s3prl.git "$RUNNER_TEMP/s3prl"
-          python -m pip install -e "$RUNNER_TEMP/s3prl"
-          python - <<'PY'
-          import os
-          from pathlib import Path
-
-          hub = Path(os.environ["RUNNER_TEMP"]) / "s3prl/s3prl/hub.py"
-          lines = hub.read_text().splitlines()
-          supported = ("s3prl.upstream.hubert.hubconf", "s3prl.upstream.espnet_hubert.hubconf")
-          hub.write_text(
-              "\n".join(
-                  line
-                  for line in lines
-                  if "from s3prl.upstream." not in line or any(item in line for item in supported)
-              )
-              + "\n"
-          )
-          PY
       - name: Run tests
-        env:
-          PYTHONPATH: ${{ runner.temp }}/s3prl
         run: pytest tests --config_dir tests/test_config --wav_dir tests/test_wavs

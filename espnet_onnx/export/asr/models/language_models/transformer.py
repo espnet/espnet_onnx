@@ -71,9 +71,10 @@ class TransformerLM(nn.Module, AbsExportModel):
         return h, new_cache
 
     def get_dummy_inputs(self):
-        tgt = torch.LongTensor([1]).unsqueeze(0)
+        batch_size = 4
+        tgt = torch.ones((batch_size, 3), dtype=torch.long)
         cache = [
-            torch.zeros((1, 1, self.encoder.encoders[0].size))
+            torch.zeros((batch_size, 2, self.encoder.encoders[0].size))
             for _ in range(len(self.encoder.encoders))
         ]
         return (tgt, cache)
@@ -88,17 +89,17 @@ class TransformerLM(nn.Module, AbsExportModel):
         return ["y"] + ["out_cache_%d" % i for i in range(len(self.encoder.encoders))]
 
     def get_dynamic_axes(self):
-        ret = {"tgt": {0: "tgt_batch", 1: "tgt_length"}}
+        ret = {"tgt": {0: "batch", 1: "tgt_length"}, "y": {0: "batch"}}
         ret.update(
             {
-                "cache_%d" % d: {0: "cache_%d_batch" % d, 1: "cache_%d_length" % d}
+                "cache_%d" % d: {0: "batch", 1: "cache_%d_length" % d}
                 for d in range(len(self.encoder.encoders))
             }
         )
         ret.update(
             {
                 "out_cache_%d"
-                % d: {0: "out_cache_%d_batch" % d, 1: "out_cache_%d_length" % d}
+                % d: {0: "batch", 1: "out_cache_%d_length" % d}
                 for d in range(len(self.encoder.encoders))
             }
         )

@@ -40,4 +40,5 @@ editdistance
 importlib-metadata
 
 espnet>=202611
+espnet-s3prl>=2026.5.14
 pytest

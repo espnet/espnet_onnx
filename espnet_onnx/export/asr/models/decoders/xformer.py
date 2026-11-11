@@ -62,10 +62,13 @@ class XformerDecoder(nn.Module, AbsExportModel):
         return y, new_cache
 
     def get_dummy_inputs(self, enc_size):
-        tgt = torch.LongTensor([0]).unsqueeze(0)
-        enc_out = torch.randn(1, 100, enc_size)
+        # Use a non-singleton batch so torch.export doesn't specialize batch
+        # dimensions to one while tracing the decoder's cache reshapes.
+        batch_size = 4
+        tgt = torch.zeros((batch_size, 1), dtype=torch.long)
+        enc_out = torch.randn(batch_size, 100, enc_size)
         cache = [
-            torch.zeros((1, 1, self.model.decoders[0].size))
+            torch.zeros((batch_size, 1, self.model.decoders[0].size))
             for _ in range(len(self.model.decoders))
         ]
         return (tgt, enc_out, cache)
@@ -83,12 +86,22 @@ class XformerDecoder(nn.Module, AbsExportModel):
 
     def get_dynamic_axes(self):
         ret = {
-            "tgt": {0: "tgt_batch", 1: "tgt_length"},
-            "memory": {0: "memory_batch", 1: "memory_length"},
+            "tgt": {0: "batch", 1: "tgt_length"},
+            "memory": {0: "batch", 1: "memory_length"},
         }
         ret.update(
             {
-                "cache_%d" % d: {0: "cache_%d_batch" % d, 1: "cache_%d_length" % d}
+                "cache_%d" % d: {0: "batch", 1: "cache_%d_length" % d}
+                for d in range(len(self.model.decoders))
+            }
+        )
+        ret["y"] = {0: "batch"}
+        ret.update(
+            {
+                "out_cache_%d" % d: {
+                    0: "batch",
+                    1: "out_cache_%d_length" % d,
+                }
                 for d in range(len(self.model.decoders))
             }
         )
