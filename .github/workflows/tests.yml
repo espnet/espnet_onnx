@@ -32,19 +32,18 @@ jobs:
           python - <<'PY'
           import os
           from pathlib import Path
-          import re
 
-          root = Path(os.environ["RUNNER_TEMP"]) / "s3prl"
-          for source in root.rglob("*.py"):
-              text = source.read_text()
-              updated = re.sub(
-                  r"^([ \t]*)torchaudio\.set_audio_backend\([^\n]*\)[ \t]*$",
-                  r"\1pass",
-                  text,
-                  flags=re.MULTILINE,
+          hub = Path(os.environ["RUNNER_TEMP"]) / "s3prl/s3prl/hub.py"
+          lines = hub.read_text().splitlines()
+          supported = ("s3prl.upstream.hubert.hubconf", "s3prl.upstream.espnet_hubert.hubconf")
+          hub.write_text(
+              "\n".join(
+                  line
+                  for line in lines
+                  if "from s3prl.upstream." not in line or any(item in line for item in supported)
               )
-              if updated != text:
-                  source.write_text(updated)
+              + "\n"
+          )
           PY
       - name: Run tests
         env:

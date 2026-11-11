@@ -13,7 +13,14 @@ def dynamic_shapes_from_model(model, inputs):
     def shape_spec(value):
         if isinstance(value, torch.Tensor):
             name = next(input_names)
-            return {axis: torch.export.Dim.AUTO for axis in axes.get(name, {})}
+            return {
+                axis: (
+                    torch.export.Dim.DYNAMIC
+                    if axis == 0
+                    else torch.export.Dim.AUTO
+                )
+                for axis in axes.get(name, {})
+            }
         if isinstance(value, list):
             return [shape_spec(item) for item in value]
         if isinstance(value, tuple):
